@@ -1,13 +1,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#ifdef __QNX__
-  #include <hw/inout.h>
-  #include <sys/socket.h>
-  #include <sys/neutrino.h>
-  #include <netinet/in.h>
-  #include <netinet/tcp.h>
-#endif
 #include <signal.h>
 #include <netdb.h>
 #include <stdio.h>
@@ -128,6 +121,7 @@ int main(){
            
           } 
         }
+        master_buf=malloc(4*MAX_TIME_SEQ_LEN);
         bad_transmit_times.length=0;
         bad_transmit_times.start_usec=malloc(sizeof(unsigned int)*MAX_PULSES);
         bad_transmit_times.duration_usec=malloc(sizeof(unsigned int)*MAX_PULSES);
@@ -301,11 +295,16 @@ int main(){
 			      if (verbose > 1) printf("Merging Client Seq %d into Master Seq %d %d length:%d\n",
                                                     i,r,c,seq_count[r][c]);	
                               for (j=0;j<seq_count[r][c];j++) {
+			        if (verbose > 1) printf("Seq index: %d\n",j);
                                 if (i==0) {
+			          if (verbose > 1) printf("First client: %d\n",j);
                                   master_buf[j]=seq_buf[r][c][j];
                                   counter++;
                                 }
-                                else  master_buf[j]|=seq_buf[r][c][j];
+                                else  {
+			  	  master_buf[j]|=seq_buf[r][c][j];
+			          if (verbose > 1) printf("Non-First client: %d\n",j);
+				}
                               } 
                               if (verbose > 1 ) printf("Total Tr %d\n",counter);
 			    }
