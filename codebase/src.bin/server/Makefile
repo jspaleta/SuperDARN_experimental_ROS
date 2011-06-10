@@ -2,11 +2,11 @@ OS:=$(shell uname -s)
 
 CC=gcc
 CFLAGS=-c 
-LFLAGS  = -L"../iniparser3.0b"
+LFLAGS  = -L"../../src.lib/iniparser3.0b"
 common_libs=-lm -liniparser
 linux_libs=-lm -lpthread -lrt
 qnx_libs=-lsocket
-INCLUDES=-I"../include/" -I"include/" -I"../../src.utils/tsg/include" -I"../iniparser3.0b/src/"
+INCLUDES=-I"../include/" -I"include/" -I"../../src.utils/tsg/include" -I"../../src.lib/iniparser3.0b/src/"
 SOURCES=main.c client_handler.c timeout_handler.c status_handler.c settings_handler.c dio_handler.c timing_handler.c coordination_handler.c dummy_handler.c reciever_handler.c dds_handler.c ../../src.utils/utils.c ../../src.utils/tsg/maketsg.c ../../src.utils/_tcpsocket.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=arby_server
