@@ -1,0 +1,15 @@
+This is an initial start for a public git tree for the new SuperDARN ROS.
+This repository will grow to hold ros server process and related driver code for different SuperDARN radar site hardware configurations.
+
+The focus of this work is define a set of slowly evovling TCP intefaces between
+controlprograms, the ros server, and the hardware drivers in a way that allows people to work on enhancing the capabilities and performance of of any part of the software stack using a mimic radar configuration that uses the same TCP API as all the radars running this version of the ROS.
+
+We start with a set of dummy drivers not attached to any hardware 
+that will compile cleanly on both Linux and QNX6. These drivers can 
+serve as a starting point for development of site specific drivers.
+
+In additional there are set of simple diagnostic controlprogram clients for simple testing.
+
+ 
+
+
