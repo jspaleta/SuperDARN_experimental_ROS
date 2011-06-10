@@ -1,0 +1,21 @@
+#!/bin/sh
+DEV_DIR=/root/new-merge/ros6/
+#slay -f _gc314FS
+slay -f _ics660-drv
+nohup $DEV_DIR/gps_tcp_driver/gps_tcp_driver > /dev/null 2>&1 &
+#/root/merged.old/ros6/phasing-calibration-qnx/phasing_calibration 3 0 0
+sleep 3
+$DEV_DIR/ics660_drv/_ics660-drv 0 > /dev/null 2>&1 &
+#$DEV_DIR/gc314FS_driver.1.31/_gc314FS 0 1> /dev/null 2>&1 &
+#$DEV_DIR/gc314FS_driver.1.31/_gc314FS 1 1> /dev/null 2>&1 &   
+sleep 3
+nohup $DEV_DIR/timing_tcp_driver/timing_tcp_driver > /tmp/timing.log 2>&1 &
+nohup $DEV_DIR/dio_tcp_driver/dio_tcp_driver > /dev/null 2>&1  &
+nohup $DEV_DIR/ddsserver_tcp_driver/dds_tcp_driver > /tmp/dds.log 2>&1 &
+nohup $DEV_DIR/gc214_tcp_driver/receiver_tcp_driver > /tmp/receiver.log 2>&1  &
+#nohup $DEV_DIR/gc314_tcp_driver/receiver_tcp_driver > /dev/null 2>&1  &
+sleep 5 
+nohup $DEV_DIR/server/arby_server 1> /tmp/server.log 2>&1   &
+date -t > /tmp/ros_restart_time
+touch /tmp/ros_running
+/root/test/latency_test 100 1000000

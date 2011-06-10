@@ -1,0 +1,17 @@
+#!/bin/sh
+DEV_DIR=/root/new-merge/ros6/
+rm -f /tmp/ros_running
+slay -f arby_server 
+slay -f receiver_tcp_driver 
+slay -f dds_tcp_driver 
+slay -f timing_tcp_driver 
+slay -f dio_tcp_driver 
+slay -f gps_tcp_driver 
+slay -f _ics660-drv
+slay -f _gc314FS 
+rm -f /tmp/ros_restart_time
+rm -f "/tmp/server_activity_time"
+rm -f "/tmp/recv_activity_time"
+rm -f "/tmp/server_cmd_time"
+rm -f "/tmp/recv_cmd_time"
+

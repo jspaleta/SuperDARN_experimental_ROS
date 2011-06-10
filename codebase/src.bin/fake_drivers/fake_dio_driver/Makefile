@@ -8,7 +8,7 @@ qnx_libs=-lsocket
 INCLUDES=-I"../../include/" -I"include/" -I"../../../src.utils/tsg/include" -I"../../server/include" 
 SOURCES=main.c _select_beam.c _select_card.c _get_status.c _rxfe_commands.c ../../../src.utils/_tcpsocket.c ../../../src.utils/utils.c
 OBJECTS=$(SOURCES:.c=.o)
-EXECUTABLE=dio_tcp_driver
+EXECUTABLE=fake_dio_tcp_driver
 
 all: $(SOURCES) $(EXECUTABLE)
 
@@ -19,12 +19,12 @@ endif
 ifeq ($(OS),QNX)
 	$(CC) -o $@ $(OBJECTS) $(common_libs) $(qnx_libs) 
 endif
-
+	cp $(EXECUTABLE) ../../../bin
 .c.o:
 	$(CC) $(CFLAGS) $< -o $@ $(INCLUDES)
 
 clean:
-	rm -rf $(OBJECTS) dio_tcp_driver
+	rm -rf $(OBJECTS) $(EXECUTABLE) 
 
 
 
