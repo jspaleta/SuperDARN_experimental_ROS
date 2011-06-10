@@ -1,0 +1,27 @@
+# Restricted frequency table for US Based Radars; -40 db bw=60 kHz
+#    The range of allowed frequencies is specified by the
+#    radar license
+#
+#    There are FIVE excluded bands listed as FBE
+#
+#    We added the Canadian Time Signal just to be sure,
+#    this band is NOT excluded as per the license
+#    It is actually not even excluded on the licenses
+#    for the Canadian radars.
+#
+default=11110   # Ray suggested 10800-11200
+#
+#    The following bands are defined by the license
+#
+0000  9000     # no transmissions below 9 MHz
+9965 10210     # 10 MHz time signal
+11245 11460     # Air Emergency band
+13230 13470     # Second Air Emergency Band and Radio Astronomy Band
+13970 14410     # Amature Radar and Satellite Band
+14960 15040     # US Time Signals
+17840 99999     # no transmissions above 17840
+#
+#    We add this because we are nice and don't
+#    want to swamp the Canadian time signal
+#
+14640 14700     # Canadian Time Signal at 14670

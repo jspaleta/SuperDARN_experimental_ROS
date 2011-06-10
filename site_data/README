@@ -1,0 +1,12 @@
+This directory holds _example_ site data files. It is expected that site operators will need to edit these files and extend them based on their own needs for the hardware they are running.
+
+The site.ini here will appropriate to run with the ros server using the fake hardware drivers that are included.  
+
+Note, no variable in the site.ini is _required_. Each keyvalue pair that 
+is present will override a default value.  
+
+It is also possible to include keyvalues that the ROS server and the drivers know
+nothing about that are entirely informative from a site operations point of view.
+
+In the future it will be possible to ask the ROS and drivers for all the keyvalues 
+that it requires with the default values in use.
