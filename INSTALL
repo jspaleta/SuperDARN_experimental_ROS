@@ -1,4 +1,19 @@
 compilation is not fully automated yet.
 Here is the order of things you need to compile
 
-1)
+1) iniparser3.db  located in src.lib
+
+2) the ros server located in src.bin
+
+3) all the drivers you want to run located in src.bin
+
+4) server and drivers will be placed in the bin directory
+
+Note: by default the ros server is configured to not require any drivers 
+to operate and it should respond to controlprogram commands with error status 
+messages for some commands and should not lock up or fault if drivers are not present.
+
+However when running at a radar site, it is advisable to reconfigure the ros server 
+to exit if one of the required drivers is not running.
+
+  
