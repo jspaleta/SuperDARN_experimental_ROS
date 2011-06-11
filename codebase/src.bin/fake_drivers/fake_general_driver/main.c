@@ -35,7 +35,6 @@ int main(){
         struct  TSGbuf *pulseseqs[MAX_RADARS][MAX_CHANNELS][MAX_SEQS];
 	unsigned int	*seq_buf[MAX_RADARS][MAX_CHANNELS];
         int seq_count[MAX_RADARS][MAX_CHANNELS];
-        int old_pulse_index[MAX_RADARS][MAX_CHANNELS];
         int ready_index[MAX_RADARS][MAX_CHANNELS];
 	unsigned int	*master_buf;
         int old_seq_id=-10;
@@ -71,8 +70,6 @@ int main(){
                 fprintf(stderr,"Error opening Site ini file, exiting driver\n");
                 exit(temp);
         }
-//        dds_offset=iniparser_getint(Site_INI,"timing:dds_trigger_offset",DDS_OFFSET);
-//        rx_offset=iniparser_getint(Site_INI,"timing:rx_trigger_offset",RX_OFFSET);
 
 	/* Initialize the internal driver state variables */
 	if (verbose > 1) printf("Zeroing arrays\n");
@@ -84,7 +81,6 @@ int main(){
 	    if (verbose > 1) printf("%d %d\n",r,c);
 	    for (i=0;i<MAX_SEQS;i++) pulseseqs[r][c][i]=NULL;
             ready_index[r][c]=-1; 
-            old_pulse_index[r][c]=-1; 
             seq_buf[r][c]=malloc(4*MAX_TIME_SEQ_LEN);
            
           } 
@@ -145,26 +141,25 @@ int main(){
 		    if (verbose > 1) printf("\nmsg code is %c\n", datacode);
 		/* Process commands that have come in on the socket */	
 		    switch( datacode ){
-		      case TIMING_REGISTER_SEQ:
+		      case REGISTER_SEQ:
 		        if (verbose > 0) printf("\nRegister new timing sequence for timing card\n");	
 		        msg.status=0;
                         rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
                         r=client.radar-1; 
                         c=client.channel-1; 
-			if (verbose > 1) printf("Radar: %d, Channel: %d Beamnum: %d Status %d\n",
-			  client.radar,client.channel,client.tbeam,msg.status);	
 		        rval=recv_data(msgsock,&index,sizeof(index));
 		        if (verbose > 1) printf("Requested index: %d\n",index);	
-		        if (verbose > 1) printf("Attempting Free on pulseseq :%p\n",pulseseqs[r][c][index]);	
+
+			/*Prepare the memory pointers*/
                         if (pulseseqs[r][c][index]!=NULL) {
                           if (pulseseqs[r][c][index]->rep!=NULL)  free(pulseseqs[r][c][index]->rep);
                           if (pulseseqs[r][c][index]->code!=NULL) free(pulseseqs[r][c][index]->code);
                           free(pulseseqs[r][c][index]);
                         }
-		        if (verbose > 1) printf("Done Free - Attempting Malloc\n");	
+			/* Fill memory pointers */
                         pulseseqs[r][c][index]=malloc(sizeof(struct TSGbuf));
-		        if (verbose > 1) printf("Finished malloc\n");	
-                        rval=recv_data(msgsock,pulseseqs[r][c][index], sizeof(struct TSGbuf)); // requested pulseseq
+                        rval=recv_data(msgsock,pulseseqs[r][c][index], 
+			  sizeof(struct TSGbuf)); // requested pulseseq
                         pulseseqs[r][c][index]->rep=
                           malloc(sizeof(unsigned char)*pulseseqs[r][c][index]->len);
                         pulseseqs[r][c][index]->code=
@@ -173,21 +168,24 @@ int main(){
                           sizeof(unsigned char)*pulseseqs[r][c][index]->len);
                         rval=recv_data(msgsock,pulseseqs[r][c][index]->code, 
                           sizeof(unsigned char)*pulseseqs[r][c][index]->len);
-			if (verbose > 1) printf("Pulseseq length: %d\n",pulseseqs[r][c][index]->len);	
-                        old_seq_id=-10;
-                        old_pulse_index[r][c]=-1;
-                        new_seq_id=-1;
+
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			/* Reset the local sequence state */
+                        old_seq_id=-10;
+                        new_seq_id=-1;
                         break;
-		      case TIMING_CtrlProg_END:
+
+		      case CtrlProg_END:
 		        if (verbose > 0) printf("\nA client is done\n");	
                         msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			/* Reset the seq counters */
                         old_seq_id=-10;
                         new_seq_id=-1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break;
-		      case TIMING_CtrlProg_READY:
-		        if (verbose > 0) printf("\nAsking to set up timing info for client that is ready %d\n",numclients);	
+
+		      case CtrlProg_READY:
+		        if (verbose > 0) printf("\nAsking to set up driver info for client that is ready\n");	
                         msg.status=0;
 		        rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
                         r=client.radar-1; 
@@ -202,44 +200,17 @@ int main(){
 			if (verbose > 1) printf("Radar: %d, Channel: %d Beamnum: %d Status %d\n",
 			  client.radar,client.channel,client.tbeam,msg.status);	
                         index=client.current_pulseseq_index; 
-/*
-                        if (index!=old_pulse_index[r][c]) {
-			  if (verbose > -1) fprintf(stderr,"Need to unpack pulseseq\n");	
-			  if (verbose > -1) fprintf(stderr,"Pulseseq length: %d\n",pulseseqs[r][c][index]->len);	
-			// unpack the timing sequence
-			  seq_count[r][c]=0;
-                          step=(int)((double)pulseseqs[r][c][index]->step/(double)STATE_TIME+0.5);
-                            
-                        //If DDS or RX Offset is negative pad the seq_buf iwith the maximum negative offset
-                          offset_pad=(int)((double)MIN(dds_offset,rx_offset)/((double)STATE_TIME+0.5))-2;
-			  if (verbose > -1) printf("offset pad: %d\n",offset_pad);	
-                          for(i=0;i>offset_pad;i--) {
-                            seq_buf[r][c][seq_count[r][c]]=0;
-                            seq_count[r][c]++;
-                          }
-			  for(i=0;i<pulseseqs[r][c][index]->len;i++){
-			    tempcode=_decodestate(r,c,(pulseseqs[r][c][index]->code)[i]);	
-			    for( j=0;j<step*(pulseseqs[r][c][index]->rep)[i];j++){
-			      seq_buf[r][c][seq_count[r][c]]=tempcode;
-			      seq_count[r][c]++;
-			    }
-			  }
-                        }
-	                if (verbose > 1) printf("Timing Card seq length: %d state step: %lf time: %lf\n",
-                                                seq_count[r][c],STATE_TIME*1E-6,STATE_TIME*1E-6*seq_count[r][c]);
 
-*/
                         if (numclients >= maxclients) msg.status=-2;
 		        if (verbose > 1) printf("\nclient ready done\n");	
                         numclients=numclients % maxclients;
-                        old_pulse_index[r][c]=index;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break; 
 
-		      case TIMING_PRETRIGGER:
-			if(verbose > 1 ) printf("Setup Timing Card for next trigger\n");	
+		      case PRETRIGGER:
+			if(verbose > 1 ) printf("Setup Driver for next trigger\n");	
+			/* Calculate sequence index */
                           msg.status=0;
-		          if (verbose > 1) printf("Max Seq length: %d Num clients: %d\n",max_seq_count,numclients);	
                           new_seq_id=-1;
 	                  for( i=0; i<numclients; i++) {
                             r=clients[i].radar-1;
@@ -251,106 +222,27 @@ int main(){
                           }
                           if (verbose > 1) printf("Timing Driver: %d %d\n",new_seq_id,old_seq_id);
 
+			/* If sequence index has changed..repopulate the 
+ 			* master sequence.  Not needed for all drivers. */
                           if (new_seq_id!=old_seq_id) { 
-                            if (verbose > -1) printf("Calculating Master sequence %d %d\n",old_seq_id,new_seq_id);
-                        //if (1==1) { 
                             max_seq_count=0;
                             for (i=0;i<numclients;i++) {
                               r=clients[i].radar-1;
                               c=clients[i].channel-1;
                               if (seq_count[r][c]>=max_seq_count) max_seq_count=seq_count[r][c];
-		              if (verbose > 1) printf("Max Seq length %d\n",max_seq_count);	
                               counter=0;
-			      if (verbose > 1) printf("Merging Client Seq %d into Master Seq %d %d length:%d\n",
-                                                    i,r,c,seq_count[r][c]);	
                               for (j=0;j<seq_count[r][c];j++) {
-			        if (verbose > 1) printf("Seq index: %d\n",j);
                                 if (i==0) {
-			          if (verbose > 1) printf("First client: %d\n",j);
                                   master_buf[j]=seq_buf[r][c][j];
                                   counter++;
                                 }
                                 else  {
 			  	  master_buf[j]|=seq_buf[r][c][j];
-			          if (verbose > 1) printf("Non-First client: %d\n",j);
 				}
                               } 
-                              if (verbose > 1 ) printf("Total Tr %ld\n",(long)counter);
 			    }
-			    // add the FIFO level bits
-/*
-	                    if (verbose > 1) printf("Fifo stamping Master Seq using FIFOLVL %d\n",FIFOLVL);	
-
-			    for(i=0;i<max_seq_count;i++){
-                              //if( ( i!=0 ) && ( i <= (max_seq_count-FIFOLVL) ) ) {
-                                if( ((i%FIFOLVL)==0) ) {
-				  for(j=0;j<FIFOWIDTH;j++){
-                            		master_buf[i+j]|=0x84;
-				  }
-                                }
-                              //}
-                              if ((master_buf[i] & 0x02)==0x02) {
-                                if (tr_event==0) { 
-                                  if (verbose > 1 ) printf("Master TR sample start: %d %x\n",i,master_buf[i]); 
-                                  bad_transmit_times.length++;
-                                  if(bad_transmit_times.length > 0){ 
-                                    if(bad_transmit_times.length < MAX_PULSES) { 
-                                      (bad_transmit_times.start_usec)[bad_transmit_times.length-1]=i;
-                                      (bad_transmit_times.duration_usec)[bad_transmit_times.length-1]=1;
-                                    } else {
-                                      printf("Too many transmit pulses\n");
-                                    } 
-                                  }
-                                } else {
-                                    (bad_transmit_times.duration_usec)[bad_transmit_times.length-1]++;
-                                }
-                                tr_event=1;
-                              } else {
-                                if(tr_event==1) 
-                                  if (verbose > 1 ) printf("Master TR sample end: %d %x\n",i,master_buf[i]); 
-                                tr_event=0;
-                              }
-                              if ((master_buf[i] & 0x01)==0x01) {
-                                if (scope_event==0) { 
-                                  if (verbose > 1 ) printf("Scope Sync sample start: %d %x\n",i,master_buf[i]); 
-                                  scope_start=i;
-                                }
-                                scope_event=1;
-                              } else {
-                                if (scope_event==1) 
-                                  if (verbose > 1 ) printf("Scope Sync sample end: %d %x\n",i,master_buf[i]); 
-                                scope_event=0;
-                              }
-                            }
-                            if (scope_start>-1) { 
-                              dds_trigger=scope_start+(int)((double)dds_offset/((double)STATE_TIME+0.5));
-                              rx_trigger=scope_start+(int)((double)rx_offset/((double)STATE_TIME+0.5));
-                              if (verbose > 1 ) {
-                                printf("---> Scope Sync in Master %ld at %ld\n",(long)max_seq_count,(long)scope_start); 
-                                printf("---> DDS Trigger in Master %ld at %ld\n",(long)max_seq_count,(long)dds_trigger); 
-                                printf("---> Rx Trigger in Master %ld at %ld\n",(long)max_seq_count,(long)rx_trigger); 
-                              } 
-                            } else {
-                              if (verbose > 1 ) printf("XXX> Scope Sync not in Master %ld\n",(long)max_seq_count); 
-                              dds_trigger=0;
-                              rx_trigger=0;
-                            }
-                            if((dds_trigger>=0) && (dds_trigger<max_seq_count)) {
-                              master_buf[dds_trigger]|=0x4000;                            
-                            }
-                            if((rx_trigger>=0) && (rx_trigger<max_seq_count)) {
-                              master_buf[rx_trigger]|=0x8000;                            
-                            }
-*/
                           }
                         
-/*
-	                  if (verbose > 1) printf("seq length: %d state step: %lf time: %lf\n",
-                                                max_seq_count,STATE_TIME*1E-6,(STATE_TIME*1E-6*max_seq_count));
-
-			  if (verbose > 1) printf("Max Seq Count:%d\n",max_seq_count);	
-                          if (verbose > 1) printf("END FIFO Stamps\n");
-*/
 
                         if (new_seq_id < 0 ) {
                           old_seq_id=-10;
@@ -358,7 +250,7 @@ int main(){
                           old_seq_id=new_seq_id;
                         }
                         new_seq_id=-1;
-
+			/* If Timing Driver */
                         send_data(msgsock, &bad_transmit_times.length, sizeof(bad_transmit_times.length));
                         send_data(msgsock, bad_transmit_times.start_usec, 
                                   sizeof(unsigned int)*bad_transmit_times.length);
@@ -370,30 +262,23 @@ int main(){
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break; 
 
-		      case TIMING_TRIGGER:
-			if (verbose > 1 ) printf("Setup Timing Card trigger\n");	
+		      case TRIGGER:
+			if (verbose > 1 ) printf("Send Master Trigger\n");	
                         msg.status=0;
-			if (verbose > 1) printf("Read msg struct from tcp socket!\n");	
-			if (verbose > 1 ) printf("End Timing Card trigger\n");	
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break;
 
-                      case TIMING_GPS_TRIGGER:
-                        if (verbose > 1 ) printf("Setup Timing Card GPS trigger\n");
+                      case EXTERNAL_TRIGGER:
+                        if (verbose > 1 ) printf("Setup for external trigger\n");
                         msg.status=0;
-                        if (verbose > 1) printf("Read msg struct from tcp socket!\n");
-
-                        if (verbose > 1 ) printf("End Timing Card GPS trigger\n");
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break;
-		      case TIMING_WAIT:
-			if (verbose > 1 ) printf("Timing Card: Wait\n");	
+		      case WAIT:
+			if (verbose > 1 ) printf("Driver Wait\n");	
                         msg.status=0;
-			if (verbose > 1) printf("Read msg struct from tcp socket!\n");	
-                        if (verbose > 1)  printf("Ending Wait \n");
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
-		      case TIMING_POSTTRIGGER:
+		      case POSTTRIGGER:
                         numclients=0;
                         for (r=0;r<MAX_RADARS;r++){
                           for (c=0;c<MAX_CHANNELS;c++){
