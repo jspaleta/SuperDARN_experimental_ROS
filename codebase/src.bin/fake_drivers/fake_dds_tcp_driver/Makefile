@@ -21,7 +21,7 @@ endif
 ifeq ($(OS),QNX)
 	$(CC) -o $@ $(OBJECTS) $(common_libs) $(qnx_libs) 
 endif
-#	cp $(EXECUTABLE) ../../../../bin/
+	cp $(EXECUTABLE) ../../../../bin/
 .c.o:
 	$(CC) $(CFLAGS) $< -o $@ $(INCLUDES)
 
