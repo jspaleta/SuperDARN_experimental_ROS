@@ -142,13 +142,21 @@ int main(){
 		/* Process commands that have come in on the socket */	
 		    switch( datacode ){
 		      case REGISTER_SEQ:
-		        if (verbose > 0) printf("\nRegister new timing sequence for timing card\n");	
-		        msg.status=0;
+			/* REGISTER_SEQ: Control programs request pulse sequences to use and pass them
+ 			* to the ROS server process. The ROS server process in turn passes the sequences
+ 			* to each driver to use as needed for hardware configuration */ 
+		        if (verbose > 0) printf("\nDriver: Register new timing sequence\n");	
+			/* Inform the ROS that this driver does handle this command, and its okay to send the
+ 			* sequence data by sending msg back with msg.status=1.
+ 			*/
+		        msg.status=1;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			/* Now recv the expected data as per the documented API for this command */
                         rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
                         r=client.radar-1; 
                         c=client.channel-1; 
 		        rval=recv_data(msgsock,&index,sizeof(index));
-		        if (verbose > 1) printf("Requested index: %d\n",index);	
+		        if (verbose > 1) printf("Driver: Requested sequence index: %d\n",index);	
 
 			/*Prepare the memory pointers*/
                         if (pulseseqs[r][c][index]!=NULL) {
@@ -169,6 +177,10 @@ int main(){
                         rval=recv_data(msgsock,pulseseqs[r][c][index]->code, 
                           sizeof(unsigned char)*pulseseqs[r][c][index]->len);
 
+			/* Inform the ROS that this driver recv all data without error
+ 			* by sending msg back with msg.status=1.
+ 			*/
+		        msg.status=1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			/* Reset the local sequence state */
                         old_seq_id=-10;
@@ -176,8 +188,14 @@ int main(){
                         break;
 
 		      case CtrlProg_END:
-		        if (verbose > 0) printf("\nA client is done\n");	
-                        msg.status=0;
+			/* CtrlProg_END: When Control Programs disconnect from the ROS server, the
+ 			* the ROS server informs each driver so drivers can reset internal state variables.
+ 			*/  
+		        if (verbose > 0) printf("\nDriver: client is done\n");	
+			/* Inform the ROS that this driver does handle this command, and its okay to send the
+ 			* associated data by sending msg back with msg.status=1.
+ 			*/
+                        msg.status=1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			/* Reset the seq counters */
                         old_seq_id=-10;
@@ -185,8 +203,17 @@ int main(){
                         break;
 
 		      case CtrlProg_READY:
-		        if (verbose > 0) printf("\nAsking to set up driver info for client that is ready\n");	
-                        msg.status=0;
+			/* CtrlProg_READY: When Control Programs inform the ROS server they are ready for
+ 			* the next trigger, the ROS server informs each driver so drivers can reset internal 
+ 			* state variables.
+ 			*/  
+		        if (verbose > 0) printf("\nDriver: client that is ready\n");	
+			/* Inform the ROS that this driver does handle this command, and its okay to send the
+ 			* associated data by sending msg back with msg.status=1.
+ 			*/
+                        msg.status=1;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+
 		        rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
                         r=client.radar-1; 
                         c=client.channel-1; 
@@ -202,15 +229,26 @@ int main(){
                         index=client.current_pulseseq_index; 
 
                         if (numclients >= maxclients) msg.status=-2;
-		        if (verbose > 1) printf("\nclient ready done\n");	
                         numclients=numclients % maxclients;
+
+			/* Inform the ROS that this driver recv all data without error
+ 			* by sending msg back with msg.status=1.
+ 			*/
+			msg.status=1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break; 
 
 		      case PRETRIGGER:
-			if(verbose > 1 ) printf("Setup Driver for next trigger\n");	
+			/* PRETRIGGER: When all controlprograms are ready, the ROS server will instruct all drivers 
+ 			* to do whatever pretrigger operations are necessary prior to the next trigger event.
+ 			*/  
+			if(verbose > 1 ) printf("Driver: Pre-trigger setup\n");	
+			/* Inform the ROS that this driver does handle this command, and its okay to send the
+ 			* associated data by sending msg back with msg.status=1.
+ 			*/
+                        msg.status=1;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			/* Calculate sequence index */
-                          msg.status=0;
                           new_seq_id=-1;
 	                  for( i=0; i<numclients; i++) {
                             r=clients[i].radar-1;
@@ -220,7 +258,7 @@ int main(){
                               clients[i].current_pulseseq_index+1;
                             if (verbose > 1) printf("%d %d %d\n",i,new_seq_id,clients[i].current_pulseseq_index); 
                           }
-                          if (verbose > 1) printf("Timing Driver: %d %d\n",new_seq_id,old_seq_id);
+                          if (verbose > 1) printf("Driver: %d %d\n",new_seq_id,old_seq_id);
 
 			/* If sequence index has changed..repopulate the 
  			* master sequence.  Not needed for all drivers. */
@@ -257,38 +295,68 @@ int main(){
                         send_data(msgsock, bad_transmit_times.duration_usec, 
                                   sizeof(unsigned int)*bad_transmit_times.length);
 
-			msg.status=0;
-                        if (verbose > 1)  printf("Ending Pretrigger Setup\n");
+                        msg.status=1;
+                        if (verbose > 1)  printf("Driver: Ending Pretrigger Setup\n");
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break; 
 
 		      case TRIGGER:
-			if (verbose > 1 ) printf("Send Master Trigger\n");	
-                        msg.status=0;
+			/* TRIGGER: The ROS may instruct drivers to issue a trigger event. Typically only
+ 			* the timing driver will be expected to do something when this command is issued.
+ 			* Other drivers will typically ignore this command and will rely on signals from
+ 			* the timing card.
+ 			*/  
+			if (verbose > 1 ) printf("Driver: Send Master Trigger\n");	
+                        msg.status=1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break;
 
                       case EXTERNAL_TRIGGER:
-                        if (verbose > 1 ) printf("Setup for external trigger\n");
-                        msg.status=0;
+			/* EXTERNAL_TRIGGER: The ROS may instruct drivers to setup for an external trigger event.
+ 			*  Typically only the timing driver will be expected to do something when 
+ 			*  this command is issued.  Other drivers will typically ignore this command and will relyi
+ 			*   on signals from the timing card.
+ 			*/  
+                        if (verbose > 1 ) printf("Driver: Setup for external trigger\n");
+                        msg.status=1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break;
 		      case WAIT:
-			if (verbose > 1 ) printf("Driver Wait\n");	
-                        msg.status=0;
+			/* WAIT: After a trigger or external trigger command has been issued. The ROS 
+			*  may issue this command to a driver as a way to wait for pulse sequence operations
+			*  to be complete. Drivers are expected to block until pulse sequence operations are done.
+ 			*/  
+			if (verbose > 1 ) printf("Driver: Wait\n");	
+			/* Driver would put the logic necessary to block waiting for a sequence operation to complete*/
+                        msg.status=1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
 		      case POSTTRIGGER:
+			/* POSTTRIGGER: After a trigger or external trigger event, the ROS server may 
+ 			* instruct all drivers to do whatever posttrigger operations are necessary to clean 
+ 			* internal driver state.
+ 			*/  
+                        if (verbose > 1)  printf("Driver: Post-trigger Setup\n");
+                        msg.status=1;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         numclients=0;
                         for (r=0;r<MAX_RADARS;r++){
                           for (c=0;c<MAX_CHANNELS;c++){
                             ready_index[r][c]=-1;
                           }
                         }
+                        msg.status=1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                        if (verbose > 1)  printf("Driver: Ending Post-trigger Setup\n");
                         break;
 		      default:
-			if (verbose > -10) fprintf(stderr,"BAD CODE: %c : %d\n",datacode,datacode);
+			/* NOOPs: ROS commands that are not understood by the driver should send a msg.status=0  
+			* Some drivers will not need to process all of the named commands listed above. 
+			* For those driver the default case can be used and the ROS will deal with it accordingly.
+ 			*/  
+			if (verbose > -10) printf("Driver: BAD CODE: %c : %d\n",datacode,datacode);
+                        msg.status=-1;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
 		    }
 		  }	
