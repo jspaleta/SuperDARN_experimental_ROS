@@ -64,13 +64,13 @@ int main ( int argc, char **argv){
         struct  DriverMsg msg;	//msg structure which indicates command status and other things
         // argument parsing variables 
         int arg;		//command line option parsing
-	char *driver_type=NULL;
-	int port_number;
+	char driver_type[20]="";
+	int port_number=-1;
 
         signal(SIGINT, graceful_cleanup);
         signal(SIGTERM, graceful_cleanup);
 
-	sprintf(driver_type,"TIMING");
+	strcpy(driver_type,"TIMING");
 
 	/* Process arguments */
         while (1)
@@ -88,7 +88,7 @@ int main ( int argc, char **argv){
            /* getopt_long stores the option index here. */
            int option_index = 0;
      
-           arg = getopt_long (argc, argv, "vhd:",
+           arg = getopt_long (argc, argv, "vhp:d:",
                             long_options, &option_index);
      
            /* Detect the end of the options. */
@@ -99,7 +99,7 @@ int main ( int argc, char **argv){
              {
              case 'd':
                printf ("option -d with value `%s'\n", optarg);
-               sprintf(driver_type,"%s",optarg); 
+	       strcpy(driver_type,optarg);
               break;
              case 'p':
                port_number=atoi(optarg); 
@@ -125,16 +125,25 @@ int main ( int argc, char **argv){
                abort();
              }
         }
-     
-       /* Print any remaining command line arguments (not options). */
-        if (optind < argc)
-         {
-           printf ("non-option ARGV-elements: ");
-           while (optind < argc)
-             printf ("%s ", argv[optind++]);
-           putchar ('\n');
-         }
-     
+	if(port_number <= 0 ) {
+          if(strcmp(driver_type,"DDS")==0) {
+		port_number=DDS_HOST_PORT;
+	  }
+          if(strcmp(driver_type,"TIMING")==0) {
+		port_number=TIMING_HOST_PORT;
+	  }
+          if(strcmp(driver_type,"DIO")==0) {
+		port_number=DIO_HOST_PORT;
+	  }
+          if(strcmp(driver_type,"GPS")==0) {
+		port_number=GPS_HOST_PORT;
+	  }
+          if(strcmp(driver_type,"RECV")==0) {
+		port_number=RECV_HOST_PORT;
+	  }
+        }
+	     
+	printf("Driver Type:  %s Port: %d \n",driver_type,port_number);
        /* Instead of reporting ‘--verbose’
  *           and ‘--brief’ as they are encountered,
  *                     we report the final status resulting from them. */
