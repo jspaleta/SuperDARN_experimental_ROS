@@ -64,9 +64,14 @@ int main ( int argc, char **argv){
         struct  DriverMsg msg;	//msg structure which indicates command status and other things
         // argument parsing variables 
         int arg;		//command line option parsing
+	char *driver_type=NULL;
+	int port_number;
 
         signal(SIGINT, graceful_cleanup);
         signal(SIGTERM, graceful_cleanup);
+
+	sprintf(driver_type,"TIMING");
+
 	/* Process arguments */
         while (1)
         {
@@ -76,6 +81,7 @@ int main ( int argc, char **argv){
 		* We distinguish them by their indices. */
                {"verbose",	no_argument,		0, 	'v'},
                {"driver",	required_argument, 	0, 	'd'},
+               {"port",		required_argument, 	0, 	'p'},
                {"help",		required_argument, 	0, 	'h'},
                {0, 0, 0, 0}
              };
@@ -93,6 +99,11 @@ int main ( int argc, char **argv){
              {
              case 'd':
                printf ("option -d with value `%s'\n", optarg);
+               sprintf(driver_type,"%s",optarg); 
+              break;
+             case 'p':
+               port_number=atoi(optarg); 
+               printf ("option -p with value `%s' %d\n", optarg,port_number);
                break;
      
              case 'v':
@@ -107,9 +118,8 @@ int main ( int argc, char **argv){
                printf ("-v / --verbose : increase verbosity by 1\n");
                printf ("-d DRIVER / --driver DRIVER  : Select type of driver to mimic\n");
                printf ("DRIVER values: DDS,RECV,TIMING,DIO,GPS\n");
-               /* getopt_long already printed an error message. */
-	      exit(0);	 
-              break;
+	       exit(0);	 
+               break;
      
              default:
                abort();
