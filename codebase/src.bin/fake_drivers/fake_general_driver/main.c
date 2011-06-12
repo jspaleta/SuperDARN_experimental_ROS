@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <getopt.h>
 #include "control_program.h"
 #include "global_server_variables.h"
 #include "utils.h"
@@ -17,6 +18,8 @@
 
 int verbose=10;
 int sock,msgsock;
+/* Flag set by ‘--verbose’. */
+static int verbose_flag;
 
 dictionary *Site_INI;
 
@@ -27,41 +30,126 @@ void graceful_cleanup(int signum)
   exit(0);
 }
 
+     
+     
+     
 
-int main(){
+int main ( int argc, char **argv){
     // DECLARE AND INITIALIZE ANY NECESSARY VARIABLES
-        int     maxclients=MAX_RADARS*MAX_CHANNELS;
-        struct  ControlPRM  clients[maxclients],client ;
-        struct  TSGbuf *pulseseqs[MAX_RADARS][MAX_CHANNELS][MAX_SEQS];
-	unsigned int	*seq_buf[MAX_RADARS][MAX_CHANNELS];
-        int seq_count[MAX_RADARS][MAX_CHANNELS];
-        int ready_index[MAX_RADARS][MAX_CHANNELS];
-	unsigned int	*master_buf;
-        int old_seq_id=-10;
-        int new_seq_id=-1;
-        struct TRTimes bad_transmit_times;
-
-	int	max_seq_count;
+        int     maxclients=MAX_RADARS*MAX_CHANNELS;  //maximum number of clients which can be tracked
+        struct  ControlPRM  clients[maxclients];	//parameter array for tracked clients
+	struct  ControlPRM  client;			//parameter structure for temp use		
+        struct  TSGbuf *pulseseqs[MAX_RADARS][MAX_CHANNELS][MAX_SEQS]; //timing sequence table
+        int seq_count[MAX_RADARS][MAX_CHANNELS];			//unpacked seq length
+	int	max_seq_count;				// maximum unpackage seq length	
+	unsigned int	*seq_buf[MAX_RADARS][MAX_CHANNELS];		//unpacked sequence table
+	unsigned int	*master_buf;			// master buffer for all sequences
+        int ready_index[MAX_RADARS][MAX_CHANNELS];	//table to indicate if client is ready for trigger
+        int old_seq_id=-10;				// old and new seq_id used to know if seqs have changed 
+        int new_seq_id=-1;				//  and unpacking needs to be done again
+        struct TRTimes bad_transmit_times;		// actual TR windows used
+        int     numclients=0;				// number of active clients
 
 	// socket and message passing variables
-	char	datacode;
-	int	rval;
-        fd_set rfds,efds;
+	char	datacode;	//command character
+	int	rval;		//use for return values which indicate errors
+        fd_set rfds,efds;	//TCP socket status
+        struct timeval select_timeout;	// timeout for select function
 	// counter and temporary variables
 	int	i,j,r,c,buf,index;
 	int 	temp;
+        unsigned long counter;
 
 
 	// function specific message variables
-        int     numclients=0;
-        struct  DriverMsg msg;
-	// timing related variables
-        struct timeval select_timeout;
-        
-        unsigned long counter;
+        struct  DriverMsg msg;	//msg structure which indicates command status and other things
+        // argument parsing variables 
+        int arg;		//command line option parsing
 
         signal(SIGINT, graceful_cleanup);
         signal(SIGTERM, graceful_cleanup);
+	/* Process arguments */
+        while (1)
+        {
+           static struct option long_options[] =
+             {
+               /* These options set a flag. */
+               {"verbose", no_argument,       &verbose_flag, 1},
+               {"brief",   no_argument,       &verbose_flag, 0},
+               /* These options don't set a flag.
+ *                   We distinguish them by their indices. */
+               {"add",     no_argument,       0, 'a'},
+               {"append",  no_argument,       0, 'b'},
+               {"delete",  required_argument, 0, 'd'},
+               {"create",  required_argument, 0, 'c'},
+               {"file",    required_argument, 0, 'f'},
+               {0, 0, 0, 0}
+             };
+           /* getopt_long stores the option index here. */
+           int option_index = 0;
+     
+           arg = getopt_long (argc, argv, "abc:d:f:",
+                            long_options, &option_index);
+     
+           /* Detect the end of the options. */
+           if (arg == -1)
+             break;
+     
+           switch (arg)
+             {
+             case 0:
+               /* If this option set a flag, do nothing else now. */
+               if (long_options[option_index].flag != 0)
+                 break;
+               printf ("option %s", long_options[option_index].name);
+               if (optarg)
+                 printf (" with arg %s", optarg);
+               printf ("\n");
+               break;
+     
+             case 'a':
+               puts ("option -a\n");
+               break;
+     
+             case 'b':
+               puts ("option -b\n");
+               break;
+     
+             case 'c':
+               printf ("option -c with value `%s'\n", optarg);
+               break;
+     
+             case 'd':
+               printf ("option -d with value `%s'\n", optarg);
+               break;
+     
+             case 'f':
+               printf ("option -f with value `%s'\n", optarg);
+               break;
+     
+             case '?':
+               /* getopt_long already printed an error message. */
+               break;
+     
+             default:
+               abort ();
+             }
+        }
+        if (verbose_flag)
+         puts ("verbose flag is set");
+     
+       /* Print any remaining command line arguments (not options). */
+        if (optind < argc)
+         {
+           printf ("non-option ARGV-elements: ");
+           while (optind < argc)
+             printf ("%s ", argv[optind++]);
+           putchar ('\n');
+         }
+     
+       /* Instead of reporting ‘--verbose’
+ *           and ‘--brief’ as they are encountered,
+ *                     we report the final status resulting from them. */
 
 	Site_INI=NULL;
 	/* Pull the site ini file */ 
@@ -349,6 +437,41 @@ int main(){
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         if (verbose > 1)  printf("Driver: Ending Post-trigger Setup\n");
                         break;
+		      case GET_TRTIMES:
+			/* GET_TRTIMES: After a trigger or external trigger command has been issued. The ROS 
+			*  may issue this command to a driver as a way to retrieve information about the
+			*  actual TR time windows that were used. 
+			*  The timing driver is the only driver that should respond to this command
+ 			*/  
+			if (verbose > 1 ) printf("Driver: GET_TRTIMES\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+                        msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			break;
+		      case GET_DATA:
+			/* GET_DATA: After a trigger or external trigger command has been issued. The ROS 
+			*  may issue this command to a driver as a way to retrieve sample data. 
+			*  The receiver driver is the only driver that should respond to this command
+ 			*/  
+			if (verbose > 1 ) printf("Driver: GET_DATA\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+                        msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			break;
+		      case AUX_COMMAND:
+			/* AUX_COMMAND: Site hardware specific commands which are not critical for operation, but
+ 			*  controlprograms may optionally access to if they are site aware.  
+ 			*/  
+			if (verbose > 1 ) printf("Driver: AUX_COMMAND\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+                        msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 		      default:
 			/* NOOPs: ROS commands that are not understood by the driver should send a msg.status=0  
 			* Some drivers will not need to process all of the named commands listed above. 
