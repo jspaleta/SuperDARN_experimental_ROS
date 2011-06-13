@@ -6,7 +6,7 @@
 
 
 struct FreqTable *FreqLoadTable(FILE *fp);
-void *dio_rxfe_settings(void *arg);
+void *dio_site_settings(void *arg);
 void *DIO_ready_controlprogram(struct ControlProgram *arg);
 void *DIO_pretrigger(void *arg);
 void *DIO_transmitter_status(int radar);

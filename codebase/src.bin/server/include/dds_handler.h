@@ -1,4 +1,4 @@
-void *dds_rxfe_settings(void *arg); 
+void *dds_site_settings(void *arg); 
 
 void *dds_ready_controlprogram(void *arg);
 

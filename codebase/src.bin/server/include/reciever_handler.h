@@ -1,6 +1,6 @@
 #include "global_server_variables.h"
 
-void *receiver_rxfe_settings(void *arg);
+void *receiver_site_settings(void *arg);
 void *receiver_end_controlprogram(struct ControlProgram *arg);
 
 void *receiver_ready_controlprogram(struct ControlProgram *arg);

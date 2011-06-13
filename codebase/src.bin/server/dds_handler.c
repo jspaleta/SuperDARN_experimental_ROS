@@ -42,7 +42,7 @@ void *dds_register_seq(void *arg)
   pthread_exit(NULL);
 }
 
-void *dds_rxfe_settings(void *arg)
+void *dds_site_settings(void *arg)
 {
   struct DriverMsg msg;
   struct SiteSettings *site_settings;
@@ -50,7 +50,7 @@ void *dds_rxfe_settings(void *arg)
   site_settings=arg;
   pthread_mutex_lock(&dds_comm_lock);
   if (site_settings!=NULL) {
-    msg.type=DDS_RXFE_SETTINGS;
+    msg.type=SITE_SETTINGS;
     msg.status=1;
     send_data(ddssock, &msg, sizeof(struct DriverMsg));
     send_data(ddssock, &site_settings->ifmode, sizeof(site_settings->ifmode));

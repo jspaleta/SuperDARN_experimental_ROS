@@ -48,6 +48,7 @@ int main ( int argc, char **argv){
         int     numclients=0;				// number of active clients
 	int	radar=0;
 	struct tx_status txstatus[MAX_RADARS]; 
+	struct SiteSettings site_settings;
 	// socket and message passing variables
 	char	datacode;	//command character
 	int	rval;		//use for return values which indicate errors
@@ -486,6 +487,25 @@ int main ( int argc, char **argv){
                         	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 				recv_data(msgsock, &radar, sizeof(radar));
     				send_data(msgsock, &txstatus[radar-1], sizeof(struct tx_status));
+
+			}
+	  		else msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			break;
+		      case SITE_SETTINGS:
+			/* SITE_SETTINGS: The ROS may issue this command to a driver. 
+			*   
+ 			*/  
+			if (verbose > 1 ) printf("Driver: SITE_SETTINGS\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"DIO")==0) {
+				msg.status=1;
+                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+				recv_data(msgsock, &site_settings.ifmode, sizeof(site_settings.ifmode));
+				recv_data(msgsock, &site_settings.rf_settings, sizeof(site_settings.rf_settings));
+				recv_data(msgsock, &site_settings.if_settings, sizeof(site_settings.if_settings));
 
 			}
 	  		else msg.status=0;

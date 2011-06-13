@@ -145,7 +145,7 @@ void *DIO_post_clrfreq(void *arg)
    pthread_exit(NULL);
 };
 
-void *dio_rxfe_settings(void *arg)
+void *dio_site_settings(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   struct SiteSettings *site_settings;
@@ -153,7 +153,7 @@ void *dio_rxfe_settings(void *arg)
   site_settings=arg;
   pthread_mutex_lock(&dio_comm_lock);
   if (site_settings!=NULL) {
-    s_msg.type=DIO_RXFE_SETTINGS;
+    s_msg.type=SITE_SETTINGS;
     s_msg.status=1;
     send_data(diosock, &s_msg, sizeof(struct DriverMsg));
     recv_data(diosock, &r_msg, sizeof(struct DriverMsg));

@@ -400,13 +400,13 @@ int main()
   rc = pthread_create(&timeout_thread, NULL, timeout_handler, NULL);
 
   if (verbose>0) fprintf(stderr,"start reciever RXFE settings thread\n");
-  rc = pthread_create(&thread, NULL, &receiver_rxfe_settings,(void *)&site_settings);
+  rc = pthread_create(&thread, NULL, &receiver_site_settings,(void *)&site_settings);
   pthread_join(thread,NULL);
   if (verbose>0) fprintf(stderr,"start dds RXFE settings thread\n");
-  rc = pthread_create(&thread, NULL, &dds_rxfe_settings,(void *)&site_settings);
+  rc = pthread_create(&thread, NULL, &dds_site_settings,(void *)&site_settings);
   pthread_join(thread,NULL);
   if (verbose>0) fprintf(stderr,"start dio RXFE settings thread\n");
-  rc = pthread_create(&thread, NULL, &dio_rxfe_settings,(void *)&site_settings);
+  rc = pthread_create(&thread, NULL, &dio_site_settings,(void *)&site_settings);
   pthread_join(thread,NULL);
   if (verbose>0) fprintf(stderr,"Done with RXFE settings threads\n");
 /******************* Init transmitter status arrays ***********/

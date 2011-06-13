@@ -43,7 +43,7 @@ int compare_structs(const void *a, const void *b){
 
 }
 
-void *receiver_rxfe_settings(void *arg) {
+void *receiver_site_settings(void *arg) {
 
   struct DriverMsg msg;
   struct SiteSettings *site_settings;
@@ -52,7 +52,7 @@ void *receiver_rxfe_settings(void *arg) {
   pthread_mutex_lock(&recv_comm_lock);
 //  printf("RECV_rxfe_settins\n");
   if (site_settings!=NULL) {
-    msg.type=RECV_RXFE_SETTINGS;
+    msg.type=SITE_SETTINGS;
     msg.status=1;
     send_data(recvsock, &msg, sizeof(struct DriverMsg));
     send_data(recvsock, &site_settings->ifmode, sizeof(site_settings->ifmode));
