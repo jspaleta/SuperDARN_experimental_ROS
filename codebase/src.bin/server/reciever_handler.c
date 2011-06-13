@@ -872,10 +872,6 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
           recv_data(recvsock,&arg->main_address,sizeof(int32));
           recv_data(recvsock,&arg->back_address,sizeof(int32));
           recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
-          if(arg->data->samples<=0) {
-            error_flag=-1;
-            arg->data->status=error_flag;
-          }
         }
       } 
 
@@ -904,6 +900,10 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
             arg->main=NULL;
             arg->back=NULL;
 #endif
+          if((arg->main==NULL) || (arg->back==NULL)) {
+            error_flag=-1;
+            arg->data->status=error_flag;
+          }
           }
       } else { //error condition
         error_count++;

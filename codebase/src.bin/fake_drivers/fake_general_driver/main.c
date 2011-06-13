@@ -575,8 +575,9 @@ int main ( int argc, char **argv){
                                 rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 		                rval=recv_data(msgsock,&radar,sizeof(radar));
 		                rval=recv_data(msgsock,&channel,sizeof(channel));
-				temp32=0;
+				temp32=1;
                         	send_data(msgsock,&temp32,sizeof(int32)); 
+				temp32=0;
                         	send_data(msgsock,&temp32,sizeof(int32)); 
                         	send_data(msgsock,&temp32,sizeof(int32)); 
                         	send_data(msgsock,&temp32,sizeof(int32)); 
