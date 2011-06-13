@@ -168,6 +168,7 @@ struct BlackList {
 #define TIMING_POSTTRIGGER '5'
 
 #define GET_DATA 'd'
+#define GET_DATA_STATUS 'D'
 #define RECV_GET_DATA 'd'
 
 #define PRE_CLRFREQ 'c'

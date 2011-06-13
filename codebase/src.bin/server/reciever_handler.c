@@ -803,7 +803,7 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
   int rval,ready_state;
   char shm_device[80];
   int shm_fd;
-  int r,c,b,i;
+  int32 r,c,b,i;
   short I,Q;
   long long P;
   unsigned long wait_elapsed;
@@ -829,20 +829,25 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         }
       } 
       pthread_mutex_lock(&recv_comm_lock);
+      r=arg->parameters->radar-1;
+      c=arg->parameters->channel-1;
+      b=arg->data->bufnum;
       collection_count++;
       if (error_flag==0) {
         arg->data->samples=arg->parameters->number_of_samples;
         if(arg->main!=NULL) munmap(arg->main,sizeof(unsigned int)*arg->data->samples);
         if(arg->back!=NULL) munmap(arg->back,sizeof(unsigned int)*arg->data->samples);
-        s_msg.type=RECV_GET_DATA;
+        s_msg.type=GET_DATA_STATUS;
         s_msg.status=1;
         send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
         recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
         if(r_msg.status==1) {
-          send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
-          recv_data(recvsock,&arg->data->status,sizeof(arg->data->status));
+          send_data(recvsock, &r, sizeof(int32));
+          send_data(recvsock, &c, sizeof(int32));
+          recv_data(recvsock,&arg->data->status,sizeof(int32));
+          recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
         } else { 
-	  error_flag=-1;	
+          error_flag=-1;
           arg->data->status=error_flag;
           arg->data->samples=0;
         }
@@ -850,44 +855,57 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         arg->data->status=error_flag;
         arg->data->samples=0;
       }      
+      printf("GET_DATA_STATUS: %d\n",arg->data->status);
+      if (arg->data->status>=0 ) {
+        s_msg.type=GET_DATA;
+        s_msg.status=1;
+        send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
+        recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+        printf("GET_DATA: r_msg %d\n",r_msg.status);
+        if(r_msg.status==1) {
+          send_data(recvsock, &r, sizeof(int32));
+          send_data(recvsock, &c, sizeof(int32));
+          recv_data(recvsock,&arg->data->shm_memory,sizeof(int32));
+          recv_data(recvsock,&arg->data->frame_header,sizeof(int32));
+          recv_data(recvsock,&arg->data->bufnum,sizeof(int32));
+          recv_data(recvsock,&arg->data->samples,sizeof(int32));
+          recv_data(recvsock,&arg->main_address,sizeof(int32));
+          recv_data(recvsock,&arg->back_address,sizeof(int32));
+          recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+          if(arg->data->samples<=0) {
+            error_flag=-1;
+            arg->data->status=error_flag;
+          }
+        }
+      } 
 
-      if (arg->data->status==0 ) {
-        recv_data(recvsock,&arg->data->shm_memory,sizeof(arg->data->shm_memory));
-        recv_data(recvsock,&arg->data->frame_header,sizeof(arg->data->frame_header));
-        recv_data(recvsock,&arg->data->bufnum,sizeof(arg->data->bufnum));
-        recv_data(recvsock,&arg->data->samples,sizeof(arg->data->samples));
-        recv_data(recvsock,&arg->main_address,sizeof(arg->main_address));
-        recv_data(recvsock,&arg->back_address,sizeof(arg->back_address));
-        r=arg->parameters->radar-1;
-        c=arg->parameters->channel-1;
-        b=arg->data->bufnum;
-
-        if(arg->data->shm_memory) {
-          sprintf(shm_device,"/receiver_main_%d_%d_%d",r,c,b);
-          shm_fd=shm_open(shm_device,O_RDONLY,S_IRUSR | S_IWUSR);
-          if (shm_fd == -1) fprintf(stderr,"shm_open error\n");              
-          arg->main=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->frame_header);
-          close(shm_fd);
-          sprintf(shm_device,"/receiver_back_%d_%d_%d",r,c,b);
-          shm_fd=shm_open(shm_device,O_RDONLY,S_IRUSR | S_IWUSR);
-          arg->back=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->frame_header);
-          close(shm_fd);
-        } else {
+      if (error_flag==0) {
+          if(arg->data->shm_memory) {
+            sprintf(shm_device,"/receiver_main_%d_%d_%d",r,c,b);
+            shm_fd=shm_open(shm_device,O_RDONLY,S_IRUSR | S_IWUSR);
+            if (shm_fd == -1) fprintf(stderr,"shm_open error\n");              
+            arg->main=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->frame_header);
+            close(shm_fd);
+            sprintf(shm_device,"/receiver_back_%d_%d_%d",r,c,b);
+            shm_fd=shm_open(shm_device,O_RDONLY,S_IRUSR | S_IWUSR);
+            arg->back=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->frame_header);
+            close(shm_fd);
+          } else {
 #ifdef __QNX__
-          arg->main =mmap( 0, sizeof(unsigned int)*arg->data->samples, 
+            arg->main =mmap( 0, sizeof(unsigned int)*arg->data->samples, 
                         PROT_READ|PROT_NOCACHE, MAP_PHYS, NOFD, 
                             arg->main_address+sizeof(unsigned int)*arg->data->frame_header);
 //                            arg->main_address);
-          arg->back =mmap( 0, sizeof(unsigned int)*arg->data->samples, 
+            arg->back =mmap( 0, sizeof(unsigned int)*arg->data->samples, 
                         PROT_READ|PROT_NOCACHE, MAP_PHYS, NOFD, 
                         arg->back_address+sizeof(unsigned int)*arg->data->frame_header);
 #else
-          arg->main=NULL;
-          arg->back=NULL;
+            arg->data->samples=0;
+            arg->main=NULL;
+            arg->back=NULL;
 #endif
-        }
-
-      } else { //error occurred
+          }
+      } else { //error condition
         error_count++;
         error_percent=(double)error_count/(double)collection_count*100.0;
         arg->data->samples=0;
@@ -899,9 +917,6 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         fflush(stderr);
       }
 
-      if (error_flag==0) {
-        recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
-      }
       pthread_mutex_unlock(&recv_comm_lock);
     }
   }

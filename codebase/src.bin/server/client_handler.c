@@ -674,20 +674,30 @@ control_program);
               //printf("GET_DATA: Send DataPRM to controlprogram\n");
               //printf("GET_DATA: controlprogram status: %d\n",control_program->data->status);
               send_data(socket, control_program->data, sizeof(struct DataPRM));
-              if(control_program->data->status==0) {
-                //printf("GET_DATA: main: %d %d\n",sizeof(uint32),sizeof(uint32)*control_program->data->samples);
+              if(control_program->data->status>=0) {
+                printf("GET_DATA: main: %d %d\n",sizeof(uint32),sizeof(uint32)*control_program->data->samples);
+                printf("GET_DATA: 1\n");    
                 send_data(socket, control_program->main, sizeof(uint32)*control_program->data->samples);
+                printf("GET_DATA: 2\n");    
                 send_data(socket, control_program->back, sizeof(uint32)*control_program->data->samples);
+                printf("GET_DATA: 3\n");    
                 send_data(socket, &bad_transmit_times.length, sizeof(bad_transmit_times.length));
+                printf("GET_DATA: 4\n");    
                 //printf("GET_DATA: bad_transmit_times: %d %d\n",sizeof(uint32),sizeof(uint32)*bad_transmit_times.length);
                 send_data(socket, bad_transmit_times.start_usec, sizeof(uint32)*bad_transmit_times.length);
+                printf("GET_DATA: 5\n");    
                 send_data(socket, bad_transmit_times.duration_usec, sizeof(uint32)*bad_transmit_times.length);
+                printf("GET_DATA: 6\n");    
                 temp_int32=MAX_TRANSMITTERS;
+                printf("GET_DATA: 7\n");    
                 send_data(socket,&temp_int32,sizeof(int32));
+                printf("GET_DATA: 8\n");    
                 send_data(socket,&txstatus[r].AGC,sizeof(int32)*temp_int32);
+                printf("GET_DATA: 9\n");    
                 send_data(socket,&txstatus[r].LOWPWR,sizeof(int32)*temp_int32);
+                printf("GET_DATA: 10\n");    
               } else {
-                printf("GET_DATA: Bad status %d\n",control_program->data->status);
+                printf("CLIENT:GET_DATA: Bad status %d\n",control_program->data->status);
               } 
               //printf("GET_DATA:Send return message\n");
               send_data(socket, &msg, sizeof(struct ROSMsg));

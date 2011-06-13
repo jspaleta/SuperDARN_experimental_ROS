@@ -46,7 +46,7 @@ int main ( int argc, char **argv){
         int new_seq_id=-1;				//  and unpacking needs to be done again
         struct TRTimes transmit_times;		// actual TR windows used
         int     numclients=0;				// number of active clients
-	int	radar=0;
+	int32	radar=0,channel=0,data_status=0;
 	struct tx_status txstatus[MAX_RADARS]; 
 	struct SiteSettings site_settings;	
 	int32 gps_event,gpssecond,gpsnsecond;
@@ -60,6 +60,7 @@ int main ( int argc, char **argv){
 	int	i,j,r,c,buf;
         int32   index;
 	int 	temp;
+	int32 	temp32;
         unsigned long counter;
 
 
@@ -317,6 +318,8 @@ int main ( int argc, char **argv){
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			if(msg.status==1) {
 		          rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
+			  if (verbose > 1) printf("Radar: %d, Channel: %d Beamnum: %d Status %d\n",
+			    client.radar,client.channel,client.tbeam,msg.status);	
                           r=client.radar-1; 
                           c=client.channel-1; 
                           if ((ready_index[r][c]>=0) && (ready_index[r][c] <maxclients) ) {
@@ -326,8 +329,6 @@ int main ( int argc, char **argv){
                             ready_index[r][c]=numclients;
                             numclients=(numclients+1);
                           }
-			  if (verbose > 1) printf("Radar: %d, Channel: %d Beamnum: %d Status %d\n",
-			    client.radar,client.channel,client.tbeam,msg.status);	
                           index=client.current_pulseseq_index; 
 
                           if (numclients >= maxclients) msg.status=-2;
@@ -537,6 +538,29 @@ int main ( int argc, char **argv){
                         	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			}
 			break;
+		      case GET_DATA_STATUS:
+			/* GET_DATA_STATUS: After a trigger or external trigger command has been issued. The ROS 
+			*  may issue this command to a driver as a way to determine if there was an error 
+			*  collecting sample data.  Typically if there is no error GET_DATA will be sent as 
+			*  the next command.  If there is an error (status < 0 ) GET_DATA may not be performed. 
+			*  The receiver driver is the only driver that should respond to this command
+ 			*/  
+			if (verbose > 1 ) printf("Driver: GET_DATA_STATUS\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+			data_status=1;
+          		if(strcmp(driver_type,"RECV")==0) {
+				msg.status=1;
+                                rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+		                rval=recv_data(msgsock,&radar,sizeof(radar));
+		                rval=recv_data(msgsock,&channel,sizeof(channel));
+                        	send_data(msgsock,&data_status,sizeof(data_status)); 
+				
+			}
+	  		else msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			break;
 		      case GET_DATA:
 			/* GET_DATA: After a trigger or external trigger command has been issued. The ROS 
 			*  may issue this command to a driver as a way to retrieve sample data. 
@@ -546,7 +570,19 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"RECV")==0) msg.status=1;
+          		if(strcmp(driver_type,"RECV")==0) {
+				msg.status=1;
+                                rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+		                rval=recv_data(msgsock,&radar,sizeof(radar));
+		                rval=recv_data(msgsock,&channel,sizeof(channel));
+				temp32=0;
+                        	send_data(msgsock,&temp32,sizeof(int32)); 
+                        	send_data(msgsock,&temp32,sizeof(int32)); 
+                        	send_data(msgsock,&temp32,sizeof(int32)); 
+                        	send_data(msgsock,&temp32,sizeof(int32)); 
+                        	send_data(msgsock,&temp32,sizeof(int32)); 
+                        	send_data(msgsock,&temp32,sizeof(int32)); 
+			}
 	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
