@@ -216,10 +216,8 @@ void *coordination_handler(struct ControlProgram *control_program)
           }
           i=0;
           rc = pthread_create(&threads[i], NULL, (void *) &receiver_posttrigger, NULL);
-//              pthread_join(threads[i],NULL);
           i++;
           rc = pthread_create(&threads[i], NULL, (void *) &timing_posttrigger, NULL);
-//              pthread_join(threads[i],NULL);
           for (;i>=0;i--) {
             pthread_join(threads[i],NULL);
           }

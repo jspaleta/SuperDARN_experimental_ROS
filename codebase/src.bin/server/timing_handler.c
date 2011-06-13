@@ -12,15 +12,18 @@ extern int verbose;
 extern struct TRTimes bad_transmit_times;
 void *timing_ready_controlprogram(struct ControlProgram *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&timing_comm_lock);
    if (arg!=NULL) {
      if (arg->state->pulseseqs[arg->parameters->current_pulseseq_index]!=NULL) {
-       msg.type=TIMING_CtrlProg_READY;
-       msg.status=1;
-       send_data(timingsock, &msg, sizeof(struct DriverMsg));
-       send_data(timingsock, arg->parameters, sizeof(struct ControlPRM));
-       recv_data(timingsock, &msg, sizeof(struct DriverMsg));
+       s_msg.type=TIMING_CtrlProg_READY;
+       s_msg.status=1;
+       send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
+       recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
+       if(r_msg.status==1) {	
+         send_data(timingsock, arg->parameters, sizeof(struct ControlPRM));
+         recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
+       }
      } 
    }
   pthread_mutex_unlock(&timing_comm_lock);
@@ -29,118 +32,123 @@ void *timing_ready_controlprogram(struct ControlProgram *arg)
 
 void *timing_end_controlprogram(void *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&timing_comm_lock);
-  msg.type=TIMING_CtrlProg_END;
-  msg.status=1;
-  send_data(timingsock, &msg, sizeof(struct DriverMsg));
-  recv_data(timingsock, &msg, sizeof(struct DriverMsg));
+  s_msg.type=TIMING_CtrlProg_END;
+  s_msg.status=1;
+  send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
+  recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
   pthread_mutex_unlock(&timing_comm_lock);
   pthread_exit(NULL);
 };
 
 void *timing_register_seq(struct ControlProgram *control_program)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg , r_msg;
   int index;
   pthread_mutex_lock(&timing_comm_lock);
-  msg.type=TIMING_REGISTER_SEQ;
-  msg.status=1;
-  send_data(timingsock, &msg, sizeof(struct DriverMsg));
-  send_data(timingsock, control_program->parameters, sizeof(struct ControlPRM));
-  index=control_program->parameters->current_pulseseq_index;
-  send_data(timingsock, &index, sizeof(index)); //requested index
-  send_data(timingsock,control_program->state->pulseseqs[index], sizeof(struct TSGbuf)); // requested pulseseq
-  send_data(timingsock,control_program->state->pulseseqs[index]->rep, 
-    sizeof(unsigned char)*control_program->state->pulseseqs[index]->len); // requested pulseseq
-  send_data(timingsock,control_program->state->pulseseqs[index]->code, 
-    sizeof(unsigned char)*control_program->state->pulseseqs[index]->len); // requested pulseseq
-  recv_data(timingsock, &msg, sizeof(struct DriverMsg));
+  s_msg.type=TIMING_REGISTER_SEQ;
+  s_msg.status=1;
+  send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
+  recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
+  if(r_msg.status==1) {
+    send_data(timingsock, control_program->parameters, sizeof(struct ControlPRM));
+    index=control_program->parameters->current_pulseseq_index;
+    send_data(timingsock, &index, sizeof(index)); //requested index
+    send_data(timingsock,control_program->state->pulseseqs[index], sizeof(struct TSGbuf)); // requested pulseseq
+    send_data(timingsock,control_program->state->pulseseqs[index]->rep, 
+      sizeof(unsigned char)*control_program->state->pulseseqs[index]->len); // requested pulseseq
+    send_data(timingsock,control_program->state->pulseseqs[index]->code, 
+      sizeof(unsigned char)*control_program->state->pulseseqs[index]->len); // requested pulseseq
+    recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
+  }
   pthread_mutex_unlock(&timing_comm_lock);
   pthread_exit(NULL);
 }
 void *timing_pretrigger(void *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&timing_comm_lock);
-  msg.type=TIMING_PRETRIGGER;
-  msg.status=1;
-//  printf("TIMING: PRETRIGGER: Send msg\n");
-  send_data(timingsock, &msg, sizeof(struct DriverMsg));
-//  printf("TIMING: PRETRIGGER: free %p %p\n",bad_transmit_times.start_usec,bad_transmit_times.duration_usec);
-  if(bad_transmit_times.start_usec!=NULL) free(bad_transmit_times.start_usec);
-  if(bad_transmit_times.duration_usec!=NULL) free(bad_transmit_times.duration_usec);
-  bad_transmit_times.start_usec=NULL;
-  bad_transmit_times.duration_usec=NULL;
-//  printf("TIMING: PRETRIGGER: free end\n");
-//  printf("TIMING: PRETRIGGER: recv bad_transmit times object\n");
-  recv_data(timingsock, &bad_transmit_times.length, sizeof(bad_transmit_times.length));
-//  printf("TIMING: PRETRIGGER: length %d\n",bad_transmit_times.length);
-  if (bad_transmit_times.length>0) {
-//    printf("TIMING: PRETRIGGER: Mallocs start\n");
-    bad_transmit_times.start_usec=malloc(sizeof(unsigned int)*bad_transmit_times.length);
-    bad_transmit_times.duration_usec=malloc(sizeof(unsigned int)*bad_transmit_times.length);
-//    printf("TIMING: PRETRIGGER: Mallocs end\n");
-  } else {
+  s_msg.type=TIMING_PRETRIGGER;
+  s_msg.status=1;
+  if(verbose > 0 ) printf("TIMING: PRETRIGGER: Send msg\n");
+  send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
+  if (verbose > 0 ) printf("TIMING: PRETRIGGER: Recv msg\n");
+  recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
+
+  if (verbose > 0 )printf("TIMING: GE_TRTIMES: Send msg\n");
+  s_msg.type=GET_TRTIMES;
+  s_msg.status=1;
+  send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
+  recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
+  if(verbose > 0 ) printf("TIMING: GET_TRTIMES: Recv msg %d\n",r_msg.status);
+  if(r_msg.status==1) {
+    if(bad_transmit_times.start_usec!=NULL) free(bad_transmit_times.start_usec);
+    if(bad_transmit_times.duration_usec!=NULL) free(bad_transmit_times.duration_usec);
     bad_transmit_times.start_usec=NULL;
     bad_transmit_times.duration_usec=NULL;
+    recv_data(timingsock, &bad_transmit_times.length, sizeof(bad_transmit_times.length));
+    if(verbose > 0 ) printf("TIMING: GET_TRTIMES: tr_length %d \n",bad_transmit_times.length);
+    if (bad_transmit_times.length>0) {
+      bad_transmit_times.start_usec=malloc(sizeof(unsigned int)*bad_transmit_times.length);
+      bad_transmit_times.duration_usec=malloc(sizeof(unsigned int)*bad_transmit_times.length);
+      recv_data(timingsock, bad_transmit_times.start_usec, sizeof(unsigned int)*bad_transmit_times.length);
+      recv_data(timingsock, bad_transmit_times.duration_usec, sizeof(unsigned int)*bad_transmit_times.length);
+    } else {
+      bad_transmit_times.start_usec=NULL;
+      bad_transmit_times.duration_usec=NULL;
+    }
+    recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
   }
-//  printf("TIMING: PRETRIGGER: recv start usec object\n");
-  recv_data(timingsock, bad_transmit_times.start_usec, sizeof(unsigned int)*bad_transmit_times.length);
-//  printf("TIMING: PRETRIGGER: recv duration usec object\n");
-  recv_data(timingsock, bad_transmit_times.duration_usec, sizeof(unsigned int)*bad_transmit_times.length);
-//  printf("TIMING: PRETRIGGER: recv msg\n");
-  recv_data(timingsock, &msg, sizeof(struct DriverMsg));
   pthread_mutex_unlock(&timing_comm_lock);
-//  printf("TIMING: PRETRIGGER: exit\n");
   pthread_exit(NULL);
 };
 
 void *timing_trigger(int trigger_type)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&timing_comm_lock);
   switch(trigger_type) {
     case 0:
 //  printf("TIMING: Normal Trigger Type %d\n",trigger_type);
-      msg.type=TIMING_TRIGGER;
+      s_msg.type=TIMING_TRIGGER;
       break;
     case 1:
 //  printf("TIMING: Normal Trigger Type %d\n",trigger_type);
-      msg.type=TIMING_TRIGGER;
+      s_msg.type=TIMING_TRIGGER;
       break;
     case 2:
 //  printf("TIMING: GPS Trigger Type %d\n",trigger_type);
-      msg.type=TIMING_GPS_TRIGGER;
+      s_msg.type=EXTERNAL_TRIGGER;
       break;
   }
-  msg.status=1;
-  send_data(timingsock, &msg, sizeof(struct DriverMsg));
-  recv_data(timingsock, &msg, sizeof(struct DriverMsg));
+  s_msg.status=1;
+  send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
+  recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
   pthread_mutex_unlock(&timing_comm_lock);
   pthread_exit(NULL);
 };
 
 void *timing_wait(void *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&timing_comm_lock);
-  msg.type=TIMING_WAIT;
-  msg.status=1;
-  send_data(timingsock, &msg, sizeof(struct DriverMsg));
-  recv_data(timingsock, &msg, sizeof(struct DriverMsg));
+  s_msg.type=WAIT;
+  s_msg.status=1;
+  send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
+  recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
   pthread_mutex_unlock(&timing_comm_lock);
   pthread_exit(NULL);
 };
 void *timing_posttrigger(void *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&timing_comm_lock);
 
-   msg.type=TIMING_POSTTRIGGER;
-   msg.status=1;
-   send_data(timingsock, &msg, sizeof(struct DriverMsg));
-   recv_data(timingsock, &msg, sizeof(struct DriverMsg));
+   s_msg.type=TIMING_POSTTRIGGER;
+   s_msg.status=1;
+   send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
+   recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
    pthread_mutex_unlock(&timing_comm_lock);
    pthread_exit(NULL);
 };

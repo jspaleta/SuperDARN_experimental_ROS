@@ -18,7 +18,6 @@
 
 int verbose=0;
 int sock,msgsock;
-
 dictionary *Site_INI;
 
 void graceful_cleanup(int signum)
@@ -45,7 +44,7 @@ int main ( int argc, char **argv){
         int ready_index[MAX_RADARS][MAX_CHANNELS];	//table to indicate if client is ready for trigger
         int old_seq_id=-10;				// old and new seq_id used to know if seqs have changed 
         int new_seq_id=-1;				//  and unpacking needs to be done again
-        struct TRTimes bad_transmit_times;		// actual TR windows used
+        struct TRTimes transmit_times;		// actual TR windows used
         int     numclients=0;				// number of active clients
 
 	// socket and message passing variables
@@ -56,7 +55,6 @@ int main ( int argc, char **argv){
 	// counter and temporary variables
 	int	i,j,r,c,buf,index;
 	int 	temp;
-
         unsigned long counter;
 
 
@@ -144,6 +142,7 @@ int main ( int argc, char **argv){
         }
 	     
 	printf("Driver Type:  %s Port: %d \n",driver_type,port_number);
+	printf("Verbose Level:  %d \n",verbose);
        /* Instead of reporting ‘--verbose’
  *           and ‘--brief’ as they are encountered,
  *                     we report the final status resulting from them. */
@@ -174,13 +173,13 @@ int main ( int argc, char **argv){
  	*  that unpack the timing sequence. See the provided fake timing driver
  	*/
         master_buf=malloc(4*MAX_TIME_SEQ_LEN);
-        bad_transmit_times.length=0;
-        bad_transmit_times.start_usec=malloc(sizeof(unsigned int)*MAX_PULSES);
-        bad_transmit_times.duration_usec=malloc(sizeof(unsigned int)*MAX_PULSES);
+        transmit_times.length=0;
+        transmit_times.start_usec=malloc(sizeof(unsigned int)*MAX_PULSES);
+        transmit_times.duration_usec=malloc(sizeof(unsigned int)*MAX_PULSES);
        
 
     // OPEN TCP SOCKET AND START ACCEPTING CONNECTIONS 
-	sock=tcpsocket(TIMING_HOST_PORT);
+	sock=tcpsocket(port_number);
 	listen(sock, 5);
 	while (1) {
                 rval=1;
@@ -373,16 +372,8 @@ int main ( int argc, char **argv){
                           old_seq_id=new_seq_id;
                         }
                         new_seq_id=-1;
-			/* If Timing Driver */
-                        send_data(msgsock, &bad_transmit_times.length, sizeof(bad_transmit_times.length));
-                        send_data(msgsock, bad_transmit_times.start_usec, 
-                                  sizeof(unsigned int)*bad_transmit_times.length);
-                        send_data(msgsock, bad_transmit_times.duration_usec, 
-                                  sizeof(unsigned int)*bad_transmit_times.length);
 
-                        msg.status=1;
                         if (verbose > 1)  printf("Driver: Ending Pretrigger Setup\n");
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break; 
 
 		      case TRIGGER:
@@ -392,7 +383,8 @@ int main ( int argc, char **argv){
  			* the timing card.
  			*/  
 			if (verbose > 1 ) printf("Driver: Send Master Trigger\n");	
-                        msg.status=1;
+          		if(strcmp(driver_type,"TIMING")==0) msg.status=1;
+	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break;
 
@@ -403,7 +395,8 @@ int main ( int argc, char **argv){
  			*   on signals from the timing card.
  			*/  
                         if (verbose > 1 ) printf("Driver: Setup for external trigger\n");
-                        msg.status=1;
+          		if(strcmp(driver_type,"TIMING")==0) msg.status=1;
+	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         break;
 		      case WAIT:
@@ -430,8 +423,6 @@ int main ( int argc, char **argv){
                             ready_index[r][c]=-1;
                           }
                         }
-                        msg.status=1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         if (verbose > 1)  printf("Driver: Ending Post-trigger Setup\n");
                         break;
 		      case GET_TRTIMES:
@@ -444,8 +435,23 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-                        msg.status=0;
+          		if(strcmp(driver_type,"TIMING")==0) msg.status=1;
+	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+
+			if(msg.status==1) {
+			        if (verbose > 1 ) printf("Driver: tr_length %d\n",transmit_times.length);	
+				// If Timing Driver 
+                        	send_data(msgsock, &transmit_times.length, sizeof(transmit_times.length));
+				if(transmit_times.length > 0) {
+                        	  send_data(msgsock, transmit_times.start_usec, 
+                                    sizeof(unsigned int)*transmit_times.length);
+                        	  send_data(msgsock, transmit_times.duration_usec, 
+                                    sizeof(unsigned int)*transmit_times.length);
+				}
+				msg.status=1;
+                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			}
 			break;
 		      case GET_DATA:
 			/* GET_DATA: After a trigger or external trigger command has been issued. The ROS 
@@ -456,7 +462,8 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-                        msg.status=0;
+          		if(strcmp(driver_type,"RECV")==0) msg.status=1;
+	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
 		      case AUX_COMMAND:
@@ -467,7 +474,7 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-                        msg.status=0;
+                        msg.status=1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 		      default:
 			/* NOOPs: ROS commands that are not understood by the driver should send a msg.status=0  
