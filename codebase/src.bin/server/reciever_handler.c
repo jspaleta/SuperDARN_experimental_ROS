@@ -45,20 +45,23 @@ int compare_structs(const void *a, const void *b){
 
 void *receiver_site_settings(void *arg) {
 
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   struct SiteSettings *site_settings;
 
   site_settings=arg;
   pthread_mutex_lock(&recv_comm_lock);
 //  printf("RECV_rxfe_settins\n");
   if (site_settings!=NULL) {
-    msg.type=SITE_SETTINGS;
-    msg.status=1;
-    send_data(recvsock, &msg, sizeof(struct DriverMsg));
-    send_data(recvsock, &site_settings->ifmode, sizeof(site_settings->ifmode));
-    send_data(recvsock, &site_settings->rf_settings, sizeof(struct RXFESettings));
-    send_data(recvsock, &site_settings->if_settings, sizeof(struct RXFESettings));
-    recv_data(recvsock, &msg, sizeof(struct DriverMsg));                                    
+    s_msg.type=SITE_SETTINGS;
+    s_msg.status=1;
+    send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
+    recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+    if(r_msg.status==1) {
+      send_data(recvsock, &site_settings->ifmode, sizeof(site_settings->ifmode));
+      send_data(recvsock, &site_settings->rf_settings, sizeof(struct RXFESettings));
+      send_data(recvsock, &site_settings->if_settings, sizeof(struct RXFESettings));
+      recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+    }                                    
   }                                                                                        
   pthread_mutex_unlock(&recv_comm_lock);
 }                                                           
@@ -728,15 +731,18 @@ void receiver_exit(void *arg)
 
 void *receiver_end_controlprogram(struct ControlProgram *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&recv_comm_lock);
   if (arg!=NULL) {
      if (arg->state->pulseseqs[arg->parameters->current_pulseseq_index]!=NULL) {
-       msg.type=RECV_CtrlProg_END;
-       msg.status=1;
-       send_data(recvsock, &msg, sizeof(struct DriverMsg));
-       send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
-       recv_data(recvsock, &msg, sizeof(struct DriverMsg));
+       s_msg.type=RECV_CtrlProg_END;
+       s_msg.status=1;
+       send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
+       recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+       if(r_msg.status==1) {
+         send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
+         recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+       }
      }
   }
   pthread_mutex_unlock(&recv_comm_lock);
@@ -745,15 +751,18 @@ void *receiver_end_controlprogram(struct ControlProgram *arg)
 
 void *receiver_ready_controlprogram(struct ControlProgram *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&recv_comm_lock);
   if (arg!=NULL) {
      if (arg->state->pulseseqs[arg->parameters->current_pulseseq_index]!=NULL) {
-       msg.type=RECV_CtrlProg_READY;
-       msg.status=1;
-       send_data(recvsock, &msg, sizeof(struct DriverMsg));
-       send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
-       recv_data(recvsock, &msg, sizeof(struct DriverMsg));
+       s_msg.type=RECV_CtrlProg_READY;
+       s_msg.status=1;
+       send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
+       recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+       if(r_msg.status==1) {
+         send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
+         recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+       }
      } 
   }
   pthread_mutex_unlock(&recv_comm_lock);
@@ -762,12 +771,12 @@ void *receiver_ready_controlprogram(struct ControlProgram *arg)
 
 void *receiver_pretrigger(void *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&recv_comm_lock);
-   msg.type=RECV_PRETRIGGER;
-   msg.status=1;
-   send_data(recvsock, &msg, sizeof(struct DriverMsg));
-   recv_data(recvsock, &msg, sizeof(struct DriverMsg));
+   s_msg.type=RECV_PRETRIGGER;
+   s_msg.status=1;
+   send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
+   recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
    pthread_mutex_unlock(&recv_comm_lock);
    pthread_exit(NULL);
 
@@ -775,20 +784,20 @@ void *receiver_pretrigger(void *arg)
 
 void *receiver_posttrigger(void *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&recv_comm_lock);
 
-   msg.type=RECV_POSTTRIGGER;
-   msg.status=1;
-   send_data(recvsock, &msg, sizeof(struct DriverMsg));
-   recv_data(recvsock, &msg, sizeof(struct DriverMsg));
+   s_msg.type=RECV_POSTTRIGGER;
+   s_msg.status=1;
+   send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
+   recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
    pthread_mutex_unlock(&recv_comm_lock);
    pthread_exit(NULL);
 };
 
 void *receiver_controlprogram_get_data(struct ControlProgram *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   struct timeval t0,t1,t3;
   char *timestr;
   int rval,ready_state;
@@ -825,43 +834,35 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         arg->data->samples=arg->parameters->number_of_samples;
         if(arg->main!=NULL) munmap(arg->main,sizeof(unsigned int)*arg->data->samples);
         if(arg->back!=NULL) munmap(arg->back,sizeof(unsigned int)*arg->data->samples);
-
-        msg.type=RECV_GET_DATA;
-        msg.status=1;
-        //printf("RECV: Send msg %d\n",sizeof(struct DriverMsg));
-        send_data(recvsock, &msg, sizeof(struct DriverMsg));
-        //printf("RECV: Send ControlPRM %d\n",sizeof(struct ControlPRM));
-        send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
-        //printf("RECV: Recv Status %d\n",sizeof(arg->data->status));
-        recv_data(recvsock,&arg->data->status,sizeof(arg->data->status));
+        s_msg.type=RECV_GET_DATA;
+        s_msg.status=1;
+        send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
+        recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+        if(r_msg.status==1) {
+          send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
+          recv_data(recvsock,&arg->data->status,sizeof(arg->data->status));
+        } else { 
+	  error_flag=-1;	
+          arg->data->status=error_flag;
+          arg->data->samples=0;
+        }
       } else {
         arg->data->status=error_flag;
         arg->data->samples=0;
       }      
+
       if (arg->data->status==0 ) {
-        //printf("RECV: GET_DATA: status good\n");
-        //printf("RECV: Recv shm_memory %d\n",sizeof(arg->data->shm_memory));
         recv_data(recvsock,&arg->data->shm_memory,sizeof(arg->data->shm_memory));
-        //printf("RECV: Recv frame header %d\n",sizeof(arg->data->frame_header));
         recv_data(recvsock,&arg->data->frame_header,sizeof(arg->data->frame_header));
-        //printf("RECV: Recv bufnum %d\n",sizeof(arg->data->bufnum));
         recv_data(recvsock,&arg->data->bufnum,sizeof(arg->data->bufnum));
-        //printf("RECV: Recv samples %d\n",sizeof(arg->data->samples));
         recv_data(recvsock,&arg->data->samples,sizeof(arg->data->samples));
-        //printf("RECV: Recv main_address %d\n",sizeof(arg->main_address));
         recv_data(recvsock,&arg->main_address,sizeof(arg->main_address));
-        //printf("RECV: Recv back_address %d\n",sizeof(arg->back_address));
         recv_data(recvsock,&arg->back_address,sizeof(arg->back_address));
-        //printf("RECV: GET_DATA: data recv'd\n");
         r=arg->parameters->radar-1;
         c=arg->parameters->channel-1;
         b=arg->data->bufnum;
 
-        //printf("RECV: GET_DATA: samples %d\n",arg->data->samples);
-        //printf("RECV: GET_DATA: frame header %d\n",arg->data->frame_header);
-        //printf("RECV: GET_DATA: shm flag %d\n",arg->data->shm_memory);
         if(arg->data->shm_memory) {
-          //printf("RECV: GET_DATA: set up shm memory space\n");
           sprintf(shm_device,"/receiver_main_%d_%d_%d",r,c,b);
           shm_fd=shm_open(shm_device,O_RDONLY,S_IRUSR | S_IWUSR);
           if (shm_fd == -1) fprintf(stderr,"shm_open error\n");              
@@ -871,19 +872,8 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
           shm_fd=shm_open(shm_device,O_RDONLY,S_IRUSR | S_IWUSR);
           arg->back=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->frame_header);
           close(shm_fd);
-/*
-          for (i=0;i<arg->data->samples;i++) {                                                                      
-                              I=(arg->main[i] & 0xffff0000) >> 16;                                                              
-                              Q=arg->main[i] & 0x0000ffff;                                                                      
-                              P=(long long)pow(I,2)+pow(Q,2);                                                              
-                              if (verbose > -1) printf("        Data index: %d I: %d Q: %d P:%ld \n",i,I,Q,P);              
-          }                
-*/
-          //printf("RECV: GET_DATA: end set up shm memory space\n");
-
         } else {
 #ifdef __QNX__
-          //printf("RECV: GET_DATA: set up non-shm memory space\n");
           arg->main =mmap( 0, sizeof(unsigned int)*arg->data->samples, 
                         PROT_READ|PROT_NOCACHE, MAP_PHYS, NOFD, 
                             arg->main_address+sizeof(unsigned int)*arg->data->frame_header);
@@ -891,20 +881,10 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
           arg->back =mmap( 0, sizeof(unsigned int)*arg->data->samples, 
                         PROT_READ|PROT_NOCACHE, MAP_PHYS, NOFD, 
                         arg->back_address+sizeof(unsigned int)*arg->data->frame_header);
-//                            arg->back_address);
-/*
-          for (i=0;i<arg->data->samples;i++) {                                                                      
-                              I=(arg->main[i] & 0xffff0000) >> 16;                                                              
-                              Q=arg->main[i] & 0x0000ffff;                                                                      
-                              P=(long long)pow(I,2)+pow(Q,2);                                                              
-                              if (verbose > -1) printf("        Data index: %d I: %d Q: %d P:%ld \n",i,I,Q,P);              
-          }                
-*/
 #else
           arg->main=NULL;
           arg->back=NULL;
 #endif
-          //printf("RECV: GET_DATA: end set up non-shm memory space\n");
         }
 
       } else { //error occurred
@@ -920,11 +900,8 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
       }
 
       if (error_flag==0) {
-        //printf("RECV: GET_DATA: recv RosMsg\n");
-        recv_data(recvsock, &msg, sizeof(struct DriverMsg));
-        //printf("RECV: GET_DATA: recv RosMsg done\n");
+        recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
       }
-      //printf("RECV: GET_DATA: unlock comm lock\n");
       pthread_mutex_unlock(&recv_comm_lock);
     }
   }
@@ -933,7 +910,7 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
 
 void *receiver_clrfreq(struct ControlProgram *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   struct timeval t0;
   struct CLRFreqPRM clrfreq_parameters;
   unsigned long wait_elapsed;
@@ -945,66 +922,18 @@ void *receiver_clrfreq(struct ControlProgram *arg)
   double best_bandwidth_min[MAX_CHANNELS*MAX_RADARS];
   double *pwr=NULL;
   int start,end,centre,acount;
-  int clr_needed=0;
 
   printf("CLRFREQ: %d %d\n",arg->parameters->radar-1,arg->parameters->channel-1);
   printf(" FFT FREQ: %d %d\n",arg->clrfreqsearch.start,arg->clrfreqsearch.end);
   pthread_mutex_lock(&recv_comm_lock);
   gettimeofday(&t0,NULL);
 
-  /* Check to see if Clr search request falls within full scan parameters */
-  if((arg->clrfreqsearch.start >=full_clr_start) && (arg->clrfreqsearch.end <= full_clr_end)) {
-    /* Check to see if Full Clr was done recently enough to be useful*/
-    wait_elapsed=t0.tv_usec-latest_full_clr_time.tv_usec;
-    wait_elapsed*=1E6;
-    wait_elapsed+=t0.tv_sec-latest_full_clr_time.tv_sec;
-    if (wait_elapsed < full_clr_wait*1E6) {
-      //New Full clr search not needed
-      clr_needed=0;
-    } else {
-      //New Full clr search needed
-      clr_needed=1;
-    }
-  } else {
-    //Do not perform Full Search
-    clr_needed=1;
-  }
-  switch(clr_needed) {
-   case 0:
-     break; 
-/*
-   case 2:
-    msg.type=FULL_CLRFREQ;
-    msg.status=1;
-    send_data(recvsock, &msg, sizeof(struct DriverMsg));
-    recv_data(recvsock, &msg, sizeof(struct DriverMsg));
-    recv_data(recvsock, &radars, sizeof(radars));
-    for(r=0;r<radars;r++) {
-      recv_data(recvsock, &msg, sizeof(struct DriverMsg));
-      recv_data(recvsock, &start, sizeof(start));
-      recv_data(recvsock, &end, sizeof(end));
-      recv_data(recvsock, &length, sizeof(end));
-      min_index=(start-full_clr_start);
-      max_index=(end-full_clr_start);
-      if(pwr!=NULL) free(pwr); 
-      pwr=NULL;
-      pwr = (double*) malloc(sizeof(double) * length);
-      recv_data(recvsock, pwr, sizeof(double)* length);
-      for(i=0;i<length;i++) {
-        index=min_index+i; 
-        if ((index >= 0)&& (index < max_freqs)){
-          latest_clr_fft[r][index].pwr=pwr[i];
-        } 
-      }
-    }
-    recv_data(recvsock, &msg, sizeof(struct DriverMsg));
-    break;   
-*/
-   case 1:
-    r=arg->parameters->radar-1;
-    msg.type=RECV_CLRFREQ;
-    msg.status=1;
-    send_data(recvsock, &msg, sizeof(struct DriverMsg));
+  r=arg->parameters->radar-1;
+  s_msg.type=RECV_CLRFREQ;
+  s_msg.status=1;
+  send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
+  recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+  if(r_msg.status==1) {
     send_data(recvsock, &arg->clrfreqsearch, sizeof(struct CLRFreqPRM));
     send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
     recv_data(recvsock, &arg->clrfreqsearch, sizeof(struct CLRFreqPRM));
@@ -1018,19 +947,24 @@ void *receiver_clrfreq(struct ControlProgram *arg)
     pwr=NULL;
     pwr = (double*) malloc(sizeof(double) * arg->state->N);
     recv_data(recvsock, pwr, sizeof(double)*arg->state->N);
-    recv_data(recvsock, &msg, sizeof(struct DriverMsg));
-    centre=(arg->clrfreqsearch.end+arg->clrfreqsearch.start)/2;
-    bandwidth=arg->state->N;
-    start=centre-arg->state->N/2;
-    end=centre+arg->state->N/2;
-    for(i = 0; i< arg->state->N;i++){
+    recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+  } else {
+    if(pwr!=NULL) free(pwr); 
+    pwr=NULL;
+    arg->state->N=0;
+    pwr = (double*) malloc(sizeof(double) * arg->state->N);
+
+  }
+  centre=(arg->clrfreqsearch.end+arg->clrfreqsearch.start)/2;
+  bandwidth=arg->state->N;
+  start=centre-arg->state->N/2;
+  end=centre+arg->state->N/2;
+  for(i = 0; i< arg->state->N;i++){
         index=(start+i-full_clr_start);
         if ((index >=0) && (index < max_freqs)) {
           latest_clr_fft[r][index].pwr=pwr[i];
         }
-    }
-    break;
-  } // END of Switch 
+  }
 /* Fill the requested client data */
   if(arg->state->fft_array!=NULL) free(arg->state->fft_array);
   arg->state->fft_array=NULL;

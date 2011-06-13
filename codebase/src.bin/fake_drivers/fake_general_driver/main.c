@@ -235,6 +235,9 @@ int main ( int argc, char **argv){
 		    if (verbose > 1) printf("\nmsg code is %c\n", datacode);
 		/* Process commands that have come in on the socket */	
 		    switch( datacode ){
+
+/* Commands which can be serviced by multiple drivers */
+
 		      case REGISTER_SEQ:
 			/* REGISTER_SEQ: Control programs request pulse sequences to use and pass them
  			* to the ROS server process. The ROS server process in turn passes the sequences
@@ -292,7 +295,11 @@ int main ( int argc, char **argv){
  			*/
                         msg.status=1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			if(msg.status==1) {
+		          rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
 			/* Reset the seq counters */
+			}
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                         old_seq_id=-10;
                         new_seq_id=-1;
                         break;
@@ -437,6 +444,71 @@ int main ( int argc, char **argv){
                         }
                         if (verbose > 1)  printf("Driver: Ending Post-trigger Setup\n");
                         break;
+		      case SITE_SETTINGS:
+			/* SITE_SETTINGS: The ROS may issue this command to a driver. 
+			*   
+ 			*/  
+			if (verbose > 1 ) printf("Driver: SITE_SETTINGS\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"DIO")==0) {
+				msg.status=1;
+                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+				recv_data(msgsock, &site_settings.ifmode, sizeof(site_settings.ifmode));
+				recv_data(msgsock, &site_settings.rf_settings, sizeof(site_settings.rf_settings));
+				recv_data(msgsock, &site_settings.if_settings, sizeof(site_settings.if_settings));
+
+			}
+	  		else msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			break;
+		      case PRE_CLRFREQ:
+			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
+			*  prior to doing a clear frequency search 
+ 			*/  
+			if (verbose > 1 ) printf("Driver: PRE_CLRFREQ\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"DIO")==0) {
+				msg.status=1;
+                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+				recv_data(msgsock, &client, sizeof(struct ControlPRM));
+
+			}
+	  		else msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+		      case POST_CLRFREQ:
+			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
+			*  prior to doing a clear frequency search 
+ 			*/  
+			if (verbose > 1 ) printf("Driver: POST_CLRFREQ\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"DIO")==0) {
+				msg.status=1;
+			}
+	  		else msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+		      case AUX_COMMAND:
+			/* AUX_COMMAND: Site hardware specific commands which are not critical for operation, but
+ 			*  controlprograms may optionally access to if they are site aware.  
+ 			*/  
+			if (verbose > 1 ) printf("Driver: AUX_COMMAND\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+                        msg.status=1;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+
+/* Commands that should only be servced  by a single driver. 
+ * Site ini file should be configured to instruct the ROS as to which driver
+ * services each of the following commands */
+
+
+
 		      case GET_TRTIMES:
 			/* GET_TRTIMES: After a trigger or external trigger command has been issued. The ROS 
 			*  may issue this command to a driver as a way to retrieve information about the
@@ -515,64 +587,8 @@ int main ( int argc, char **argv){
 	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
-		      case SITE_SETTINGS:
-			/* SITE_SETTINGS: The ROS may issue this command to a driver. 
-			*   
- 			*/  
-			if (verbose > 1 ) printf("Driver: SITE_SETTINGS\n");	
-			/* Inform the ROS that this driver does not handle this command by sending 
- 			* msg back with msg.status=0.
- 			*/
-          		if(strcmp(driver_type,"DIO")==0) {
-				msg.status=1;
-                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-				recv_data(msgsock, &site_settings.ifmode, sizeof(site_settings.ifmode));
-				recv_data(msgsock, &site_settings.rf_settings, sizeof(site_settings.rf_settings));
-				recv_data(msgsock, &site_settings.if_settings, sizeof(site_settings.if_settings));
 
-			}
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-			break;
-		      case PRE_CLRFREQ:
-			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
-			*  prior to doing a clear frequency search 
- 			*/  
-			if (verbose > 1 ) printf("Driver: PRE_CLRFREQ\n");	
-			/* Inform the ROS that this driver does not handle this command by sending 
- 			* msg back with msg.status=0.
- 			*/
-          		if(strcmp(driver_type,"DIO")==0) {
-				msg.status=1;
-                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-				recv_data(msgsock, &client, sizeof(struct ControlPRM));
-
-			}
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-		      case POST_CLRFREQ:
-			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
-			*  prior to doing a clear frequency search 
- 			*/  
-			if (verbose > 1 ) printf("Driver: POST_CLRFREQ\n");	
-			/* Inform the ROS that this driver does not handle this command by sending 
- 			* msg back with msg.status=0.
- 			*/
-          		if(strcmp(driver_type,"DIO")==0) {
-				msg.status=1;
-			}
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-		      case AUX_COMMAND:
-			/* AUX_COMMAND: Site hardware specific commands which are not critical for operation, but
- 			*  controlprograms may optionally access to if they are site aware.  
- 			*/  
-			if (verbose > 1 ) printf("Driver: AUX_COMMAND\n");	
-			/* Inform the ROS that this driver does not handle this command by sending 
- 			* msg back with msg.status=0.
- 			*/
-                        msg.status=1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+/* Required default case for unserviced commands */
 		      default:
 			/* NOOPs: ROS commands that are not understood by the driver should send a msg.status=0  
 			* Some drivers will not need to process all of the named commands listed above. 

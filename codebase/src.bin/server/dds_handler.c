@@ -94,13 +94,19 @@ void *dds_ready_controlprogram(void *arg)
 void *dds_end_controlprogram(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
+  struct ControlProgram *control_program;
   struct timeval t0,t1;
   int total=0;
+  control_program=arg;
   pthread_mutex_lock(&dds_comm_lock);
   s_msg.type=CtrlProg_END;
   s_msg.status=1;
   send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
   total=recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
+  if(r_msg.status==1) {
+         send_data(ddssock, control_program->parameters, sizeof(struct ControlPRM));
+         recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
+  }
   pthread_mutex_unlock(&dds_comm_lock);
   pthread_exit(NULL);
 
