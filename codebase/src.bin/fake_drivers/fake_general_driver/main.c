@@ -504,6 +504,11 @@ int main ( int argc, char **argv){
  			*/
                         msg.status=1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                        rval=send_data(msgsock, &bytes, sizeof(int32));
+		        rval=recv_data(msgsock,&command_dict_string,bytes);
+                        rval=send_data(msgsock, &bytes, sizeof(int32));
+		        rval=send_data(msgsock,&return_dict_string,bytes);
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 
 /* Commands that should only be servced  by a single driver. 
  * Site ini file should be configured to instruct the ROS as to which driver
@@ -591,6 +596,7 @@ int main ( int argc, char **argv){
 		      case GET_TX_STATUS:
 			/* GET_TX_STATUS: The ROS may issue this command to a driver. 
 			*  Only one driver should respond to this command 
+			*  This should be turned into an AUX command 
  			*/  
 			if (verbose > 1 ) printf("Driver: GET_TX_STATUS\n");	
 			/* Inform the ROS that this driver does not handle this command by sending 
@@ -609,6 +615,7 @@ int main ( int argc, char **argv){
 		      case GET_EVENT_TIME:
 			/* GET_EVENT_TIME: The ROS may issue this command to a driver. 
 			*  Only one driver should respond to this command 
+			*  This should be turned into an AUX command 
  			*/  
 			if (verbose > 1 ) printf("Driver: GET_EVENT_TIME\n");	
 			/* Inform the ROS that this driver does not handle this command by sending 
@@ -627,7 +634,8 @@ int main ( int argc, char **argv){
 			break;
 		      case GPS_SET_TRIGGER_RATE:
 			/* The ROS may issue this command to a driver. 
-			*  Only one driver should respond to this command 
+			*  Only one driver should respond to this command
+			*  This should be turned into an AUX command 
  			*/  
 			if (verbose > 1 ) printf("Driver: GPS_SET_TRIGGER_RATE\n");	
 			/* Inform the ROS that this driver does not handle this command by sending 

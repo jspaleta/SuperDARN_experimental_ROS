@@ -360,6 +360,51 @@ void dictionary_dump(dictionary * d, FILE * out)
 	return ;
 }
 
+/*-------------------------------------------------------------------------*/
+/**
+  @brief        Dumps Dictionary to a string pointer, 
+		resizes string pointer as needed	
+  @param	d	Dictionary to dump
+  @param	out	string pointer.
+  @return	void
+
+  Dumps a dictionary onto an opened file pointer. Key pairs are printed out
+  as @c [Key]=[Value], one per line. It is Ok to provide stdout or stderr as
+  output file pointers.
+ */
+/*--------------------------------------------------------------------------*/
+char* dictionary_to_string(dictionary * d)
+{
+	int		i ;
+        char           *str_p;
+	char		temp_str[300];
+	int		max_length=0;
+        str_p=malloc(40*sizeof(char));
+        max_length=40;
+	sprintf(str_p, "");
+	if (d==NULL || str_p==NULL) return NULL;
+	if (d->n<1) {
+		return NULL;
+	}
+	for (i=0 ; i<d->size ; i++) {
+        	if (d->key[i]) {
+            		sprintf(temp_str, "%20s\t[%s]\n",
+                    		d->key[i],
+                    		d->val[i] ? d->val[i] : "UNDEF");
+	    		if(strlen(temp_str)+strlen(str_p)>max_length-1) {
+				max_length=strlen(temp_str)+strlen(str_p)+2; 
+        			str_p = realloc(str_p, max_length*sizeof(char));
+       			if(!str_p) {
+    					printf("Allocation Error\n");
+					free(str_p);
+					return NULL;
+				}
+	    		}	
+	    		strncat(str_p,temp_str,strlen(temp_str));
+        	}
+	}
+	return str_p;
+}
 
 /* Test code */
 #ifdef TESTDIC
