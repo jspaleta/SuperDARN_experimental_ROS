@@ -115,6 +115,7 @@ struct ROSMsg {
 struct CLRFreqPRM {
      int32 start; //In kHz
      int32 end;  //in kHz
+     int32 rbeam;  //beam number
      float filter_bandwidth;  //in kHz  typically c/(rsep*2)
      float pwr_threshold;  //  typical value 0.9: power at best available frequency must be 90% or less of current assigned 
      int32 nave;  // Number of passes to average.

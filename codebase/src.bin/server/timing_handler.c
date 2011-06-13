@@ -34,13 +34,15 @@ void *timing_end_controlprogram(struct ControlProgram *arg)
 {
   struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&timing_comm_lock);
-  s_msg.type=TIMING_CtrlProg_END;
-  s_msg.status=1;
-  send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
-  recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
-  if(r_msg.status==1) {	
+  if (arg!=NULL) {
+    s_msg.type=TIMING_CtrlProg_END;
+    s_msg.status=1;
+    send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
+    recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
+    if(r_msg.status==1) {	
          send_data(timingsock, arg->parameters, sizeof(struct ControlPRM));
          recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
+    }
   }
   pthread_mutex_unlock(&timing_comm_lock);
   pthread_exit(NULL);

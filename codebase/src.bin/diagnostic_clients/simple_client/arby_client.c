@@ -60,7 +60,8 @@ main( int argc, char *argv[])
   struct sockaddr_un sa;
   struct timeval t0,t1,t2,t3;
   unsigned long elapsed;
-
+  int32 tfreq;
+  float noise;
   int ptab[8] = {0,14,22,24,27,31,42,43};
   int bmnum; 
 //Initialize structures
@@ -171,6 +172,26 @@ main( int argc, char *argv[])
  while(1) {
 /* Rotate beam direction*/
    bmnum=(bmnum +1) % 16;
+/*
+ * Clear Frequency Search
+ */
+  clrfreq_parameters.start=10000; 
+  clrfreq_parameters.end=11000;  
+  clrfreq_parameters.nave=20;  
+  clrfreq_parameters.rbeam=bmnum;  
+  clrfreq_parameters.filter_bandwidth=250;  
+
+  smsg.type=REQUEST_CLEAR_FREQ_SEARCH;
+  send_data(s, &smsg, sizeof(struct ROSMsg));
+  send_data(s, &clrfreq_parameters, sizeof(struct CLRFreqPRM));
+  recv_data(s, &rmsg, sizeof(struct ROSMsg));
+
+
+  smsg.type=REQUEST_ASSIGNED_FREQ;
+  send_data(s, &smsg, sizeof(struct ROSMsg));
+  recv_data(s,&tfreq, sizeof(int32)); 
+  recv_data(s,&noise, sizeof(float));  
+  recv_data(s,&rmsg, sizeof(struct ROSMsg)); 
 
    if(verbose>1) printf("Data Acquisition Loop\n");
    gettimeofday(&t0,NULL);
@@ -232,7 +253,9 @@ main( int argc, char *argv[])
       }
       if(verbose>1) printf("wait for data structure\n");
       recv_data(s, &dprm, sizeof(struct DataPRM));
-      if(dprm.status==0) {
+      if(verbose>1) printf("  samples: %d\n",dprm.samples);
+      if(verbose>1) printf("  status: %d\n",dprm.status);
+      if(dprm.status>=0) {
         main=malloc(sizeof(uint32)*dprm.samples);
         back=malloc(sizeof(uint32)*dprm.samples);
         recv_data(s, main, sizeof(uint32)*dprm.samples);

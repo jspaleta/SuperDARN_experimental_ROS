@@ -56,7 +56,7 @@ void *receiver_site_settings(void *arg) {
     s_msg.status=1;
     send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
     recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
-    if(r_msg.status==1) {
+    if(r_msg.status>0) {
       send_data(recvsock, &site_settings->ifmode, sizeof(site_settings->ifmode));
       send_data(recvsock, &site_settings->rf_settings, sizeof(struct RXFESettings));
       send_data(recvsock, &site_settings->if_settings, sizeof(struct RXFESettings));
@@ -739,7 +739,7 @@ void *receiver_end_controlprogram(struct ControlProgram *arg)
        s_msg.status=1;
        send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
        recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
-       if(r_msg.status==1) {
+       if(r_msg.status>0) {
          send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
          recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
        }
@@ -759,7 +759,7 @@ void *receiver_ready_controlprogram(struct ControlProgram *arg)
        s_msg.status=1;
        send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
        recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
-       if(r_msg.status==1) {
+       if(r_msg.status>0) {
          send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
          recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
        }
@@ -841,7 +841,7 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         s_msg.status=1;
         send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
         recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
-        if(r_msg.status==1) {
+        if(r_msg.status>0) {
           send_data(recvsock, &r, sizeof(int32));
           send_data(recvsock, &c, sizeof(int32));
           recv_data(recvsock,&arg->data->status,sizeof(int32));
@@ -856,13 +856,13 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         arg->data->samples=0;
       }      
       printf("GET_DATA_STATUS: %d\n",arg->data->status);
-      if (arg->data->status>=0 ) {
+      if (arg->data->status>0 ) {
         s_msg.type=GET_DATA;
         s_msg.status=1;
         send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
         recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
         printf("GET_DATA: r_msg %d\n",r_msg.status);
-        if(r_msg.status==1) {
+        if(r_msg.status>0) {
           send_data(recvsock, &r, sizeof(int32));
           send_data(recvsock, &c, sizeof(int32));
           recv_data(recvsock,&arg->data->shm_memory,sizeof(int32));
@@ -948,7 +948,7 @@ void *receiver_clrfreq(struct ControlProgram *arg)
   s_msg.status=1;
   send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
   recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
-  if(r_msg.status==1) {
+  if(r_msg.status>0) {
     send_data(recvsock, &arg->clrfreqsearch, sizeof(struct CLRFreqPRM));
     send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
     recv_data(recvsock, &arg->clrfreqsearch, sizeof(struct CLRFreqPRM));

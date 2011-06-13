@@ -49,7 +49,7 @@ int main ( int argc, char **argv){
 	int32	radar=0,channel=0,data_status=0;
 	struct tx_status txstatus[MAX_RADARS]; 
 	struct SiteSettings site_settings;	
-	int32 gps_event,gpssecond,gpsnsecond;
+	int32 gps_event,gpssecond,gpsnsecond,gpsrate;
  
 	// socket and message passing variables
 	char	datacode;	//command character
@@ -476,10 +476,10 @@ int main ( int argc, char **argv){
 				msg.status=1;
                         	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 				recv_data(msgsock, &client, sizeof(struct ControlPRM));
-
 			}
 	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			break;
 		      case POST_CLRFREQ:
 			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
 			*  prior to doing a clear frequency search 
@@ -493,6 +493,7 @@ int main ( int argc, char **argv){
 			}
 	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			break;
 		      case AUX_COMMAND:
 			/* AUX_COMMAND: Site hardware specific commands which are not critical for operation, but
  			*  controlprograms may optionally access to if they are site aware.  
@@ -620,6 +621,23 @@ int main ( int argc, char **argv){
            			send_data(msgsock,&gps_event, sizeof(int32));
            			send_data(msgsock,&gpssecond, sizeof(int32));
             			send_data(msgsock,&gpsnsecond, sizeof(int32));
+			}
+	  		else msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			break;
+		      case GPS_SET_TRIGGER_RATE:
+			/* The ROS may issue this command to a driver. 
+			*  Only one driver should respond to this command 
+ 			*/  
+			if (verbose > 1 ) printf("Driver: GPS_SET_TRIGGER_RATE\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"GPS")==0) {
+				msg.status=1;
+                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			        if (verbose > 1 ) printf("GPS_SET_TRIGGER_RATE: %d\n",msg.status);	
+           			recv_data(msgsock,&gpsrate, sizeof(int32));
 			}
 	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));

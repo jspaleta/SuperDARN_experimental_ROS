@@ -61,7 +61,7 @@ int txread[MAX_RADARS];
 struct SiteSettings site_settings;
 struct GPSStatus gpsstatus;
 struct TRTimes bad_transmit_times;
-int gpsrate=REFRESHRATE;
+int32 gpsrate=REFRESHRATE;
 int verbose=10;
 int die_on_socket_failure=0;
 int clear_frequency_request;

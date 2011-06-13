@@ -301,15 +301,15 @@ void controlprogram_exit(struct ControlProgram *control_program)
      printf("Controlprogram Exit: done timing wait\n"); 
      i=0;
      printf("Controlprogram Exit: DDS End\n"); 
-     rc = pthread_create(&threads[i], NULL, (void *) &dds_end_controlprogram, NULL);
+     rc = pthread_create(&threads[i], NULL, (void *) &dds_end_controlprogram, (void *) control_program);
        pthread_join(threads[i],NULL);
      i++;
      printf("Controlprogram Exit: TIMIN END\n"); 
-     rc = pthread_create(&threads[i], NULL, (void *) &timing_end_controlprogram, NULL);
+     rc = pthread_create(&threads[i], NULL, (void *) &timing_end_controlprogram, (void *) control_program);
        pthread_join(threads[i],NULL);
      i++;
      printf("Controlprogram Exit: RECV END\n"); 
-     rc = pthread_create(&threads[i], NULL, (void *) &receiver_end_controlprogram, NULL);
+     rc = pthread_create(&threads[i], NULL, (void *) &receiver_end_controlprogram, (void *) control_program);
        pthread_join(threads[i],NULL);
      for (;i>=0;i--) {
        pthread_join(threads[i],NULL);
@@ -462,7 +462,11 @@ void *control_handler(struct ControlProgram *control_program)
         recv_data(socket, &msg, sizeof(struct ROSMsg));
         gettimeofday(&current_time,NULL);
         if((current_time.tv_sec-last_report.tv_sec)>5) {
+#ifdef __QNX__
           system("date -t > /tmp/server_cmd_time");
+#else
+          system("date +'%s' > /tmp/server_cmd_time");
+#endif
           last_report=current_time;
         }
         if(msg.type!=0) {
@@ -674,7 +678,7 @@ control_program);
               //printf("GET_DATA: Send DataPRM to controlprogram\n");
               //printf("GET_DATA: controlprogram status: %d\n",control_program->data->status);
               send_data(socket, control_program->data, sizeof(struct DataPRM));
-              if(control_program->data->status>=0) {
+              if(control_program->data->status>0) {
                 printf("GET_DATA: main: %d %d\n",sizeof(uint32),sizeof(uint32)*control_program->data->samples);
                 printf("GET_DATA: 1\n");    
                 send_data(socket, control_program->main, sizeof(uint32)*control_program->data->samples);
@@ -838,7 +842,7 @@ control_program);
             break;
 
           case REQUEST_CLEAR_FREQ_SEARCH:
-            //printf("REQUEST_CLEAR_FREQ_SEARCH: START\n");
+            printf("REQUEST_CLEAR_FREQ_SEARCH: START\n");
             gettimeofday(&t0,NULL);
             pthread_mutex_lock(&controlprogram_list_lock);
             recv_data(socket,&control_program->clrfreqsearch, sizeof(struct CLRFreqPRM)); // requested search parameters
@@ -862,6 +866,7 @@ control_program);
               elapsed+=(t1.tv_usec-t0.tv_usec);
               if (verbose > 1 ) printf("Client:  CLR Elapsed Microseconds: %ld\n",elapsed);
             }
+            printf("REQUEST_CLEAR_FREQ_SEARCH: END\n");
             break;
           case REQUEST_ASSIGNED_FREQ:
             gettimeofday(&t0,NULL);
