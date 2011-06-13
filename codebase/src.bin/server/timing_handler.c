@@ -45,7 +45,7 @@ void *timing_end_controlprogram(void *arg)
 void *timing_register_seq(struct ControlProgram *control_program)
 {
   struct DriverMsg s_msg , r_msg;
-  int index;
+  int32 index;
   pthread_mutex_lock(&timing_comm_lock);
   s_msg.type=TIMING_REGISTER_SEQ;
   s_msg.status=1;

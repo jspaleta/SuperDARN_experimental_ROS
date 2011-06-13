@@ -55,7 +55,8 @@ int main ( int argc, char **argv){
         fd_set rfds,efds;	//TCP socket status
         struct timeval select_timeout;	// timeout for select function
 	// counter and temporary variables
-	int	i,j,r,c,buf,index;
+	int	i,j,r,c,buf;
+        int32   index;
 	int 	temp;
         unsigned long counter;
 
@@ -240,39 +241,40 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does handle this command, and its okay to send the
  			* sequence data by sending msg back with msg.status=1.
  			*/
-		        msg.status=1;
+		        msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			if(msg.status==1) {
 			/* Now recv the expected data as per the documented API for this command */
-                        rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
-                        r=client.radar-1; 
-                        c=client.channel-1; 
-		        rval=recv_data(msgsock,&index,sizeof(index));
-		        if (verbose > 1) printf("Driver: Requested sequence index: %d\n",index);	
-
+                          rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
+                          r=client.radar-1; 
+                          c=client.channel-1; 
+		          rval=recv_data(msgsock,&index,sizeof(index));
+		          if (verbose > 1) printf("Driver: Requested sequence index: %d\n",index);	
 			/*Prepare the memory pointers*/
-                        if (pulseseqs[r][c][index]!=NULL) {
-                          if (pulseseqs[r][c][index]->rep!=NULL)  free(pulseseqs[r][c][index]->rep);
-                          if (pulseseqs[r][c][index]->code!=NULL) free(pulseseqs[r][c][index]->code);
-                          free(pulseseqs[r][c][index]);
-                        }
-			/* Fill memory pointers */
-                        pulseseqs[r][c][index]=malloc(sizeof(struct TSGbuf));
-                        rval=recv_data(msgsock,pulseseqs[r][c][index], 
-			  sizeof(struct TSGbuf)); // requested pulseseq
-                        pulseseqs[r][c][index]->rep=
-                          malloc(sizeof(unsigned char)*pulseseqs[r][c][index]->len);
-                        pulseseqs[r][c][index]->code=
-                          malloc(sizeof(unsigned char)*pulseseqs[r][c][index]->len);
-                        rval=recv_data(msgsock,pulseseqs[r][c][index]->rep, 
-                          sizeof(unsigned char)*pulseseqs[r][c][index]->len);
-                        rval=recv_data(msgsock,pulseseqs[r][c][index]->code, 
-                          sizeof(unsigned char)*pulseseqs[r][c][index]->len);
+                          if (pulseseqs[r][c][index]!=NULL) {
+                            if (pulseseqs[r][c][index]->rep!=NULL)  free(pulseseqs[r][c][index]->rep);
+                            if (pulseseqs[r][c][index]->code!=NULL) free(pulseseqs[r][c][index]->code);
+                            free(pulseseqs[r][c][index]);
+                          }
 
+			  /* Fill memory pointers */
+                          pulseseqs[r][c][index]=malloc(sizeof(struct TSGbuf));
+                          rval=recv_data(msgsock,pulseseqs[r][c][index], 
+			    sizeof(struct TSGbuf)); // requested pulseseq
+                          pulseseqs[r][c][index]->rep=
+                            malloc(sizeof(unsigned char)*pulseseqs[r][c][index]->len);
+                          pulseseqs[r][c][index]->code=
+                            malloc(sizeof(unsigned char)*pulseseqs[r][c][index]->len);
+                          rval=recv_data(msgsock,pulseseqs[r][c][index]->rep, 
+                            sizeof(unsigned char)*pulseseqs[r][c][index]->len);
+                          rval=recv_data(msgsock,pulseseqs[r][c][index]->code, 
+                            sizeof(unsigned char)*pulseseqs[r][c][index]->len);
 			/* Inform the ROS that this driver recv all data without error
  			* by sending msg back with msg.status=1.
  			*/
-		        msg.status=1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+		          msg.status=1;
+                          rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                        }
 			/* Reset the local sequence state */
                         old_seq_id=-10;
                         new_seq_id=-1;
