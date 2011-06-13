@@ -48,7 +48,9 @@ int main ( int argc, char **argv){
         int     numclients=0;				// number of active clients
 	int	radar=0;
 	struct tx_status txstatus[MAX_RADARS]; 
-	struct SiteSettings site_settings;
+	struct SiteSettings site_settings;	
+	int32 gps_event,gpssecond,gpsnsecond;
+ 
 	// socket and message passing variables
 	char	datacode;	//command character
 	int	rval;		//use for return values which indicate errors
@@ -494,6 +496,25 @@ int main ( int argc, char **argv){
 	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
+		      case GET_EVENT_TIME:
+			/* GET_EVENT_TIME: The ROS may issue this command to a driver. 
+			*  Only one driver should respond to this command 
+ 			*/  
+			if (verbose > 1 ) printf("Driver: GET_EVENT_TIME\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"GPS")==0) {
+				msg.status=1;
+                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			        if (verbose > 1 ) printf("GET_EVENT_TIME: %d\n",msg.status);	
+           			send_data(msgsock,&gps_event, sizeof(int32));
+           			send_data(msgsock,&gpssecond, sizeof(int32));
+            			send_data(msgsock,&gpsnsecond, sizeof(int32));
+			}
+	  		else msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			break;
 		      case SITE_SETTINGS:
 			/* SITE_SETTINGS: The ROS may issue this command to a driver. 
 			*   
@@ -557,7 +578,7 @@ int main ( int argc, char **argv){
 			* Some drivers will not need to process all of the named commands listed above. 
 			* For those driver the default case can be used and the ROS will deal with it accordingly.
  			*/  
-			if (verbose > -10) printf("Driver: BAD CODE: %c : %d\n",datacode,datacode);
+			if (verbose > -10) printf("Driver: BAD CODE: %c : %d\n",datacode,(unsigned int)datacode);
                         msg.status=-1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;

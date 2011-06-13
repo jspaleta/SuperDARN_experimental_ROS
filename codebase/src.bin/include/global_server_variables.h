@@ -177,19 +177,17 @@ struct BlackList {
 #define FULL_CLRFREQ '-'
 
 
-#define GPS_GET_HDW_STATUS 'S'
 #define GET_TX_STATUS 'S'
-
+#define GET_EVENT_TIME 'E' 
 #define SITE_SETTINGS 'R'
 
-#define GPS_GET_SOFT_TIME 't'
-#define GPS_GET_HDW_STATUS 'S'
-#define GPS_GET_EVENT_TIME 'e'
-#define GPS_SCHEDULE_SINGLE_SCAN 's'
-#define GPS_SCHEDULE_REPEAT_SCAN 'r'
-#define GPS_TRIGGER_NOW 'n'
-#define GPS_SET_TRIGGER_RATE 'R'
-#define GPS_MSG_ERROR 'X'
+#define GPS_GET_HDW_STATUS 240 
+#define GPS_GET_SOFT_TIME 241
+#define GPS_SCHEDULE_SINGLE_SCAN 244
+#define GPS_SCHEDULE_REPEAT_SCAN 245
+#define GPS_TRIGGER_NOW 246
+#define GPS_SET_TRIGGER_RATE 247
+#define GPS_MSG_ERROR 248
 
 #define REFRESHRATE	1
 #define MAX_ERROR 0.002

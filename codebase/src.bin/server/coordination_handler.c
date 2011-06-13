@@ -24,8 +24,8 @@ void *coordination_handler(struct ControlProgram *control_program)
    char *timestr;
    pthread_t threads[4];
    struct Thread_List_Item *thread_list;
-   int gps_event,gpssecond,gpsnsecond;
-   struct DriverMsg msg;
+   int32 gps_event,gpssecond,gpsnsecond;
+   struct DriverMsg s_msg,r_msg;
    struct ControlProgram *cprog;
    int ready_state,trigger_state,ready_count;
    struct timeval t0,t1,t2,t3,t4,t5,t6;
@@ -197,13 +197,17 @@ void *coordination_handler(struct ControlProgram *control_program)
             printf("Coord: Trigger Elapsed Microseconds: %ld\n",elapsed);
           }
           trigger_state=3;//post-trigger
-          msg.type=GPS_GET_EVENT_TIME;
-          msg.status=1;
-          send_data(gpssock, &msg, sizeof(struct DriverMsg));
-          recv_data(gpssock,&gps_event, sizeof(int));
-          recv_data(gpssock,&gpssecond, sizeof(int));
-          recv_data(gpssock,&gpsnsecond, sizeof(int));
-          recv_data(gpssock, &msg, sizeof(struct DriverMsg));
+          s_msg.type=GET_EVENT_TIME;
+          s_msg.status=1;
+          send_data(gpssock, &s_msg, sizeof(struct DriverMsg));
+          recv_data(gpssock, &r_msg, sizeof(struct DriverMsg));
+          if (verbose > 1 ) printf("GET_EVENT_TIME: %d\n",r_msg.status);
+	  if(r_msg.status==1) {
+            recv_data(gpssock,&gps_event, sizeof(int32));
+            recv_data(gpssock,&gpssecond, sizeof(int32));
+            recv_data(gpssock,&gpsnsecond, sizeof(int32));
+            recv_data(gpssock, &r_msg, sizeof(struct DriverMsg));
+          }
           i=0;
           if(control_program->active==1) { 
             control_program->state->gpssecond=gpssecond;

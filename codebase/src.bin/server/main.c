@@ -168,7 +168,7 @@ int main()
   struct sockaddr_un cli_addr;
   struct Thread_List_Item *thread_list;
   struct ControlProgram *control_program;
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   int newsockfd, clilen,rc,i,r;
   int num_threads;
   int restrict_count,blacklist_count,start,end;
@@ -382,11 +382,14 @@ int main()
       graceful_socket_cleanup(1);
   } else {
     if (verbose>0) fprintf(stderr,"GPS Socket %d\n",gpssock);
-    msg.type=GPS_SET_TRIGGER_RATE;
-    msg.status=1;
-    send_data(gpssock, &msg, sizeof(struct DriverMsg));
-    send_data(gpssock, &gpsrate, sizeof(gpsrate));
-    recv_data(gpssock, &msg, sizeof(struct DriverMsg));
+    s_msg.type=GPS_SET_TRIGGER_RATE;
+    s_msg.status=1;
+    send_data(gpssock, &s_msg, sizeof(struct DriverMsg));
+    recv_data(gpssock, &r_msg, sizeof(struct DriverMsg));
+    if(r_msg.status==1) {
+      send_data(gpssock, &gpsrate, sizeof(gpsrate));
+      recv_data(gpssock, &r_msg, sizeof(struct DriverMsg));
+    }
   }
   if (verbose>0) fprintf(stderr,"Done with Sockets\n");
 /*
