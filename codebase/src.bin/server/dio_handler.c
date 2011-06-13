@@ -62,15 +62,18 @@ struct FreqTable *FreqLoadTable(FILE *fp) {
 
 void *DIO_ready_controlprogram(struct ControlProgram *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&dio_comm_lock);
    if (arg!=NULL) {
      if (arg->state->pulseseqs[arg->parameters->current_pulseseq_index]!=NULL) {
-       msg.type=DIO_CtrlProg_READY;
-       msg.status=1;
-       send_data(diosock, &msg, sizeof(struct DriverMsg));
-       send_data(diosock, arg->parameters, sizeof(struct ControlPRM));
-       recv_data(diosock, &msg, sizeof(struct DriverMsg));
+       s_msg.type=DIO_CtrlProg_READY;
+       s_msg.status=1;
+       send_data(diosock, &s_msg, sizeof(struct DriverMsg));
+       recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+       if(r_msg.status==1) {
+         send_data(diosock, arg->parameters, sizeof(struct ControlPRM));
+         recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+       }
      } 
    }
    pthread_mutex_unlock(&dio_comm_lock);
@@ -79,82 +82,87 @@ void *DIO_ready_controlprogram(struct ControlProgram *arg)
 
 void *DIO_pretrigger(void *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg, r_msg;
   pthread_mutex_lock(&dio_comm_lock);
 
-   msg.type=DIO_PRETRIGGER;
-   msg.status=1;
-   send_data(diosock, &msg, sizeof(struct DriverMsg));
-   recv_data(diosock, &msg, sizeof(struct DriverMsg));
+   s_msg.type=DIO_PRETRIGGER;
+   s_msg.status=1;
+   send_data(diosock, &s_msg, sizeof(struct DriverMsg));
+   recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
    pthread_mutex_unlock(&dio_comm_lock);
    pthread_exit(NULL);
 };
 
-void *DIO_transmitter_status(int radar)
+void *DIO_transmitter_status(int32 radar)
 {
-  struct DriverMsg msg;
-  int tx;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&dio_comm_lock);
-//  printf("DIO: TX Status Start\n");
-  msg.type=DIO_GET_TX_STATUS;
-  msg.status=1;
-  send_data(diosock, &msg, sizeof(struct DriverMsg));
-  send_data(diosock, &radar, sizeof(radar));
-  recv_data(diosock, &txstatus[radar-1], sizeof(struct tx_status));
-  recv_data(diosock, &msg, sizeof(struct DriverMsg));
-//  printf("DIO: TX Status End\n");
+  s_msg.type=GET_TX_STATUS;
+  s_msg.status=1;
+  send_data(diosock, &s_msg, sizeof(struct DriverMsg));
+  recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+  if(r_msg.status==1) {
+    send_data(diosock, &radar, sizeof(radar));
+    recv_data(diosock, &txstatus[radar-1], sizeof(struct tx_status));
+    recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+  }
    pthread_mutex_unlock(&dio_comm_lock);
    pthread_exit(NULL);
 };
 
 
-void *DIO_clrfreq(struct ControlProgram *arg)
+void *DIO_pre_clrfreq(struct ControlProgram *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&dio_comm_lock);
 
    if(arg!=NULL) {
      if(arg->parameters!=NULL) {
-       //printf("DIO_CLRFREQ %p %p %d\n",arg, arg->parameters,arg->parameters->tbeam);
-       msg.type=DIO_CLRFREQ;
-       msg.status=1;
-       send_data(diosock, &msg, sizeof(struct DriverMsg));
-       send_data(diosock, arg->parameters, sizeof(struct ControlPRM));
-       recv_data(diosock, &msg, sizeof(struct DriverMsg));
+       s_msg.type=PRE_CLRFREQ;
+       s_msg.status=1;
+       send_data(diosock, &s_msg, sizeof(struct DriverMsg));
+       recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+       if(r_msg.status==1) {
+         send_data(diosock, arg->parameters, sizeof(struct ControlPRM));
+         recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+       }
      }
   }
    pthread_mutex_unlock(&dio_comm_lock);
    pthread_exit(NULL);
 };
 
-void *DIO_rxfe_reset(void *arg)
+void *DIO_post_clrfreq(void *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&dio_comm_lock);
 
-   msg.type=DIO_RXFE_RESET;
-   msg.status=1;
-   send_data(diosock, &msg, sizeof(struct DriverMsg));
-   recv_data(diosock, &msg, sizeof(struct DriverMsg));
+   s_msg.type=POST_CLRFREQ;
+   s_msg.status=1;
+   send_data(diosock, &s_msg, sizeof(struct DriverMsg));
+   recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
    pthread_mutex_unlock(&dio_comm_lock);
    pthread_exit(NULL);
 };
 
 void *dio_rxfe_settings(void *arg)
 {
-  struct DriverMsg msg;
+  struct DriverMsg s_msg,r_msg;
   struct SiteSettings *site_settings;
 
   site_settings=arg;
   pthread_mutex_lock(&dio_comm_lock);
   if (site_settings!=NULL) {
-    msg.type=DIO_RXFE_SETTINGS;
-    msg.status=1;
-    send_data(diosock, &msg, sizeof(struct DriverMsg));
-    send_data(diosock, &site_settings->ifmode, sizeof(site_settings->ifmode));
-    send_data(diosock, &site_settings->rf_settings, sizeof(struct RXFESettings));
-    send_data(diosock, &site_settings->if_settings, sizeof(struct RXFESettings));
-    recv_data(diosock, &msg, sizeof(struct DriverMsg));
+    s_msg.type=DIO_RXFE_SETTINGS;
+    s_msg.status=1;
+    send_data(diosock, &s_msg, sizeof(struct DriverMsg));
+    recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+    if(r_msg.status==1) {
+      send_data(diosock, &site_settings->ifmode, sizeof(site_settings->ifmode));
+      send_data(diosock, &site_settings->rf_settings, sizeof(struct RXFESettings));
+      send_data(diosock, &site_settings->if_settings, sizeof(struct RXFESettings));
+      recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+    }
   }
   pthread_mutex_unlock(&dio_comm_lock);
 }

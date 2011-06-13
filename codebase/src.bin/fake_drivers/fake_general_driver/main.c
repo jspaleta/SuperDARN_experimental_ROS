@@ -46,7 +46,8 @@ int main ( int argc, char **argv){
         int new_seq_id=-1;				//  and unpacking needs to be done again
         struct TRTimes transmit_times;		// actual TR windows used
         int     numclients=0;				// number of active clients
-
+	int	radar=0;
+	struct tx_status txstatus[MAX_RADARS]; 
 	// socket and message passing variables
 	char	datacode;	//command character
 	int	rval;		//use for return values which indicate errors
@@ -167,6 +168,11 @@ int main ( int argc, char **argv){
             ready_index[r][c]=-1; 
             seq_buf[r][c]=malloc(4*MAX_TIME_SEQ_LEN);
            
+          } 
+          for (i=0;i<MAX_TRANSMITTERS;i++) {
+		txstatus[r].LOWPWR[i]=1;
+		txstatus[r].AGC[i]=1;
+		txstatus[r].status[i]=31;
           } 
         }
 	/* These are only potentially needed for drivers that unpack 
@@ -297,29 +303,30 @@ int main ( int argc, char **argv){
  			*/
                         msg.status=1;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			if(msg.status==1) {
+		          rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
+                          r=client.radar-1; 
+                          c=client.channel-1; 
+                          if ((ready_index[r][c]>=0) && (ready_index[r][c] <maxclients) ) {
+                            clients[ready_index[r][c]]=client;
+                          } else {
+                            clients[numclients]=client;
+                            ready_index[r][c]=numclients;
+                            numclients=(numclients+1);
+                          }
+			  if (verbose > 1) printf("Radar: %d, Channel: %d Beamnum: %d Status %d\n",
+			    client.radar,client.channel,client.tbeam,msg.status);	
+                          index=client.current_pulseseq_index; 
 
-		        rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
-                        r=client.radar-1; 
-                        c=client.channel-1; 
-                        if ((ready_index[r][c]>=0) && (ready_index[r][c] <maxclients) ) {
-                          clients[ready_index[r][c]]=client;
-                        } else {
-                          clients[numclients]=client;
-                          ready_index[r][c]=numclients;
-                          numclients=(numclients+1);
-                        }
-			if (verbose > 1) printf("Radar: %d, Channel: %d Beamnum: %d Status %d\n",
-			  client.radar,client.channel,client.tbeam,msg.status);	
-                        index=client.current_pulseseq_index; 
-
-                        if (numclients >= maxclients) msg.status=-2;
-                        numclients=numclients % maxclients;
+                          if (numclients >= maxclients) msg.status=-2;
+                          numclients=numclients % maxclients;
 
 			/* Inform the ROS that this driver recv all data without error
  			* by sending msg back with msg.status=1.
  			*/
-			msg.status=1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			  msg.status=1;
+                          rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			}
                         break; 
 
 		      case PRETRIGGER:
@@ -466,6 +473,53 @@ int main ( int argc, char **argv){
 	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
+		      case GET_TX_STATUS:
+			/* GET_TX_STATUS: The ROS may issue this command to a driver. 
+			*  Only one driver should respond to this command 
+ 			*/  
+			if (verbose > 1 ) printf("Driver: GET_TX_STATUS\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"DIO")==0) {
+				msg.status=1;
+                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+				recv_data(msgsock, &radar, sizeof(radar));
+    				send_data(msgsock, &txstatus[radar-1], sizeof(struct tx_status));
+
+			}
+	  		else msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			break;
+		      case PRE_CLRFREQ:
+			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
+			*  prior to doing a clear frequency search 
+ 			*/  
+			if (verbose > 1 ) printf("Driver: PRE_CLRFREQ\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"DIO")==0) {
+				msg.status=1;
+                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+				recv_data(msgsock, &client, sizeof(struct ControlPRM));
+
+			}
+	  		else msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+		      case POST_CLRFREQ:
+			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
+			*  prior to doing a clear frequency search 
+ 			*/  
+			if (verbose > 1 ) printf("Driver: POST_CLRFREQ\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"DIO")==0) {
+				msg.status=1;
+			}
+	  		else msg.status=0;
+                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 		      case AUX_COMMAND:
 			/* AUX_COMMAND: Site hardware specific commands which are not critical for operation, but
  			*  controlprograms may optionally access to if they are site aware.  

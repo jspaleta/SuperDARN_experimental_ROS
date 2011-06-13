@@ -50,7 +50,7 @@ void *status_handler(void *arg)
      recv_data(gpssock, &msg, sizeof(struct DriverMsg));
      printf("Get Transmitter Status\n");
 */
-     msg.type=DIO_GET_TX_STATUS;
+     msg.type=GET_TX_STATUS;
      msg.status=1;
      radar=1;
      r=radar-1;

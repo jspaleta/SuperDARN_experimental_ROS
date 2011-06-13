@@ -71,24 +71,19 @@ void *timing_pretrigger(void *arg)
   pthread_mutex_lock(&timing_comm_lock);
   s_msg.type=TIMING_PRETRIGGER;
   s_msg.status=1;
-  if(verbose > 0 ) printf("TIMING: PRETRIGGER: Send msg\n");
   send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
-  if (verbose > 0 ) printf("TIMING: PRETRIGGER: Recv msg\n");
   recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
 
-  if (verbose > 0 )printf("TIMING: GE_TRTIMES: Send msg\n");
   s_msg.type=GET_TRTIMES;
   s_msg.status=1;
   send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
   recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
-  if(verbose > 0 ) printf("TIMING: GET_TRTIMES: Recv msg %d\n",r_msg.status);
   if(r_msg.status==1) {
     if(bad_transmit_times.start_usec!=NULL) free(bad_transmit_times.start_usec);
     if(bad_transmit_times.duration_usec!=NULL) free(bad_transmit_times.duration_usec);
     bad_transmit_times.start_usec=NULL;
     bad_transmit_times.duration_usec=NULL;
     recv_data(timingsock, &bad_transmit_times.length, sizeof(bad_transmit_times.length));
-    if(verbose > 0 ) printf("TIMING: GET_TRTIMES: tr_length %d \n",bad_transmit_times.length);
     if (bad_transmit_times.length>0) {
       bad_transmit_times.start_usec=malloc(sizeof(unsigned int)*bad_transmit_times.length);
       bad_transmit_times.duration_usec=malloc(sizeof(unsigned int)*bad_transmit_times.length);
@@ -153,16 +148,4 @@ void *timing_posttrigger(void *arg)
    pthread_exit(NULL);
 };
 
-/*
-void *timing_handler(void *arg)
-{
-
-  pthread_mutex_lock(&timing_comm_lock);
-   if (verbose>1) fprintf(stderr,"Inside the timing handler\n");
-   if (verbose>1) fprintf(stderr,"Timing: Do some work\n");
-   if (verbose>1) fprintf(stderr,"Leaving timing handler\n");
-  pthread_mutex_unlock(&timing_comm_lock);
-   pthread_exit(NULL);
-};
-*/
 

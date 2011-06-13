@@ -836,11 +836,11 @@ control_program);
             if ( (r < 0) || (c < 0)) {
               msg.status=-1;
             } else {
-              rc = pthread_create(&threads[0], NULL, (void *) &DIO_clrfreq,control_program);
+              rc = pthread_create(&threads[0], NULL, (void *) &DIO_pre_clrfreq,control_program);
               pthread_join(threads[0],NULL);
               rc = pthread_create(&threads[0], NULL, (void *) &receiver_clrfreq,control_program);
               pthread_join(threads[0],NULL);
-              rc = pthread_create(&threads[0], NULL, (void *) &DIO_rxfe_reset,NULL);
+              rc = pthread_create(&threads[0], NULL, (void *) &DIO_post_clrfreq,NULL);
               pthread_join(threads[0],NULL);
               msg.status=control_program->state->freq_change_needed;
             }

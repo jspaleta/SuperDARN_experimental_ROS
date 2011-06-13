@@ -169,13 +169,17 @@ struct BlackList {
 
 #define GET_DATA 'd'
 #define RECV_GET_DATA 'd'
+
+#define PRE_CLRFREQ 'c'
+#define POST_CLRFREQ 'C'
+
+#define RECV_CLRFREQ 'F'
 #define FULL_CLRFREQ '-'
-#define RECV_CLRFREQ 'C'
-#define DIO_CLRFREQ 'C'
+
 #define DIO_RXFE_RESET 'r'
 
 #define GPS_GET_HDW_STATUS 'S'
-#define DIO_GET_TX_STATUS 'S'
+#define GET_TX_STATUS 'S'
 
 #define DDS_RXFE_SETTINGS 'R'
 #define RECV_RXFE_SETTINGS 'R'
