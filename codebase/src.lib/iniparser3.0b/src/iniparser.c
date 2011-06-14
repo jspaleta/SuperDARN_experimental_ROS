@@ -201,6 +201,68 @@ void iniparser_dump(dictionary * d, FILE * f)
 
 /*-------------------------------------------------------------------------*/
 /**
+  @brief    Dump a dictionary to an opened file pointer.
+  @param    d   Dictionary to dump.
+  @return   str pointer 
+
+  This function prints out the contents of a dictionary, one element by
+  line, onto the provided file pointer. It is OK to specify @c stderr
+  or @c stdout as output files. This function is meant for debugging
+  purposes mostly.
+ */
+/*--------------------------------------------------------------------------*/
+char* iniparser_to_string(dictionary * d)
+{
+        int             i ;
+        char           *str_p;
+        char            temp_str[300];
+        int             max_length=0;
+        str_p=malloc(40*sizeof(char));
+        max_length=40;
+        sprintf(str_p, "");
+        if (d==NULL || str_p==NULL) return NULL;
+        if (d->n<1) {
+                return NULL;
+        }
+
+    	for (i=0 ; i<d->size ; i++) {
+        	if (d->key[i]==NULL)
+            		continue ;
+        	if (d->val[i]!=NULL) {
+			sprintf(temp_str, "%s\t%s\n",
+                                d->key[i],
+                                d->val[i] ? d->val[i] : "UNDEF");
+                        if(strlen(temp_str)+strlen(str_p)>max_length-1) {
+                                max_length=strlen(temp_str)+strlen(str_p)+2;
+                                str_p = realloc(str_p, max_length*sizeof(char));
+                        	if(!str_p) {
+                                        printf("Allocation Error\n");
+                                        free(str_p);
+                                        return NULL;
+                                }
+                        }
+                        strncat(str_p,temp_str,strlen(temp_str));
+ 
+        	} else {
+			sprintf(temp_str, "%s\tUNDEF\n",
+                                d->key[i]);
+                        if(strlen(temp_str)+strlen(str_p)>max_length-1) {
+                                max_length=strlen(temp_str)+strlen(str_p)+2;
+                                str_p = realloc(str_p, max_length*sizeof(char));
+                        	if(!str_p) {
+                                        printf("Allocation Error\n");
+                                        free(str_p);
+                                        return NULL;
+                                }
+    			}
+                        strncat(str_p,temp_str,strlen(temp_str));
+		} 
+   	}
+    	return str_p;
+}
+
+/*-------------------------------------------------------------------------*/
+/**
   @brief    Save a dictionary to a loadable ini file
   @param    d   Dictionary to dump
   @param    f   Opened file pointer to dump to
@@ -627,6 +689,48 @@ dictionary * iniparser_load(const char * ininame)
     return dict ;
 }
 
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    Parse an ini string and return an allocated dictionary object
+  @param    ininame Name of the ini string to read.
+  @return   Pointer to newly allocated dictionary
+
+  This is the parser for ini strings. This function is called, providing
+  the name of the string to be read. It returns a dictionary object that
+  should not be accessed directly, but through accessor functions
+  instead.
+
+  The returned dictionary must be freed using iniparser_freedict().
+ */
+/*--------------------------------------------------------------------------*/
+dictionary * iniparser_load_from_string(dictionary *d, char * inistring)
+{
+
+    char entry    [ASCIILINESZ+1] ;
+    char value    [ASCIILINESZ+1] ;
+
+    char *str=NULL,*str1=NULL;
+    dictionary * dict ;
+
+    if(d==NULL) 
+      dict = dictionary_new(0) ;
+    else dict=d;
+    if (!dict) {
+        return NULL ;
+    }
+    str=inistring;
+    str1 = strtok(str, "\n") ;
+    while (str1!=NULL) {
+        str=NULL;
+	sscanf(str1,"%s\t%s",entry,value);	
+	if(strcmp(value,"UNDEF")==0)	
+	  iniparser_set(dict,entry,NULL);	
+	else 
+	  iniparser_set(dict,entry,value);	
+        str1 = strtok(str, "\n"); 
+    }
+    return dict ;
+}
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Free all memory associated to an ini dictionary

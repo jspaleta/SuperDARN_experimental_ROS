@@ -52,20 +52,28 @@ void create_example_ini_file(void)
 
 int parse_ini_file(char * ini_name)
 {
-	dictionary	*	ini ;
-
+	dictionary	*	ini=NULL ;
+	dictionary	*	test_dict=NULL;	
 	/* Some temporary variables to hold query results */
 	int				b ;
 	int				i ;
 	double			d ;
 	char		*	s ;
-
+	char		*out_str=NULL;
 	ini = iniparser_load(ini_name);
 	if (ini==NULL) {
 		fprintf(stderr, "cannot parse file: %s\n", ini_name);
 		return -1 ;
 	}
 	iniparser_dump(ini, stderr);
+        fprintf(stdout,"To_string\n");
+	out_str=iniparser_to_string(ini);
+        fprintf(stdout,"\nstring:\n");
+        fprintf(stdout,"%s\n",out_str);
+        fprintf(stdout,"From_string\n");
+	test_dict=iniparser_load_from_string(test_dict,out_str);
+        fprintf(stderr,"Dict from string:\n");
+	iniparser_dump(test_dict, stderr);
 
 	/* Get pizza attributes */
 	printf("Pizza:\n");

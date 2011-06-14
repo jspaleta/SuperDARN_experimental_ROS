@@ -171,4 +171,15 @@ void dictionary_unset(dictionary * d, char * key);
 /*--------------------------------------------------------------------------*/
 void dictionary_dump(dictionary * d, FILE * out);
 
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    Dump a dictionary to an opened string pointer.
+  @param    d   Dictionary to dump
+  @return   string pointer 
+
+  Dumps a dictionary onto an str pointer. Key pairs are printed out
+  as @c [Key]=[Value], one per line. 
+ */
+/*--------------------------------------------------------------------------*/
+char* dictionary_to_string(dictionary * d);
 #endif

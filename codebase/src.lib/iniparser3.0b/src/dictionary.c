@@ -365,7 +365,6 @@ void dictionary_dump(dictionary * d, FILE * out)
   @brief        Dumps Dictionary to a string pointer, 
 		resizes string pointer as needed	
   @param	d	Dictionary to dump
-  @param	out	string pointer.
   @return	void
 
   Dumps a dictionary onto an opened file pointer. Key pairs are printed out
