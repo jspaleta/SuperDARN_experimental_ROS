@@ -184,4 +184,8 @@ void dictionary_dump(dictionary * d, FILE * out);
  */
 /*--------------------------------------------------------------------------*/
 char* dictionary_to_string(dictionary * d);
+
+int dictionary_setbuf(dictionary * d, char * key, void * buf,int bufsize);
+void * dictionary_getbuf(dictionary * d, char * key, unsigned int *bufsize);
+
 #endif

@@ -103,18 +103,22 @@ void *DIO_transmitter_status(int32 radar)
   int32 bytes,i;
   char *data_string=NULL;
   struct tx_status *txp=NULL;  
+  void *buf=NULL; // pointer into dictionary do not free
   pthread_mutex_lock(&dio_comm_lock);
-
+  int32 temp_data=44; 
   
   aux_dict=dictionary_new(0);
-  iniparser_set(aux_dict,"timing",NULL);
-  iniparser_set(aux_dict,"timing:command","GET_TX_STATUS");
+  iniparser_set(aux_dict,"COMMAND",NULL);
+  iniparser_set(aux_dict,"command","GET_TX_STATUS");
+  iniparser_set(aux_dict,"DIO",NULL);
   sprintf(value,"%d",radar);
-  iniparser_set(aux_dict,"timing:radar",value);
+  iniparser_set(aux_dict,"DIO:radar",value);
+  iniparser_set(aux_dict,"data",NULL);
+  sprintf(value,"%d",sizeof(int32));
+  iniparser_set(aux_dict,"data:bytes",value);
+  dictionary_setbuf(aux_dict,"data",&temp_data,sizeof(int32));
   dict_string=iniparser_to_string(aux_dict);
   bytes=strlen(dict_string)+1;
-  iniparser_freedict(aux_dict);
-  aux_dict=NULL;
 /*
   s_msg.type=GET_TX_STATUS;
   s_msg.status=1;
@@ -133,6 +137,13 @@ void *DIO_transmitter_status(int32 radar)
   if(r_msg.status==1) {
     send_data(diosock, &bytes, sizeof(int32));
     send_data(diosock, dict_string, bytes*sizeof(char));
+    if(iniparser_find_entry(aux_dict,"data")==1) {
+      buf=dictionary_getbuf(aux_dict,"data",&bytes);
+      printf("DIO: GET_TX_STATUS: %p %d\n",buf,bytes);
+      send_data(diosock,buf,bytes);
+    }
+    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+    aux_dict=NULL;
 
     recv_data(diosock, &bytes, sizeof(int32));
     if(dict_string!=NULL) free(dict_string);
@@ -140,6 +151,8 @@ void *DIO_transmitter_status(int32 radar)
     recv_data(diosock, dict_string, bytes*sizeof(char));
     printf("String:\n%s",dict_string);
     recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+    aux_dict=NULL;
     aux_dict=iniparser_load_from_string(aux_dict,dict_string);
     free(dict_string);
     printf("Dict:\n");

@@ -188,18 +188,17 @@ void * dictionary_getbuf(dictionary * d, char * key, unsigned int *bufsize)
 {
 	unsigned	hash ;
 	int			i ;
-
 	hash = dictionary_hash(key);
 	for (i=0 ; i<d->size ; i++) {
-        if (d->key[i]==NULL)
-            continue ;
-        /* Compare hash */
+        	if (d->key[i]==NULL)
+            		continue ;
+        	/* Compare hash */ 
 		if (hash==d->hash[i]) {
-            /* Compare string, to avoid hash collisions */
-            if (!strcmp(key, d->key[i])) {
+            		/* Compare string, to avoid hash collisions */ 
+            		if (!strcmp(key, d->key[i])) {
 				*bufsize=d->bufsize[i];
 				return d->buf[i] ;
-			}
+	    		}
 		}
 	}
 	*bufsize=0;
@@ -240,6 +239,99 @@ char * dictionary_get(dictionary * d, char * key, char * def)
 	return def ;
 }
 
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    Set a buf in a dictionary.
+  @param    d       dictionary object to modify.
+  @param    key     Key to modify or add.
+  @param    buf     buf to add.
+  @param    bufsize bytes to add.
+  @return   int     0 if Ok, anything else otherwise
+
+  If the given key is found in the dictionary, the associated value is
+  replaced by the provided one. If the key cannot be found in the
+  dictionary, it is added to it.
+
+  It is Ok to provide a NULL value for val, but NULL values for the dictionary
+  or the key are considered as errors: the function will return immediately
+  in such a case.
+
+  Notice that if you dictionary_setbuf a variable to NULL, a call to
+  dictionary_get will return a NULL value: the variable will be found, and
+  its value (NULL) is returned. In other words, setting the variable
+  content to NULL is equivalent to deleting the variable from the
+  dictionary. It is not possible (in this implementation) to have a key in
+  the dictionary without value.
+
+  This function returns non-zero in case of failure.
+ */
+/*--------------------------------------------------------------------------*/
+int dictionary_setbuf(dictionary * d, char * key, void * buf,int bufsize)
+{
+	int			i ;
+	unsigned	hash ;
+
+	if (d==NULL || key==NULL) return -1 ;
+	
+	/* Compute hash for this key */
+	hash = dictionary_hash(key) ;
+	/* Find if buf is already in dictionary */
+	if (d->n>0) {
+	  for (i=0 ; i<d->size ; i++) {
+            if (d->key[i]==NULL)
+                continue ;
+	    if (hash==d->hash[i]) { /* Same hash value */
+	      if (!strcmp(key, d->key[i])) {	 /* Same key */
+		/* Found a value: modify and return */
+	        if(d->buf[i]!=NULL) free(d->buf[i]);
+	        d->buf[i]=malloc(bufsize);
+	        d->bufsize[i] = bufsize;
+	        memmove(d->buf[i],buf,bufsize);	
+                /* Value has been modified: return */
+	        return 0 ;
+	      }
+	    }
+          }
+	}
+	/* Add a new value */
+	/* See if dictionary needs to grow */
+	if (d->n==d->size) {
+
+		/* Reached maximum size: reallocate dictionary */
+		d->val  = (char **)mem_double(d->val,  d->size * sizeof(char*)) ;
+		d->buf  = (void **)mem_double(d->buf,  d->size * sizeof(void*)) ;
+		d->key  = (char **)mem_double(d->key,  d->size * sizeof(char*)) ;
+		d->hash = (unsigned int *)mem_double(d->hash, d->size * sizeof(unsigned)) ;
+		d->bufsize = (unsigned int *)mem_double(d->bufsize, d->size * sizeof(unsigned)) ;
+        if ((d->val==NULL) || (d->key==NULL) || (d->hash==NULL)) {
+            /* Cannot grow dictionary */
+            return -1 ;
+        }
+        if ((d->buf==NULL) || (d->bufsize==NULL)) {
+            /* Cannot grow dictionary */
+            return -1 ;
+        }
+		/* Double size */
+		d->size *= 2 ;
+	}
+
+    /* Insert key in the first empty slot */
+    for (i=0 ; i<d->size ; i++) {
+        if (d->key[i]==NULL) {
+            /* Add key here */
+            break ;
+        }
+    }
+	/* Copy key */
+	d->key[i]  = xstrdup(key);
+	if(d->buf[i]!=NULL) free(d->buf[i]);
+	d->buf[i]=malloc(bufsize);
+	d->bufsize[i] = bufsize;
+	memmove(d->buf[i],buf,bufsize);	
+	d->hash[i] = hash;
+	d->n ++ ;
+	return 0 ;
+}
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Set a value in a dictionary.

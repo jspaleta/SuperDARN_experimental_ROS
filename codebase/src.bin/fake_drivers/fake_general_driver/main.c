@@ -19,11 +19,15 @@
 
 int verbose=0;
 int sock,msgsock;
-dictionary *Site_INI;
-dictionary *aux_command_ini=NULL;
+dictionary *Site_INI=NULL;
+dictionary *aux=NULL;
 char *command_dict_string=NULL;
 char *data_string=NULL;
 int32 bytes,data_bytes;
+void *buf=NULL; // This is malloced and needs to be freed
+void *data_buf=NULL; // This is a pointer into a dict.. do not free or realloc 
+int32 *temp_data_pointer;
+int32 bufsize;
 void graceful_cleanup(int signum){
   close(msgsock);
   close(sock);
@@ -50,8 +54,6 @@ int main ( int argc, char **argv){
         struct TRTimes transmit_times;		// actual TR windows used
         int     numclients=0;				// number of active clients
 	int32	radar=0,channel=0,data_status=0;
-	struct tx_status txstatus[MAX_RADARS]; 
-	struct tx_status *txp; 
 	struct SiteSettings site_settings;	
 	int32 gps_event,gpssecond,gpsnsecond,gpsrate;
  
@@ -61,7 +63,7 @@ int main ( int argc, char **argv){
         fd_set rfds,efds;	//TCP socket status
         struct timeval select_timeout;	// timeout for select function
 	// counter and temporary variables
-	int	i,j,r,c,buf;
+	int	i,j,r,c,dmabufnum;
         int32   index;
 	int 	temp;
 	int32 	temp32;
@@ -175,12 +177,15 @@ int main ( int argc, char **argv){
             seq_buf[r][c]=malloc(4*MAX_TIME_SEQ_LEN);
            
           } 
+/*
           for (i=0;i<MAX_TRANSMITTERS;i++) {
 		txstatus[r].LOWPWR[i]=100*(r+1)+i;
 		txstatus[r].AGC[i]=1000*(r+1)+i;
 		txstatus[r].status[i]=10000*(r+1)+i;
           } 
+*/
         }
+
 	/* These are only potentially needed for drivers that unpack 
  	*  that unpack the timing sequence. See the provided fake timing driver
  	*/
@@ -219,7 +224,7 @@ int main ( int argc, char **argv){
                     break;
                   }
                   if (rval == -1) perror("select()");
-                  rval=recv(msgsock, &buf, sizeof(int), MSG_PEEK); 
+                  rval=recv(msgsock, &dmabufnum, sizeof(int), MSG_PEEK); 
                   if (verbose>1) printf("%d PEEK Recv Msg %d\n",msgsock,rval);
 		  if (rval==0) {
                     if (verbose > 1) printf("Remote Msgsock %d client disconnected ...closing\n",msgsock);
@@ -507,39 +512,50 @@ int main ( int argc, char **argv){
                         msg.status=1;
                         if(msg.status==1) {
                           rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                          /* Prepare to recv command dict and data buf */
                           rval=recv_data(msgsock, &bytes, sizeof(int32));
 			  if (verbose > 1 ) printf("AUX_COMMAND: recv dict bytes %d\n",bytes);	
 			  if(command_dict_string!=NULL) {
                             free(command_dict_string);
 			    command_dict_string=NULL;	
                           }
-			  if (verbose > 1 ) printf("AUX_COMMAND: command dict string freed\n");	
-			  if(aux_command_ini!=NULL) {
-			    iniparser_freedict(aux_command_ini);	
-			    aux_command_ini=NULL;	
+			  if(aux!=NULL) {
+			    iniparser_freedict(aux);	
+			    aux=NULL;	
                           }
-			  if (verbose > 1 ) printf("AUX_COMMAND: aux dict freed\n");	
              		  command_dict_string=malloc((bytes+10)*sizeof(char));
-			  if (verbose > 1 ) printf("AUX_COMMAND: string malloced\n");	
 		          rval=recv_data(msgsock,command_dict_string,bytes);
-			  if (verbose > 1 ) printf("AUX_COMMAND: string recvd\n");	
-			  aux_command_ini=iniparser_load_from_string(aux_command_ini,command_dict_string);
-                          data_bytes=sizeof(struct tx_status);
-                          data_string=malloc(data_bytes);
-			  txp=&txstatus[0];
-			  sprintf(data_string,"%d",data_bytes);
-			  dictionary_set(aux_command_ini,"txstatus",NULL);	
-			  //dictionary_set_buf(aux_command_ini,"txstatus",txp,data_bytes);	
-			  free(data_string);
-			  iniparser_dump_ini(aux_command_ini,stdout);	
+			  aux=iniparser_load_from_string(aux,command_dict_string);
+                          /* Prepare to recv arb. buf data buf */
+			  if(iniparser_find_entry(aux,"data")==1) {
+                            bytes=iniparser_getint(aux,"data:bytes",0);
+			    if (verbose > 1 ) printf("AUX_COMMAND: dict has data buf %d\n",bytes);	
+			    if(buf!=NULL) free(buf);
+                            buf=malloc(bytes);
+		            rval=recv_data(msgsock,buf,bytes);
+			    temp_data_pointer=(int32*)buf;
+			    printf("AUX_COMMAND: dict buf data as int32 %d\n",*temp_data_pointer);	
+			    dictionary_setbuf(aux,"data",buf,bytes);
+			  }
+			  /* process aux command ini here */
+			  process_aux_commands(aux,driver_type);
+
+			  iniparser_dump_ini(aux,stdout);	
+                          /* Prepare to send return dict and data buf */
                           if(command_dict_string!=NULL) free(command_dict_string);
-                          command_dict_string=iniparser_to_string(aux_command_ini);
-                          printf("%s",command_dict_string);
+                          command_dict_string=iniparser_to_string(aux);
 			  bytes=strlen(command_dict_string)+1;
                           rval=send_data(msgsock, &bytes, sizeof(int32));
 		          rval=send_data(msgsock,command_dict_string,bytes);
-			  iniparser_freedict(aux_command_ini);
-			  aux_command_ini=NULL;	
+			  if(iniparser_find_entry(aux,"data")==1) {
+                            bytes=iniparser_getint(aux,"data:bytes",0);
+			    if (verbose > 1 ) printf("AUX_COMMAND: output dict has data buf %d\n",bytes);	
+			    data_buf=dictionary_getbuf(aux,"data",&bufsize);
+                            rval=send_data(msgsock, &bufsize, sizeof(int32));
+		            rval=send_data(msgsock,data_buf,bufsize);
+			  }
+			  if(aux!=NULL) iniparser_freedict(aux);
+			  aux=NULL;	
 			}
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
@@ -626,25 +642,25 @@ int main ( int argc, char **argv){
 	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
-		      case GET_TX_STATUS:
-			/* GET_TX_STATUS: The ROS may issue this command to a driver. 
-			*  Only one driver should respond to this command 
-			*  This should be turned into an AUX command 
- 			*/  
-			if (verbose > 1 ) printf("Driver: GET_TX_STATUS\n");	
-			/* Inform the ROS that this driver does not handle this command by sending 
- 			* msg back with msg.status=0.
- 			*/
-          		if(strcmp(driver_type,"DIO")==0) {
-				msg.status=1;
-                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-				recv_data(msgsock, &radar, sizeof(radar));
-    				send_data(msgsock, &txstatus[radar-1], sizeof(struct tx_status));
-
-			}
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-			break;
+//		      case GET_TX_STATUS:
+//			/* GET_TX_STATUS: The ROS may issue this command to a driver. 
+//			*  Only one driver should respond to this command 
+//			*  This should be turned into an AUX command 
+// 			*/  
+//			if (verbose > 1 ) printf("Driver: GET_TX_STATUS\n");	
+//			/* Inform the ROS that this driver does not handle this command by sending 
+// 			* msg back with msg.status=0.
+// 			*/
+//          		if(strcmp(driver_type,"DIO")==0) {
+//				msg.status=1;
+//                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+//				recv_data(msgsock, &radar, sizeof(radar));
+//    				send_data(msgsock, &txstatus[radar-1], sizeof(struct tx_status));
+//
+//			}
+//	  		else msg.status=0;
+//                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+//			break;
 		      case GET_EVENT_TIME:
 			/* GET_EVENT_TIME: The ROS may issue this command to a driver. 
 			*  Only one driver should respond to this command 
