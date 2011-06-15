@@ -523,7 +523,7 @@ void *control_handler(struct ControlProgram *control_program)
                 /* process aux command dictionary here */
                 process_aux_commands(&auxdata,"DIO");
 
-                iniparser_dump_ini(auxdata.aux_dict,stdout);
+                //iniparser_dump_ini(auxdata.aux_dict,stdout);
                 /* Prepare to send return dict and data buf */
                 if(command_dict_string!=NULL) free(command_dict_string);
                 command_dict_string=iniparser_to_string(auxdata.aux_dict);

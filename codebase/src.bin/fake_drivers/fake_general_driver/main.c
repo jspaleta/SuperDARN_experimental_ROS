@@ -23,8 +23,12 @@ dictionary *Site_INI=NULL;
 dictionary *aux=NULL;
 char *command_dict_string=NULL;
 char *data_string=NULL;
-int32 bytes,data_bytes;
+char *secname_in_dict=NULL;
+char secname_static[200];
+char entry[200];
+int32 nsecs,bytes,data_bytes;
 void *buf=NULL; // This is malloced and needs to be freed
+void *temp_buf=NULL; // This is malloced and needs to be freed
 void *dict_data_buf=NULL; // This is a pointer into a dict.. do not free or realloc 
 unsigned int bufsize;
 void graceful_cleanup(int signum){
@@ -526,6 +530,7 @@ int main ( int argc, char **argv){
 		          rval=recv_data(msgsock,command_dict_string,bytes);
 			  aux=iniparser_load_from_string(aux,command_dict_string);
                           /* Prepare to recv arb. buf data buf */
+/*
 			  if(iniparser_find_entry(aux,"data")==1) {
                             bytes=iniparser_getint(aux,"data:bytes",0);
 			    if (verbose > 1 ) printf("AUX_COMMAND: dict has data buf %d\n",bytes);	
@@ -534,20 +539,41 @@ int main ( int argc, char **argv){
 		            rval=recv_data(msgsock,buf,bytes);
 			    dictionary_setbuf(aux,"data",buf,bytes);
 			  }
+*/
+                          rval=recv_data(msgsock, &nsecs, sizeof(int32));
+                          for(i=0 ; i<nsecs;i++) {
+			    recv_data(msgsock,&bytes,sizeof(int32));
+			    recv_data(msgsock,secname_static,bytes);
+			    sprintf(entry,"%s:bytes",secname_static);
+			    bytes=iniparser_getint(aux,entry,0);
+			    if(temp_buf!=NULL) free(temp_buf);
+			    temp_buf=malloc(bytes);
+			    recv_data(msgsock,temp_buf,bytes);
+			    dictionary_setbuf(aux,secname_static,temp_buf,bytes);
+			    if(temp_buf!=NULL) free(temp_buf);
+			    temp_buf=NULL;
+			  }
 			  /* process aux command dictionary here */
 			  process_aux_commands(aux,driver_type);
 
-			  iniparser_dump_ini(aux,stdout);	
-                          /* Prepare to send return dict and data buf */
                           if(command_dict_string!=NULL) free(command_dict_string);
                           command_dict_string=iniparser_to_string(aux);
 			  bytes=strlen(command_dict_string)+1;
                           rval=send_data(msgsock, &bytes, sizeof(int32));
 		          rval=send_data(msgsock,command_dict_string,bytes);
-			  if(iniparser_find_entry(aux,"data")==1) {
-                            bytes=iniparser_getint(aux,"data:bytes",0);
-			    if (verbose > 1 ) printf("AUX_COMMAND: output dict has data buf %d\n",bytes);	
-			    dict_data_buf=dictionary_getbuf(aux,"data",&bufsize);
+
+			  //iniparser_dump_ini(aux,stdout);	
+                          /* Prepare to send return dict and section data buffers */
+                          nsecs=iniparser_getnsec(aux);
+			  if (verbose > 1 ) printf("AUX_COMMAND: nsecs %d\n",nsecs);	
+                          rval=send_data(msgsock, &nsecs, sizeof(int32));
+                          for(i=0 ; i<nsecs;i++) {
+                            secname_in_dict=iniparser_getsecname(aux,i);
+                            dict_data_buf=dictionary_getbuf(aux,secname_in_dict,&bufsize);
+			    bytes=strlen(secname_in_dict)+1;
+		            rval=send_data(msgsock,&bytes,sizeof(int32));
+		            rval=send_data(msgsock,secname_in_dict,bytes);
+                            printf("%d : %s : %d\n",bytes,secname_in_dict,bufsize);
 			    bytes=bufsize;
 		            rval=send_data(msgsock,dict_data_buf,bytes);
 			  }

@@ -73,7 +73,7 @@ main( int argc, char *argv[])
   int32 bytes;
   char *dict_string=NULL;
   int32 temp_data=44;
-
+  char *secname=NULL; 
 
 //Initialize structures
 
@@ -321,6 +321,11 @@ main( int argc, char *argv[])
     sprintf(value,"%d",sizeof(int32));
     iniparser_set(aux_dict,"data:bytes",value);
     dictionary_setbuf(aux_dict,"data",&temp_data,sizeof(int32));
+    for(i=0 ; i<iniparser_getnsec(aux_dict);i++) {
+      secname=iniparser_getsecname(aux_dict,i);
+      dict_buf=dictionary_getbuf(aux_dict,secname,&bufsize);
+      printf("%s: %d\n",secname,bufsize);
+    }
 
     dict_string=iniparser_to_string(aux_dict);
     bytes=strlen(dict_string)+1;

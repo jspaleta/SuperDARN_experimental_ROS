@@ -100,7 +100,11 @@ void *DIO_aux_command(struct AUXdata *auxdata)
   dictionary *aux_dict=NULL;
   char *dict_string=NULL;
   char value[200];
-  int32 bytes;
+  char entry[200];
+  char secname_static[200];
+  char *secname_in_dict;
+
+  int32 nsecs,bytes;
   unsigned int bufsize;
   struct tx_status *txp=NULL;  
   void *dict_buf=NULL; // pointer into dictionary do not free
@@ -110,6 +114,7 @@ void *DIO_aux_command(struct AUXdata *auxdata)
   
   aux_dict=auxdata->aux_dict;
   printf("DIO AUX Pre Dict pointer: %p\n",aux_dict);
+  iniparser_dump_ini(auxdata->aux_dict,stdout);
 
   dict_string=iniparser_to_string(aux_dict);
   bytes=strlen(dict_string)+1;
@@ -121,31 +126,58 @@ void *DIO_aux_command(struct AUXdata *auxdata)
   if(r_msg.status==1) {
     printf("DIO AUX Command is valid\n");
     send_data(diosock, &bytes, sizeof(int32));
+    printf("%s",dict_string);
     send_data(diosock, dict_string, bytes*sizeof(char));
     /* Prepare to send arb. data buf */
+/*
     if(iniparser_find_entry(aux_dict,"data")==1) {
       dict_buf=dictionary_getbuf(aux_dict,"data",&bufsize);
       bytes=bufsize;
       send_data(diosock,dict_buf,bytes);
     }
+*/
+    nsecs=iniparser_getnsec(aux_dict);
+    send_data(diosock, &nsecs, sizeof(int32));
+    for(i=0;i<nsecs;i++) {
+      secname_in_dict=iniparser_getsecname(aux_dict,i);
+      dict_buf=dictionary_getbuf(aux_dict,secname_in_dict,&bufsize);
+      bytes=strlen(secname_in_dict)+1;
+      send_data(diosock,&bytes,sizeof(int32));
+      send_data(diosock,secname_in_dict,bytes);
+      bytes=bufsize;
+      send_data(diosock,dict_buf,bytes);
+    }
     if(aux_dict!=NULL) iniparser_freedict(aux_dict);
     aux_dict=NULL;
-    printf("AUX Command send %p\n",aux_dict);
+
+    printf("AUX dict and buffers sent %p\n",aux_dict);
+
     recv_data(diosock, &bytes, sizeof(int32));
     if(dict_string!=NULL) free(dict_string);
     dict_string=malloc(sizeof(char)*(bytes+10));
+    sprintf(dict_string,"");
     recv_data(diosock, dict_string, bytes*sizeof(char));
+    printf("%s",dict_string);
     if(aux_dict!=NULL) iniparser_freedict(aux_dict);
     aux_dict=NULL;
-    aux_dict=iniparser_load_from_string(aux_dict,dict_string);
+    aux_dict=iniparser_load_from_string(NULL,dict_string);
     free(dict_string);
     /* Prepare to recv arb. buf data buf and place it into dict*/
-    if(iniparser_find_entry(aux_dict,"data")==1) {
-      bytes=iniparser_getint(aux_dict,"data:bytes",0);
+    nsecs=0;
+    recv_data(diosock,&nsecs,sizeof(int32));
+    printf("DIO AUX Command nsecs %d\n",nsecs);
+    for(i=0;i<nsecs;i++) {
+      recv_data(diosock,&bytes,sizeof(int32));
+      printf("%d :",bytes);
+      recv_data(diosock,secname_static,bytes);
+      printf(" %s :",secname_static);
+      sprintf(entry,"%s:bytes",secname_static);
+      bytes=iniparser_getint(aux_dict,entry,0);
+      printf(" %d\n",bytes);
       if(temp_buf!=NULL) free(temp_buf);
       temp_buf=malloc(bytes);
       recv_data(diosock,temp_buf,bytes);
-      dictionary_setbuf(aux_dict,"data",temp_buf,bytes);
+      dictionary_setbuf(aux_dict,secname_static,temp_buf,bytes);
       if(temp_buf!=NULL) free(temp_buf);
       temp_buf=NULL;
     }
@@ -157,6 +189,8 @@ void *DIO_aux_command(struct AUXdata *auxdata)
   }
   printf("AUX POST Dict pointer: %p\n",aux_dict);
   auxdata->aux_dict=aux_dict;
+  iniparser_dump_ini(auxdata->aux_dict,stdout);
+  
   pthread_mutex_unlock(&dio_comm_lock);
   pthread_exit(NULL);
 };
