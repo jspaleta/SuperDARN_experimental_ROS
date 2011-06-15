@@ -4,6 +4,7 @@
 #include "rtypes.h"
 #include "control_program.h"
 #include "site.h" 
+#include "iniparser.h"
 
 #ifndef _GLOBAL_SERVER_H
 #define _GLOBAL_SERVER_H
@@ -261,5 +262,8 @@ struct GPSStatus {
 	int32	ratesynthrate;
 
 
+};
+struct AUXdata {
+  dictionary *aux_dict;
 };
 #endif
