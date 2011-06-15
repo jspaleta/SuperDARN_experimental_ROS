@@ -220,9 +220,9 @@ char* iniparser_to_string(dictionary * d)
         str_p=malloc(40*sizeof(char));
         max_length=40;
         sprintf(str_p, "");
-        if (d==NULL || str_p==NULL) return NULL;
+        if (d==NULL || str_p==NULL) return str_p;
         if (d->n<1) {
-                return NULL;
+                return str_p;
         }
 
     	for (i=0 ; i<d->size ; i++) {

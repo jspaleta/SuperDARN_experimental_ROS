@@ -77,6 +77,11 @@ main( int argc, char *argv[])
 
 //Initialize structures
 
+  for (i=0;i<MAX_TRANSMITTERS;i++) {
+        txstatus.LOWPWR[i]=0,
+        txstatus.AGC[i]=0,
+        txstatus.status[i]=0;
+  }
   fp=fopen("/tmp/gc314_test_data.txt", "w+");
   main=NULL;
   back=NULL;

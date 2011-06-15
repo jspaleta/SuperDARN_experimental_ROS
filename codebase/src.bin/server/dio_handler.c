@@ -109,16 +109,17 @@ void *DIO_aux_command(struct AUXdata *auxdata)
   pthread_mutex_lock(&dio_comm_lock);
   
   aux_dict=auxdata->aux_dict;
-  printf("AUX Pre Dict pointer: %p\n",aux_dict);
+  printf("DIO AUX Pre Dict pointer: %p\n",aux_dict);
 
   dict_string=iniparser_to_string(aux_dict);
   bytes=strlen(dict_string)+1;
   s_msg.type=AUX_COMMAND;
   s_msg.status=1;
+  r_msg.status=0;
   send_data(diosock, &s_msg, sizeof(struct DriverMsg));
   recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
   if(r_msg.status==1) {
-    printf("AUX Command is valid\n");
+    printf("DIO AUX Command is valid\n");
     send_data(diosock, &bytes, sizeof(int32));
     send_data(diosock, dict_string, bytes*sizeof(char));
     /* Prepare to send arb. data buf */
@@ -149,8 +150,11 @@ void *DIO_aux_command(struct AUXdata *auxdata)
       temp_buf=NULL;
     }
     recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+  } else {
+    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+    aux_dict=dictionary_new(0);
+    printf("AUX Command is invalid\n");
   }
-
   printf("AUX POST Dict pointer: %p\n",aux_dict);
   auxdata->aux_dict=aux_dict;
   pthread_mutex_unlock(&dio_comm_lock);
