@@ -414,7 +414,12 @@ void *control_handler(struct ControlProgram *control_program)
    char *command_dict_string=NULL;
    struct AUXdata auxdata;
    void *buf=NULL; // This is malloced and needs to be freed
+   void *temp_buf=NULL; // This is malloced and needs to be freed
    void *dict_data_buf=NULL; // This is a pointer into a dict.. do not free or realloc 
+   int32 nsecs;
+   char  *secname_in_dict=NULL;
+   char  secname_static[200];
+   char  entry[200];
    auxdata.aux_dict=NULL;
 /*
 *  Init the Control Program state
@@ -512,14 +517,21 @@ void *control_handler(struct ControlProgram *control_program)
                 recv_data(socket,command_dict_string,bytes);
                 auxdata.aux_dict=iniparser_load_from_string(auxdata.aux_dict,command_dict_string);
                 /* Prepare to recv arb. buf data buf */
-                if(iniparser_find_entry(auxdata.aux_dict,"data")==1) {
-                  bytes=iniparser_getint(auxdata.aux_dict,"data:bytes",0);
-                  if (verbose > 1 ) printf("AUX_COMMAND: dict has data buf %d\n",bytes);
-                  if(buf!=NULL) free(buf);
-                  buf=malloc(bytes);
-                  recv_data(socket,buf,bytes);
-                  dictionary_setbuf(auxdata.aux_dict,"data",buf,bytes);
+                recv_data(socket, &nsecs, sizeof(int32));
+                for(i=0 ; i<nsecs;i++) {
+                  recv_data(socket,&bytes,sizeof(int32));
+                  recv_data(socket,secname_static,bytes);
+                  sprintf(entry,"%s:bytes",secname_static);
+                  bytes=iniparser_getint(auxdata.aux_dict,entry,0);
+                  if(temp_buf!=NULL) free(temp_buf);
+                  temp_buf=malloc(bytes);
+                  recv_data(socket,temp_buf,bytes);
+                  dictionary_setbuf(auxdata.aux_dict,secname_static,temp_buf,bytes);
+                  if(temp_buf!=NULL) free(temp_buf);
+                  temp_buf=NULL;
                 }
+
+
                 /* process aux command dictionary here */
                 process_aux_commands(&auxdata,"DIO");
 
@@ -532,10 +544,15 @@ void *control_handler(struct ControlProgram *control_program)
                 printf("Client: AUX bytes %d\n",bytes);
                 send_data(socket, &bytes, sizeof(int32));
                 send_data(socket,command_dict_string,bytes);
-                if(iniparser_find_entry(auxdata.aux_dict,"data")==1) {
-                  bytes=iniparser_getint(auxdata.aux_dict,"data:bytes",0);
-                  if (verbose > 1 ) printf("AUX_COMMAND: output dict has data buf %d\n",bytes);
-                  dict_data_buf=dictionary_getbuf(auxdata.aux_dict,"data",&bufsize);
+                nsecs=iniparser_getnsec(auxdata.aux_dict); 
+                send_data(socket, &nsecs, sizeof(int32));
+                for(i=0 ; i<nsecs;i++) {
+                  secname_in_dict=iniparser_getsecname(auxdata.aux_dict,i);
+                  dict_data_buf=dictionary_getbuf(auxdata.aux_dict,secname_in_dict,&bufsize);
+                  bytes=strlen(secname_in_dict)+1;
+
+                  send_data(socket,&bytes,sizeof(int32));
+                  send_data(socket,secname_in_dict,bytes);
                   bytes=bufsize;
                   send_data(socket,dict_data_buf,bytes);
                 }

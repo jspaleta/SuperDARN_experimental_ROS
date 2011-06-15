@@ -73,7 +73,10 @@ main( int argc, char *argv[])
   int32 bytes;
   char *dict_string=NULL;
   int32 temp_data=44;
-  char *secname=NULL; 
+  char *secname_in_dict=NULL; 
+  char secname_static[200]; 
+  char entry[200]; 
+  int32 nsecs;
 
 //Initialize structures
 
@@ -321,10 +324,11 @@ main( int argc, char *argv[])
     sprintf(value,"%d",sizeof(int32));
     iniparser_set(aux_dict,"data:bytes",value);
     dictionary_setbuf(aux_dict,"data",&temp_data,sizeof(int32));
-    for(i=0 ; i<iniparser_getnsec(aux_dict);i++) {
-      secname=iniparser_getsecname(aux_dict,i);
-      dict_buf=dictionary_getbuf(aux_dict,secname,&bufsize);
-      printf("%s: %d\n",secname,bufsize);
+    nsecs=iniparser_getnsec(aux_dict);
+    for(i=0 ; i<nsecs;i++) {
+      secname_in_dict=iniparser_getsecname(aux_dict,i);
+      dict_buf=dictionary_getbuf(aux_dict,secname_in_dict,&bufsize);
+      printf("%s: %d\n",secname_in_dict,bufsize);
     }
 
     dict_string=iniparser_to_string(aux_dict);
@@ -338,11 +342,25 @@ main( int argc, char *argv[])
       send_data(s, &bytes, sizeof(int32));
       send_data(s, dict_string, bytes*sizeof(char));
       /* Prepare to send arb. data buf */
+/*
       if(iniparser_find_entry(aux_dict,"data")==1) {
         dict_buf=dictionary_getbuf(aux_dict,"data",&bufsize);
         bytes=bufsize;
         send_data(s,dict_buf,bytes);
       }
+*/
+      nsecs=iniparser_getnsec(aux_dict);
+      send_data(s, &nsecs, sizeof(int32));
+      for(i=0 ; i<nsecs;i++) {
+        secname_in_dict=iniparser_getsecname(aux_dict,i);
+        dict_buf=dictionary_getbuf(aux_dict,secname_in_dict,&bufsize);
+        bytes=strlen(secname_in_dict)+1;
+        send_data(s,&bytes,sizeof(int32));
+        send_data(s,secname_in_dict,bytes);
+        bytes=bufsize;
+        send_data(s,dict_buf,bytes);
+      }
+
       if(aux_dict!=NULL) iniparser_freedict(aux_dict);
       aux_dict=NULL;
       printf("AUX Command send %p\n",aux_dict);
@@ -355,6 +373,7 @@ main( int argc, char *argv[])
       aux_dict=iniparser_load_from_string(aux_dict,dict_string);
       free(dict_string);
       /* Prepare to recv arb. buf data buf and place it into dict*/
+/*
       if(iniparser_find_entry(aux_dict,"data")==1) {
         bytes=iniparser_getint(aux_dict,"data:bytes",0);
         if(temp_buf!=NULL) free(temp_buf);
@@ -364,10 +383,26 @@ main( int argc, char *argv[])
         if(temp_buf!=NULL) free(temp_buf);
         temp_buf=NULL;
       }
+*/
+      nsecs=0;
+      recv_data(s,&nsecs,sizeof(int32));
+      printf("DIO AUX Command nsecs %d\n",nsecs);
+      for(i=0;i<nsecs;i++) {
+        recv_data(s,&bytes,sizeof(int32));
+        recv_data(s,secname_static,bytes);
+        sprintf(entry,"%s:bytes",secname_static);
+        bytes=iniparser_getint(aux_dict,entry,0);
+        if(temp_buf!=NULL) free(temp_buf);
+        temp_buf=malloc(bytes);
+        recv_data(s,temp_buf,bytes);
+        dictionary_setbuf(aux_dict,secname_static,temp_buf,bytes);
+        if(temp_buf!=NULL) free(temp_buf);
+        temp_buf=NULL;
+      }
       recv_data(s, &rmsg, sizeof(struct ROSMsg));
     }
 
-    dict_buf=dictionary_getbuf(aux_dict,"data",&bufsize);
+    dict_buf=dictionary_getbuf(aux_dict,"dio",&bufsize);
     printf("Data Bufsize %d tx_status size: %d\n",bufsize,sizeof(struct tx_status));
     printf("TX Status for radar %d\n",r);
     memmove(&txstatus,dict_buf,bufsize);
