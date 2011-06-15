@@ -534,7 +534,7 @@ int main ( int argc, char **argv){
 		            rval=recv_data(msgsock,buf,bytes);
 			    dictionary_setbuf(aux,"data",buf,bytes);
 			  }
-			  /* process aux command ini here */
+			  /* process aux command dictionary here */
 			  process_aux_commands(aux,driver_type);
 
 			  iniparser_dump_ini(aux,stdout);	
