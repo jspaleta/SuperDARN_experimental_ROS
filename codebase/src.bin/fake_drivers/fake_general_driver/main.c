@@ -11,6 +11,7 @@
 #include "global_server_variables.h"
 #include "utils.h"
 #include "iniparser.h"
+#include "dictionary.h"
 
 #define MAX_TSG 16
 #define	MAX_TIME_SEQ_LEN 1048576
@@ -19,11 +20,11 @@
 int verbose=0;
 int sock,msgsock;
 dictionary *Site_INI;
-dictionary *aux_command_ini;
+dictionary *aux_command_ini=NULL;
 char *command_dict_string=NULL;
-int32 bytes;
-void graceful_cleanup(int signum)
-{
+char *data_string=NULL;
+int32 bytes,data_bytes;
+void graceful_cleanup(int signum){
   close(msgsock);
   close(sock);
   exit(0);
@@ -50,6 +51,7 @@ int main ( int argc, char **argv){
         int     numclients=0;				// number of active clients
 	int32	radar=0,channel=0,data_status=0;
 	struct tx_status txstatus[MAX_RADARS]; 
+	struct tx_status *txp; 
 	struct SiteSettings site_settings;	
 	int32 gps_event,gpssecond,gpsnsecond,gpsrate;
  
@@ -148,12 +150,8 @@ int main ( int argc, char **argv){
 		port_number=RECV_HOST_PORT;
 	  }
         }
-	     
 	printf("Driver Type:  %s Port: %d \n",driver_type,port_number);
 	printf("Verbose Level:  %d \n",verbose);
-       /* Instead of reporting ‘--verbose’
- *           and ‘--brief’ as they are encountered,
- *                     we report the final status resulting from them. */
 
 	Site_INI=NULL;
 	/* Pull the site ini file */ 
@@ -178,9 +176,9 @@ int main ( int argc, char **argv){
            
           } 
           for (i=0;i<MAX_TRANSMITTERS;i++) {
-		txstatus[r].LOWPWR[i]=1;
-		txstatus[r].AGC[i]=1;
-		txstatus[r].status[i]=31;
+		txstatus[r].LOWPWR[i]=100*(r+1)+i;
+		txstatus[r].AGC[i]=1000*(r+1)+i;
+		txstatus[r].status[i]=10000*(r+1)+i;
           } 
         }
 	/* These are only potentially needed for drivers that unpack 
@@ -507,28 +505,44 @@ int main ( int argc, char **argv){
  			*/
 
                         msg.status=1;
-                        if(msg.status=1) {
+                        if(msg.status==1) {
                           rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
                           rval=recv_data(msgsock, &bytes, sizeof(int32));
+			  if (verbose > 1 ) printf("AUX_COMMAND: recv dict bytes %d\n",bytes);	
 			  if(command_dict_string!=NULL) {
                             free(command_dict_string);
 			    command_dict_string=NULL;	
                           }
+			  if (verbose > 1 ) printf("AUX_COMMAND: command dict string freed\n");	
 			  if(aux_command_ini!=NULL) {
 			    iniparser_freedict(aux_command_ini);	
 			    aux_command_ini=NULL;	
                           }
+			  if (verbose > 1 ) printf("AUX_COMMAND: aux dict freed\n");	
              		  command_dict_string=malloc((bytes+10)*sizeof(char));
-		          rval=recv_data(msgsock,&command_dict_string,bytes);
+			  if (verbose > 1 ) printf("AUX_COMMAND: string malloced\n");	
+		          rval=recv_data(msgsock,command_dict_string,bytes);
+			  if (verbose > 1 ) printf("AUX_COMMAND: string recvd\n");	
 			  aux_command_ini=iniparser_load_from_string(aux_command_ini,command_dict_string);
+                          data_bytes=sizeof(struct tx_status);
+                          data_string=malloc(data_bytes);
+			  txp=&txstatus[0];
+			  sprintf(data_string,"%d",data_bytes);
+			  dictionary_set(aux_command_ini,"txstatus",NULL);	
+			  dictionary_set_buf(aux_command_ini,"txstatus",txp,data_bytes);	
+			  free(data_string);
 			  iniparser_dump_ini(aux_command_ini,stdout);	
+                          if(command_dict_string!=NULL) free(command_dict_string);
+                          command_dict_string=iniparser_to_string(aux_command_ini);
+                          printf("%s",command_dict_string);
+			  bytes=strlen(command_dict_string)+1;
                           rval=send_data(msgsock, &bytes, sizeof(int32));
-		          rval=send_data(msgsock,&command_dict_string,bytes);
+		          rval=send_data(msgsock,command_dict_string,bytes);
 			  iniparser_freedict(aux_command_ini);
 			  aux_command_ini=NULL;	
 			}
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-
+			break;
 /* Commands that should only be servced  by a single driver. 
  * Site ini file should be configured to instruct the ROS as to which driver
  * services each of the following commands */

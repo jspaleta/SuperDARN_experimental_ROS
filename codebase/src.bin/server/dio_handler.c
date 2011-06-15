@@ -7,6 +7,7 @@
 #include "global_server_variables.h"
 #include "dio_handler.h"
 #include "utils.h"
+#include "iniparser.h"
 
 extern int diosock;
 extern int verbose;
@@ -96,7 +97,25 @@ void *DIO_pretrigger(void *arg)
 void *DIO_transmitter_status(int32 radar)
 {
   struct DriverMsg s_msg,r_msg;
+  dictionary *aux_dict=NULL;
+  char *dict_string=NULL;
+  char value[200];
+  int32 bytes,i;
+  char *data_string=NULL;
+  struct tx_status *txp=NULL;  
   pthread_mutex_lock(&dio_comm_lock);
+
+  
+  aux_dict=dictionary_new(0);
+  iniparser_set(aux_dict,"timing",NULL);
+  iniparser_set(aux_dict,"timing:command","GET_TX_STATUS");
+  sprintf(value,"%d",radar);
+  iniparser_set(aux_dict,"timing:radar",value);
+  dict_string=iniparser_to_string(aux_dict);
+  bytes=strlen(dict_string)+1;
+  iniparser_freedict(aux_dict);
+  aux_dict=NULL;
+/*
   s_msg.type=GET_TX_STATUS;
   s_msg.status=1;
   send_data(diosock, &s_msg, sizeof(struct DriverMsg));
@@ -105,6 +124,30 @@ void *DIO_transmitter_status(int32 radar)
     send_data(diosock, &radar, sizeof(radar));
     recv_data(diosock, &txstatus[radar-1], sizeof(struct tx_status));
     recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+  }
+*/
+  s_msg.type=AUX_COMMAND;
+  s_msg.status=1;
+  send_data(diosock, &s_msg, sizeof(struct DriverMsg));
+  recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+  if(r_msg.status==1) {
+    send_data(diosock, &bytes, sizeof(int32));
+    send_data(diosock, dict_string, bytes*sizeof(char));
+
+    recv_data(diosock, &bytes, sizeof(int32));
+    if(dict_string!=NULL) free(dict_string);
+    dict_string=malloc(sizeof(char)*(bytes+10));
+    recv_data(diosock, dict_string, bytes*sizeof(char));
+    printf("String:\n%s",dict_string);
+    recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+    aux_dict=iniparser_load_from_string(aux_dict,dict_string);
+    free(dict_string);
+    printf("Dict:\n");
+    iniparser_dump_ini(aux_dict,stdout);
+    txp=malloc(iniparser_getint(aux_dict,"data_bytes",0));
+    data_string=iniparser_getstring(aux_dict,"txstatus",NULL);
+    memmove(txp,data_string,iniparser_getint(aux_dict,"data_bytes",0));
+    iniparser_freedict(aux_dict);
   }
    pthread_mutex_unlock(&dio_comm_lock);
    pthread_exit(NULL);
