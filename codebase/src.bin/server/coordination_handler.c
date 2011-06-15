@@ -14,7 +14,6 @@ extern int *trigger_state_pointer; //0-no activity,1-pre-trigger, 2-triggering
 extern int *ready_state_pointer; //0-no cntrolprograms ready,1-some controlprograms ready, 2-all controlprograms ready 
 extern int *ready_count_pointer;
 extern int trigger_type;  //0-strict controlprogram ready  1-elasped software time  2-external gps event 
-extern int txread[MAX_RADARS];
 extern int verbose;
 extern int gpssock;
 int oldv;
@@ -40,7 +39,6 @@ void *coordination_handler(struct ControlProgram *control_program)
      ready_count++;
      //control_program->state->ready=1;
      control_program->state->processing=0;
-     txread[control_program->parameters->radar-1]=1;
    } else {
    }
 /*Calculate Ready State*/
@@ -212,11 +210,6 @@ void *coordination_handler(struct ControlProgram *control_program)
           if(control_program->active==1) { 
             control_program->state->gpssecond=gpssecond;
             control_program->state->gpsnsecond=gpsnsecond;
-//            if (txread[control_program->parameters->radar-1]){
-//              rc = pthread_create(&threads[i], NULL, (void *) &DIO_transmitter_status, (void *)control_program->parameters->radar);
-//              pthread_join(threads[i],NULL);
-//              txread[control_program->parameters->radar-1]=0;
-//            }
           }
           i=0;
           rc = pthread_create(&threads[i], NULL, (void *) &receiver_posttrigger, NULL);

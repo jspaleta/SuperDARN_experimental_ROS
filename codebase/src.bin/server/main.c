@@ -56,8 +56,6 @@ void *radar_channels[MAX_RADARS*MAX_CHANNELS];
 int *trigger_state_pointer; 
 int trigger_type;
 int *ready_state_pointer,*ready_count_pointer;
-struct tx_status txstatus[MAX_RADARS];
-int txread[MAX_RADARS];
 struct SiteSettings site_settings;
 struct GPSStatus gpsstatus;
 struct TRTimes bad_transmit_times;
