@@ -1,4 +1,5 @@
 #include "global_server_variables.h"
+#include "iniparser.h"
 
 #define ANTENNA_BEAM 'b'
 #define ANTENNA_AUTO 'a'
@@ -14,4 +15,5 @@ void *DIO_transmitter_status(int radar);
 //int load_config(FILE *fp,struct dio_hdw *hdw);
 void *DIO_pre_clrfreq(struct ControlProgram *arg);
 void *DIO_post_clrfreq(void *arg);
+void *DIO_aux_command(dictionary *aux_dict);
 
