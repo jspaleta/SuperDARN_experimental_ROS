@@ -279,7 +279,7 @@ dictionary * iniparser_load(const char * ininame);
  */
 /*--------------------------------------------------------------------------*/
 dictionary * iniparser_load_from_string(dictionary * d,char * ininame);
-
+char* iniparser_to_string(dictionary * d);
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Free all memory associated to an ini dictionary

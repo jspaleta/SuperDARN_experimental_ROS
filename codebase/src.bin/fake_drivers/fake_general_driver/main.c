@@ -19,7 +19,9 @@
 int verbose=0;
 int sock,msgsock;
 dictionary *Site_INI;
-
+dictionary *aux_command_ini;
+char *command_dict_string=NULL;
+int32 bytes;
 void graceful_cleanup(int signum)
 {
   close(msgsock);
@@ -156,6 +158,7 @@ int main ( int argc, char **argv){
 	Site_INI=NULL;
 	/* Pull the site ini file */ 
 	temp=_open_ini_file();
+
         if(temp < 0 ) {
                 fprintf(stderr,"Error opening Site ini file, exiting driver\n");
                 exit(temp);
@@ -502,12 +505,28 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
+
                         msg.status=1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-                        rval=send_data(msgsock, &bytes, sizeof(int32));
-		        rval=recv_data(msgsock,&command_dict_string,bytes);
-                        rval=send_data(msgsock, &bytes, sizeof(int32));
-		        rval=send_data(msgsock,&return_dict_string,bytes);
+                        if(msg.status=1) {
+                          rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                          rval=recv_data(msgsock, &bytes, sizeof(int32));
+			  if(command_dict_string!=NULL) {
+                            free(command_dict_string);
+			    command_dict_string=NULL;	
+                          }
+			  if(aux_command_ini!=NULL) {
+			    iniparser_freedict(aux_command_ini);	
+			    aux_command_ini=NULL;	
+                          }
+             		  command_dict_string=malloc((bytes+10)*sizeof(char));
+		          rval=recv_data(msgsock,&command_dict_string,bytes);
+			  aux_command_ini=iniparser_load_from_string(aux_command_ini,command_dict_string);
+			  iniparser_dump_ini(aux_command_ini,stdout);	
+                          rval=send_data(msgsock, &bytes, sizeof(int32));
+		          rval=send_data(msgsock,&command_dict_string,bytes);
+			  iniparser_freedict(aux_command_ini);
+			  aux_command_ini=NULL;	
+			}
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 
 /* Commands that should only be servced  by a single driver. 
