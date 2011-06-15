@@ -102,7 +102,6 @@ void *DIO_aux_command(struct AUXdata *auxdata)
   char value[200];
   int32 bytes;
   unsigned int bufsize;
-  char *data_string=NULL;
   struct tx_status *txp=NULL;  
   void *dict_buf=NULL; // pointer into dictionary do not free
   void *temp_buf=NULL; // malloced buffer needs to be freed 
@@ -111,6 +110,7 @@ void *DIO_aux_command(struct AUXdata *auxdata)
   
   aux_dict=auxdata->aux_dict;
   printf("AUX Pre Dict pointer: %p\n",aux_dict);
+
   dict_string=iniparser_to_string(aux_dict);
   bytes=strlen(dict_string)+1;
   s_msg.type=AUX_COMMAND;
@@ -129,7 +129,6 @@ void *DIO_aux_command(struct AUXdata *auxdata)
     }
     if(aux_dict!=NULL) iniparser_freedict(aux_dict);
     aux_dict=NULL;
-
     printf("AUX Command send %p\n",aux_dict);
     recv_data(diosock, &bytes, sizeof(int32));
     if(dict_string!=NULL) free(dict_string);
@@ -149,10 +148,9 @@ void *DIO_aux_command(struct AUXdata *auxdata)
       if(temp_buf!=NULL) free(temp_buf);
       temp_buf=NULL;
     }
-    
     recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
-
   }
+
   printf("AUX POST Dict pointer: %p\n",aux_dict);
   auxdata->aux_dict=aux_dict;
   pthread_mutex_unlock(&dio_comm_lock);
@@ -179,11 +177,13 @@ void *DIO_transmitter_status(int32 radar) {
   sprintf(value,"%d",sizeof(int32));
   iniparser_set(aux_dict,"data:bytes",value);
   dictionary_setbuf(aux_dict,"data",&temp_data,sizeof(int32));
+
   auxdata.aux_dict=aux_dict;
   printf("Pre Dict pointer: %p %p\n",aux_dict,auxdata.aux_dict);
   rc = pthread_create(&thread, NULL, (void *) &DIO_aux_command, &auxdata);
   pthread_join(thread,NULL);
   aux_dict=auxdata.aux_dict;
+
   printf("Post Dict pointer: %p %p\n",aux_dict,auxdata.aux_dict);
   /* Process Dictionary */ 
   printf("Dict:\n");

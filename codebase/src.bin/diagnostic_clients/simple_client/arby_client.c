@@ -13,7 +13,7 @@
 #include "utils.h"
 #include "control_program.h"
 #include "tsg.h"
-
+#include "iniparser.h"
 int s;
 char *ros_ip=ROS_IP;
 int ros_port=ROS_PORT;
@@ -64,6 +64,17 @@ main( int argc, char *argv[])
   float noise;
   int ptab[8] = {0,14,22,24,27,31,42,43};
   int bmnum; 
+
+  dictionary *aux_dict=NULL;
+  void *temp_buf=NULL; // malloced buffer needs to be freed 
+  void *dict_buf=NULL; // pointer into dictionary do not free
+  unsigned int bufsize;
+  char value[200];
+  int32 bytes;
+  char *dict_string=NULL;
+  int32 temp_data=44;
+
+
 //Initialize structures
 
   fp=fopen("/tmp/gc314_test_data.txt", "w+");
@@ -270,9 +281,9 @@ main( int argc, char *argv[])
         recv_data(s, bad_transmit_times.duration_usec, sizeof(uint32)*bad_transmit_times.length);
         for (i=0;i<bad_transmit_times.length;i++) if(verbose>1) printf("  Start:  %d (usec) Duration:  %d (usec)\n",
                                                      bad_transmit_times.start_usec[i],bad_transmit_times.duration_usec[i]);
-        recv_data(s, &num_transmitters, sizeof(int32));
-        recv_data(s, txstatus.AGC, sizeof(int32)*num_transmitters);
-        recv_data(s, txstatus.LOWPWR, sizeof(int32)*num_transmitters);
+        //recv_data(s, &num_transmitters, sizeof(int32));
+        //recv_data(s, txstatus.AGC, sizeof(int32)*num_transmitters);
+        //recv_data(s, txstatus.LOWPWR, sizeof(int32)*num_transmitters);
         recv_data(s, &rmsg, sizeof(struct ROSMsg));
         if (verbose > 1) printf("Main Data Peek\n");
         fprintf(fp,":::Iteration::: %d\n",j);
@@ -294,6 +305,72 @@ main( int argc, char *argv[])
 *  This is a needed step as the ROS may force parameters to different values than requested 
 *   if multiple operating programs are running. (This relates to priority parameter)
 */
+
+    aux_dict=dictionary_new(0);
+    iniparser_set(aux_dict,"COMMAND",NULL);
+    iniparser_set(aux_dict,"command","GET_TX_STATUS");
+    iniparser_set(aux_dict,"DIO",NULL);
+    sprintf(value,"%d",r);
+    iniparser_set(aux_dict,"DIO:radar",value);
+    iniparser_set(aux_dict,"data",NULL);
+    sprintf(value,"%d",sizeof(int32));
+    iniparser_set(aux_dict,"data:bytes",value);
+    dictionary_setbuf(aux_dict,"data",&temp_data,sizeof(int32));
+
+    dict_string=iniparser_to_string(aux_dict);
+    bytes=strlen(dict_string)+1;
+    smsg.type=AUX_COMMAND;
+    smsg.status=1;
+    send_data(s, &smsg, sizeof(struct ROSMsg));
+    recv_data(s, &rmsg, sizeof(struct ROSMsg));
+    if(rmsg.status==1) {
+      printf("AUX Command is valid\n");
+      send_data(s, &bytes, sizeof(int32));
+      send_data(s, dict_string, bytes*sizeof(char));
+      /* Prepare to send arb. data buf */
+      if(iniparser_find_entry(aux_dict,"data")==1) {
+        dict_buf=dictionary_getbuf(aux_dict,"data",&bufsize);
+        bytes=bufsize;
+        send_data(s,dict_buf,bytes);
+      }
+      if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+      aux_dict=NULL;
+      printf("AUX Command send %p\n",aux_dict);
+      recv_data(s, &bytes, sizeof(int32));
+      if(dict_string!=NULL) free(dict_string);
+      dict_string=malloc(sizeof(char)*(bytes+10));
+      recv_data(s, dict_string, bytes*sizeof(char));
+      if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+      aux_dict=NULL;
+      aux_dict=iniparser_load_from_string(aux_dict,dict_string);
+      free(dict_string);
+      /* Prepare to recv arb. buf data buf and place it into dict*/
+      if(iniparser_find_entry(aux_dict,"data")==1) {
+        bytes=iniparser_getint(aux_dict,"data:bytes",0);
+        if(temp_buf!=NULL) free(temp_buf);
+        temp_buf=malloc(bytes);
+        recv_data(s,temp_buf,bytes);
+        dictionary_setbuf(aux_dict,"data",temp_buf,bytes);
+        if(temp_buf!=NULL) free(temp_buf);
+        temp_buf=NULL;
+      }
+      recv_data(s, &rmsg, sizeof(struct ROSMsg));
+    }
+
+    dict_buf=dictionary_getbuf(aux_dict,"data",&bufsize);
+    printf("Data Bufsize %d tx_status size: %d\n",bufsize,sizeof(struct tx_status));
+    printf("TX Status for radar %d\n",r);
+    memmove(&txstatus,dict_buf,bufsize);
+    for (i=0;i<MAX_TRANSMITTERS;i++) {
+      printf("%d : %d %d %d\n",i,
+        txstatus.LOWPWR[i],
+        txstatus.AGC[i],
+        txstatus.status[i]);
+    }
+
+    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+    aux_dict=NULL;
+
 
    if(verbose>1) printf("Send Get Parameters Command %d\n",GET_PARAMETERS);
     smsg.type=GET_PARAMETERS;

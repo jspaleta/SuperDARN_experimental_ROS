@@ -150,4 +150,5 @@ struct CLRFreqPRM {
 
 #define GET_DATA 'd'
 
+#define AUX_COMMAND '8'
 #endif

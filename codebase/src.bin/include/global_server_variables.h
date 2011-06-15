@@ -157,7 +157,6 @@ struct BlackList {
 
 #define EXTERNAL_TRIGGER '6'
 #define GET_TRTIMES '7'
-#define AUX_COMMAND '8'
 
 #define TRIGGER '4'
 #define DIO_TRIGGER '4'

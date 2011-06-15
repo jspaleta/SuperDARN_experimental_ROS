@@ -212,11 +212,11 @@ void *coordination_handler(struct ControlProgram *control_program)
           if(control_program->active==1) { 
             control_program->state->gpssecond=gpssecond;
             control_program->state->gpsnsecond=gpsnsecond;
-            if (txread[control_program->parameters->radar-1]){
-              rc = pthread_create(&threads[i], NULL, (void *) &DIO_transmitter_status, (void *)control_program->parameters->radar);
-              pthread_join(threads[i],NULL);
-              txread[control_program->parameters->radar-1]=0;
-            }
+//            if (txread[control_program->parameters->radar-1]){
+//              rc = pthread_create(&threads[i], NULL, (void *) &DIO_transmitter_status, (void *)control_program->parameters->radar);
+//              pthread_join(threads[i],NULL);
+//              txread[control_program->parameters->radar-1]=0;
+//            }
           }
           i=0;
           rc = pthread_create(&threads[i], NULL, (void *) &receiver_posttrigger, NULL);

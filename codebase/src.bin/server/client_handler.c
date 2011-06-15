@@ -409,6 +409,13 @@ void *control_handler(struct ControlProgram *control_program)
    char *temp_strp;
    int32 temp_int32;
    double temp_double;
+   int32 bytes;
+   unsigned int bufsize;
+   char *command_dict_string=NULL;
+   dictionary *aux=NULL;
+   void *buf=NULL; // This is malloced and needs to be freed
+   void *dict_data_buf=NULL; // This is a pointer into a dict.. do not free or realloc 
+
 /*
 *  Init the Control Program state
 */
@@ -479,6 +486,63 @@ void *control_handler(struct ControlProgram *control_program)
             printf("Bad Message Sleeping 1 second\n");
             sleep(1);
             break;
+	  case AUX_COMMAND:
+            /* AUX_COMMAND: Site hardware specific commands which are not critical for operation, but
+             *  controlprograms may optionally access to if they are site aware.
+             */
+            if (verbose > 1 ) printf("Client: AUX_COMMAND\n");
+             /* Inform the ROS that this driver does not handle this command by sending 
+              * msg back with msg.status=0.
+              */
+            msg.status=1;
+            if(msg.status==1) {
+                send_data(socket, &msg, sizeof(struct ROSMsg));
+                /* Prepare to recv command dict and data buf */
+                recv_data(socket, &bytes, sizeof(int32));
+                if (verbose > 1 ) printf("  AUX_COMMAND: recv dict bytes %d\n",bytes);
+                if(command_dict_string!=NULL) {
+                  free(command_dict_string);
+                  command_dict_string=NULL;
+                }
+                if(aux!=NULL) {
+                  iniparser_freedict(aux);
+                  aux=NULL;
+                }
+                command_dict_string=malloc((bytes+10)*sizeof(char));
+                recv_data(socket,command_dict_string,bytes);
+                aux=iniparser_load_from_string(aux,command_dict_string);
+                /* Prepare to recv arb. buf data buf */
+                if(iniparser_find_entry(aux,"data")==1) {
+                  bytes=iniparser_getint(aux,"data:bytes",0);
+                  if (verbose > 1 ) printf("AUX_COMMAND: dict has data buf %d\n",bytes);
+                  if(buf!=NULL) free(buf);
+                  buf=malloc(bytes);
+                  recv_data(socket,buf,bytes);
+                  dictionary_setbuf(aux,"data",buf,bytes);
+                }
+                /* process aux command dictionary here */
+                process_aux_commands(aux,"DIO");
+
+                iniparser_dump_ini(aux,stdout);
+                /* Prepare to send return dict and data buf */
+                if(command_dict_string!=NULL) free(command_dict_string);
+                command_dict_string=iniparser_to_string(aux);
+                bytes=strlen(command_dict_string)+1;
+                send_data(socket, &bytes, sizeof(int32));
+                send_data(socket,command_dict_string,bytes);
+                if(iniparser_find_entry(aux,"data")==1) {
+                  bytes=iniparser_getint(aux,"data:bytes",0);
+                  if (verbose > 1 ) printf("AUX_COMMAND: output dict has data buf %d\n",bytes);
+                  dict_data_buf=dictionary_getbuf(aux,"data",&bufsize);
+                  bytes=bufsize;
+                  send_data(socket,dict_data_buf,bytes);
+                }
+                if(aux!=NULL) iniparser_freedict(aux);
+                aux=NULL;
+            }
+            send_data(socket, &msg, sizeof(struct DriverMsg));
+            break;
+
           case PING:
             //printf("PING: START\n");
             gettimeofday(&t0,NULL);
@@ -679,27 +743,15 @@ control_program);
               //printf("GET_DATA: controlprogram status: %d\n",control_program->data->status);
               send_data(socket, control_program->data, sizeof(struct DataPRM));
               if(control_program->data->status>0) {
-                printf("GET_DATA: main: %d %d\n",sizeof(uint32),sizeof(uint32)*control_program->data->samples);
-                printf("GET_DATA: 1\n");    
                 send_data(socket, control_program->main, sizeof(uint32)*control_program->data->samples);
-                printf("GET_DATA: 2\n");    
                 send_data(socket, control_program->back, sizeof(uint32)*control_program->data->samples);
-                printf("GET_DATA: 3\n");    
                 send_data(socket, &bad_transmit_times.length, sizeof(bad_transmit_times.length));
-                printf("GET_DATA: 4\n");    
-                //printf("GET_DATA: bad_transmit_times: %d %d\n",sizeof(uint32),sizeof(uint32)*bad_transmit_times.length);
                 send_data(socket, bad_transmit_times.start_usec, sizeof(uint32)*bad_transmit_times.length);
-                printf("GET_DATA: 5\n");    
                 send_data(socket, bad_transmit_times.duration_usec, sizeof(uint32)*bad_transmit_times.length);
-                printf("GET_DATA: 6\n");    
-                temp_int32=MAX_TRANSMITTERS;
-                printf("GET_DATA: 7\n");    
-                send_data(socket,&temp_int32,sizeof(int32));
-                printf("GET_DATA: 8\n");    
-                send_data(socket,&txstatus[r].AGC,sizeof(int32)*temp_int32);
-                printf("GET_DATA: 9\n");    
-                send_data(socket,&txstatus[r].LOWPWR,sizeof(int32)*temp_int32);
-                printf("GET_DATA: 10\n");    
+                //temp_int32=MAX_TRANSMITTERS;
+                //send_data(socket,&temp_int32,sizeof(int32));
+                //send_data(socket,&txstatus[r].AGC,sizeof(int32)*temp_int32);
+                //send_data(socket,&txstatus[r].LOWPWR,sizeof(int32)*temp_int32);
               } else {
                 printf("CLIENT:GET_DATA: Bad status %d\n",control_program->data->status);
               } 
