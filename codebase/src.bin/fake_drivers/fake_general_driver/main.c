@@ -25,9 +25,8 @@ char *command_dict_string=NULL;
 char *data_string=NULL;
 int32 bytes,data_bytes;
 void *buf=NULL; // This is malloced and needs to be freed
-void *data_buf=NULL; // This is a pointer into a dict.. do not free or realloc 
-int32 *temp_data_pointer;
-int32 bufsize;
+void *dict_data_buf=NULL; // This is a pointer into a dict.. do not free or realloc 
+unsigned int bufsize;
 void graceful_cleanup(int signum){
   close(msgsock);
   close(sock);
@@ -533,8 +532,6 @@ int main ( int argc, char **argv){
 			    if(buf!=NULL) free(buf);
                             buf=malloc(bytes);
 		            rval=recv_data(msgsock,buf,bytes);
-			    temp_data_pointer=(int32*)buf;
-			    printf("AUX_COMMAND: dict buf data as int32 %d\n",*temp_data_pointer);	
 			    dictionary_setbuf(aux,"data",buf,bytes);
 			  }
 			  /* process aux command ini here */
@@ -550,9 +547,9 @@ int main ( int argc, char **argv){
 			  if(iniparser_find_entry(aux,"data")==1) {
                             bytes=iniparser_getint(aux,"data:bytes",0);
 			    if (verbose > 1 ) printf("AUX_COMMAND: output dict has data buf %d\n",bytes);	
-			    data_buf=dictionary_getbuf(aux,"data",&bufsize);
-                            rval=send_data(msgsock, &bufsize, sizeof(int32));
-		            rval=send_data(msgsock,data_buf,bufsize);
+			    dict_data_buf=dictionary_getbuf(aux,"data",&bufsize);
+			    bytes=bufsize;
+		            rval=send_data(msgsock,dict_data_buf,bytes);
 			  }
 			  if(aux!=NULL) iniparser_freedict(aux);
 			  aux=NULL;	

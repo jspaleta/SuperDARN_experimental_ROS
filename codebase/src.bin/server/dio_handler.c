@@ -101,9 +101,11 @@ void *DIO_transmitter_status(int32 radar)
   char *dict_string=NULL;
   char value[200];
   int32 bytes,i;
+  unsigned int bufsize;
   char *data_string=NULL;
   struct tx_status *txp=NULL;  
-  void *buf=NULL; // pointer into dictionary do not free
+  void *dict_buf=NULL; // pointer into dictionary do not free
+  void *temp_buf=NULL; // malloced buffer needs to be freed 
   pthread_mutex_lock(&dio_comm_lock);
   int32 temp_data=44; 
   
@@ -137,10 +139,11 @@ void *DIO_transmitter_status(int32 radar)
   if(r_msg.status==1) {
     send_data(diosock, &bytes, sizeof(int32));
     send_data(diosock, dict_string, bytes*sizeof(char));
+    /* Prepare to send arb. data buf */
     if(iniparser_find_entry(aux_dict,"data")==1) {
-      buf=dictionary_getbuf(aux_dict,"data",&bytes);
-      printf("DIO: GET_TX_STATUS: %p %d\n",buf,bytes);
-      send_data(diosock,buf,bytes);
+      dict_buf=dictionary_getbuf(aux_dict,"data",&bufsize);
+      bytes=bufsize;
+      send_data(diosock,dict_buf,bytes);
     }
     if(aux_dict!=NULL) iniparser_freedict(aux_dict);
     aux_dict=NULL;
@@ -149,18 +152,39 @@ void *DIO_transmitter_status(int32 radar)
     if(dict_string!=NULL) free(dict_string);
     dict_string=malloc(sizeof(char)*(bytes+10));
     recv_data(diosock, dict_string, bytes*sizeof(char));
-    printf("String:\n%s",dict_string);
-    recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
     if(aux_dict!=NULL) iniparser_freedict(aux_dict);
     aux_dict=NULL;
     aux_dict=iniparser_load_from_string(aux_dict,dict_string);
     free(dict_string);
+    /* Prepare to recv arb. buf data buf and place it into dict*/
+    if(iniparser_find_entry(aux_dict,"data")==1) {
+      bytes=iniparser_getint(aux_dict,"data:bytes",0);
+      if(temp_buf!=NULL) free(temp_buf);
+      temp_buf=malloc(bytes);
+      recv_data(diosock,temp_buf,bytes);
+      dictionary_setbuf(aux_dict,"data",temp_buf,bytes);
+      if(temp_buf!=NULL) free(temp_buf);
+      temp_buf=NULL;
+    }
+    recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
+
+    /* Process Dictionary */ 
     printf("Dict:\n");
     iniparser_dump_ini(aux_dict,stdout);
-    txp=malloc(iniparser_getint(aux_dict,"data_bytes",0));
-    data_string=iniparser_getstring(aux_dict,"txstatus",NULL);
-    memmove(txp,data_string,iniparser_getint(aux_dict,"data_bytes",0));
-    iniparser_freedict(aux_dict);
+
+    dict_buf=dictionary_getbuf(aux_dict,"data",&bufsize);
+    printf("Data Bufsize %d tx_status size: %d\n",bufsize,sizeof(struct tx_status));
+    printf("TX Status for radar %d\n",radar);
+    memmove(&txstatus[radar-1],dict_buf,bufsize);
+    for (i=0;i<MAX_TRANSMITTERS;i++) {
+      printf("%d : %d %d %d\n",i,
+        txstatus[radar-1].LOWPWR[i],
+        txstatus[radar-1].AGC[i],
+        txstatus[radar-1].status[i]);
+    }
+
+    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+    aux_dict=NULL;
   }
    pthread_mutex_unlock(&dio_comm_lock);
    pthread_exit(NULL);
