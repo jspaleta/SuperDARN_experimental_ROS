@@ -133,6 +133,8 @@ dictionary * dictionary_new(int size)
 	d->size = size ;
 	d->val  = (char **)calloc(size, sizeof(char*));
 	d->key  = (char **)calloc(size, sizeof(char*));
+	d->buf  = (void **)calloc(size, sizeof(void*));
+	d->bufsize = (unsigned int *)calloc(size, sizeof(unsigned));
 	d->hash = (unsigned int *)calloc(size, sizeof(unsigned));
 	return d ;
 }
@@ -156,12 +158,52 @@ void dictionary_del(dictionary * d)
 			free(d->key[i]);
 		if (d->val[i]!=NULL)
 			free(d->val[i]);
+		if (d->buf[i]!=NULL)
+			free(d->buf[i]);
 	}
 	free(d->val);
 	free(d->key);
 	free(d->hash);
+	free(d->bufsize);
+	free(d->buf);
 	free(d);
 	return ;
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief	Get a buf from a dictionary.
+  @param	d		dictionary object to search.
+  @param	key		Key to look for in the dictionary.
+  @param	bufsize		
+  @return	1 pointer to internally allocated buf.
+
+  This function locates a key in a dictionary and returns a pointer to its
+  value, or the passed 'def' pointer if no such key can be found in
+  dictionary. The returned character pointer points to data internal to the
+  dictionary object, you should not try to free it or modify it.
+ */
+/*--------------------------------------------------------------------------*/
+void * dictionary_getbuf(dictionary * d, char * key, unsigned int *bufsize)
+{
+	unsigned	hash ;
+	int			i ;
+
+	hash = dictionary_hash(key);
+	for (i=0 ; i<d->size ; i++) {
+        if (d->key[i]==NULL)
+            continue ;
+        /* Compare hash */
+		if (hash==d->hash[i]) {
+            /* Compare string, to avoid hash collisions */
+            if (!strcmp(key, d->key[i])) {
+				*bufsize=d->bufsize[i];
+				return d->buf[i] ;
+			}
+		}
+	}
+	*bufsize=0;
+	return NULL ;
 }
 
 /*-------------------------------------------------------------------------*/
@@ -324,7 +366,12 @@ void dictionary_unset(dictionary * d, char * key)
         free(d->val[i]);
         d->val[i] = NULL ;
     }
+    if (d->buf[i]!=NULL) {
+        free(d->buf[i]);
+        d->buf[i] = NULL ;
+    }
     d->hash[i] = 0 ;
+    d->bufsize[i] = 0 ;
     d->n -- ;
     return ;
 }

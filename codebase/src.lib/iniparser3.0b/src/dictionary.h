@@ -53,6 +53,8 @@ typedef struct _dictionary_ {
 	char 		**	val ;	/** List of string values */
 	char 		**  key ;	/** List of string keys */
 	unsigned	 *	hash ;	/** List of hash values for keys */
+	unsigned	 *	bufsize ;	/** List of hash values for keys */
+	void	 	**	buf ;	/** List of data buffers */
 } dictionary ;
 
 

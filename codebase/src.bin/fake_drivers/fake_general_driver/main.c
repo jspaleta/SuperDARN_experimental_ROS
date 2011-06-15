@@ -529,7 +529,7 @@ int main ( int argc, char **argv){
 			  txp=&txstatus[0];
 			  sprintf(data_string,"%d",data_bytes);
 			  dictionary_set(aux_command_ini,"txstatus",NULL);	
-			  dictionary_set_buf(aux_command_ini,"txstatus",txp,data_bytes);	
+			  //dictionary_set_buf(aux_command_ini,"txstatus",txp,data_bytes);	
 			  free(data_string);
 			  iniparser_dump_ini(aux_command_ini,stdout);	
                           if(command_dict_string!=NULL) free(command_dict_string);
