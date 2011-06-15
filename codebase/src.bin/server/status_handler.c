@@ -49,7 +49,6 @@ void *status_handler(void *arg)
      recv_data(gpssock, &gpsstatus, sizeof(struct GPSStatus));
      recv_data(gpssock, &msg, sizeof(struct DriverMsg));
      printf("Get Transmitter Status\n");
-*/
      msg.type=GET_TX_STATUS;
      msg.status=1;
      radar=1;
@@ -65,6 +64,7 @@ void *status_handler(void *arg)
      sleep(1);
      if (verbose > 0) printf("Status Handler: end loop\n");
      
+*/
    }
    pthread_cleanup_pop(0);
    pthread_exit(NULL);

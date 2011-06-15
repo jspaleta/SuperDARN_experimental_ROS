@@ -195,54 +195,6 @@ void *DIO_aux_command(struct AUXdata *auxdata)
   pthread_exit(NULL);
 };
 
-void *DIO_transmitter_status(int32 radar) {
-  dictionary *aux_dict=NULL;
-  struct AUXdata auxdata;
-  void *temp_buf=NULL; // malloced buffer needs to be freed 
-  void *dict_buf=NULL; // pointer into dictionary do not free
-  unsigned int bufsize;
-  char value[200];
-  int32 temp_data=44; 
-  int i,rc;
-  pthread_t thread;
-  aux_dict=dictionary_new(0);
-  iniparser_set(aux_dict,"COMMAND",NULL);
-  iniparser_set(aux_dict,"command","GET_TX_STATUS");
-  iniparser_set(aux_dict,"DIO",NULL);
-  sprintf(value,"%d",radar);
-  iniparser_set(aux_dict,"DIO:radar",value);
-  iniparser_set(aux_dict,"data",NULL);
-  sprintf(value,"%d",sizeof(int32));
-  iniparser_set(aux_dict,"data:bytes",value);
-  dictionary_setbuf(aux_dict,"data",&temp_data,sizeof(int32));
-
-  auxdata.aux_dict=aux_dict;
-  printf("Pre Dict pointer: %p %p\n",aux_dict,auxdata.aux_dict);
-  rc = pthread_create(&thread, NULL, (void *) &DIO_aux_command, &auxdata);
-  pthread_join(thread,NULL);
-  aux_dict=auxdata.aux_dict;
-
-  printf("Post Dict pointer: %p %p\n",aux_dict,auxdata.aux_dict);
-  /* Process Dictionary */ 
-  printf("Dict:\n");
-  iniparser_dump_ini(aux_dict,stdout);
-
-  dict_buf=dictionary_getbuf(aux_dict,"data",&bufsize);
-  printf("Data Bufsize %d tx_status size: %d\n",bufsize,sizeof(struct tx_status));
-  printf("TX Status for radar %d\n",radar);
-  memmove(&txstatus[radar-1],dict_buf,bufsize);
-  for (i=0;i<MAX_TRANSMITTERS;i++) {
-      printf("%d : %d %d %d\n",i,
-        txstatus[radar-1].LOWPWR[i],
-        txstatus[radar-1].AGC[i],
-        txstatus[radar-1].status[i]);
-  }
-
-  if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-  aux_dict=NULL;
-  pthread_exit(NULL);
-
-}
 
 
 void *DIO_pre_clrfreq(struct ControlProgram *arg)

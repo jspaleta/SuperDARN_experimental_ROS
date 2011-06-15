@@ -10,7 +10,6 @@ struct FreqTable *FreqLoadTable(FILE *fp);
 void *dio_site_settings(void *arg);
 void *DIO_ready_controlprogram(struct ControlProgram *arg);
 void *DIO_pretrigger(void *arg);
-void *DIO_transmitter_status(int radar);
 //void dio_default_config(struct dio_hdw *hdw);
 //int load_config(FILE *fp,struct dio_hdw *hdw);
 void *DIO_pre_clrfreq(struct ControlProgram *arg);

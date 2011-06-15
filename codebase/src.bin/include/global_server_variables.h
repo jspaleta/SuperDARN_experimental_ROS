@@ -178,7 +178,6 @@ struct BlackList {
 #define FULL_CLRFREQ '-'
 
 
-#define GET_TX_STATUS 'S'
 #define GET_EVENT_TIME 'E' 
 #define SITE_SETTINGS 'R'
 
