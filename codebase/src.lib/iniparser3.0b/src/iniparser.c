@@ -229,9 +229,10 @@ char* iniparser_to_string(dictionary * d)
         	if (d->key[i]==NULL)
             		continue ;
         	if (d->val[i]!=NULL) {
-			sprintf(temp_str, "%s\t%s\t%d\n",
+			sprintf(temp_str, "%s\t%s\t%s\t%d\n",
                                 d->key[i],
                                 d->val[i] ? d->val[i] : "UNDEF",
+                                d->comment[i] ? d->comment[i] : "UNDEF",
                                 d->bufsize[i] ? d->bufsize[i] : 0);
                         if(strlen(temp_str)+strlen(str_p)>max_length-1) {
                                 max_length=strlen(temp_str)+strlen(str_p)+2;
@@ -245,7 +246,7 @@ char* iniparser_to_string(dictionary * d)
                         strncat(str_p,temp_str,strlen(temp_str));
  
         	} else {
-			sprintf(temp_str, "%s\tUNDEF\t0\n",
+			sprintf(temp_str, "%s\tUNDEF\tUNDEF\t0\n",
                                 d->key[i]);
                         if(strlen(temp_str)+strlen(str_p)>max_length-1) {
                                 max_length=strlen(temp_str)+strlen(str_p)+2;
@@ -289,7 +290,7 @@ void iniparser_dump_ini(dictionary * d, FILE * f)
         for (i=0 ; i<d->size ; i++) {
             if (d->key[i]==NULL)
                 continue ;
-            fprintf(f, "%s = %s\n", d->key[i], d->val[i]);
+            fprintf(f, "%s = %s %s\n", d->key[i], d->val[i],d->comment[i]);
         }
         return ;
     }
@@ -303,9 +304,10 @@ void iniparser_dump_ini(dictionary * d, FILE * f)
                 continue ;
             if (!strncmp(d->key[j], keym, seclen+1)) {
                 fprintf(f,
-                        "%-30s = %s\n",
+                        "%-30s = %s ; %s\n",
                         d->key[j]+seclen+1,
-                        d->val[j] ? d->val[j] : "");
+                        d->val[j] ? d->val[j] : "",
+                        d->comment[i]);
             }
         }
     }
@@ -485,9 +487,9 @@ int iniparser_find_entry(
   It is Ok to set val to NULL.
  */
 /*--------------------------------------------------------------------------*/
-int iniparser_set(dictionary * ini, char * entry, char * val)
+int iniparser_set(dictionary * ini, char * entry, char * val, char *comment)
 {
-    return dictionary_set(ini, strlwc(entry), val, NULL) ;
+    return dictionary_set(ini, strlwc(entry), val, comment) ;
 }
 
 int iniparser_setbuf(dictionary * ini, char * entry, void * buf,unsigned int bufsize)
@@ -527,12 +529,13 @@ static line_status iniparser_line(
     char * input_line,
     char * section,
     char * key,
-    char * value)
+    char * value,
+    char * comment)
 {   
     line_status sta ;
     char        line[ASCIILINESZ+1];
     int         len ;
-
+    char	discard[ASCIILINESZ+1];
     strcpy(line, strstrip(input_line));
     len = (int)strlen(line);
 
@@ -542,6 +545,9 @@ static line_status iniparser_line(
         sta = LINE_EMPTY ;
     } else if (line[0]=='#') {
         /* Comment line */
+        
+        strcpy(comment, strstrip(line));
+        
         sta = LINE_COMMENT ; 
     } else if (line[0]=='[' && line[len-1]==']') {
         /* Section name */
@@ -556,6 +562,13 @@ static line_status iniparser_line(
         strcpy(key, strstrip(key));
         strcpy(key, strlwc(key));
         strcpy(value, strstrip(value));
+        
+        if (sscanf(line, "%[^;#]%[^\n]",discard,comment) == 2) {
+          strcpy(comment, strstrip(comment));
+        } else {
+          strcpy(comment, "");
+        }
+        
         /*
          * sscanf cannot handle '' or "" as empty values
          * this is done here
@@ -574,6 +587,13 @@ static line_status iniparser_line(
          */
         strcpy(key, strstrip(key));
         strcpy(key, strlwc(key));
+        
+        if (sscanf(line, "%[^;#]%[^\n]",discard,comment) == 2) {
+          strcpy(comment, strstrip(comment));
+        } else {
+          strcpy(comment, "");
+        }
+        
         value[0]=0 ;
         sta = LINE_VALUE ;
     } else {
@@ -604,6 +624,7 @@ dictionary * iniparser_load(const char * ininame)
     char line    [ASCIILINESZ+1] ;
     char section [ASCIILINESZ+1] ;
     char key     [ASCIILINESZ+1] ;
+    char comment [ASCIILINESZ+1] ;
     char tmp     [ASCIILINESZ+1] ;
     char val     [ASCIILINESZ+1] ;
 
@@ -628,6 +649,7 @@ dictionary * iniparser_load(const char * ininame)
     memset(line,    0, ASCIILINESZ);
     memset(section, 0, ASCIILINESZ);
     memset(key,     0, ASCIILINESZ);
+    memset(comment,     0, ASCIILINESZ);
     memset(val,     0, ASCIILINESZ);
     last=0 ;
 
@@ -658,18 +680,19 @@ dictionary * iniparser_load(const char * ininame)
         } else {
             last=0 ;
         }
-        switch (iniparser_line(line, section, key, val)) {
+        switch (iniparser_line(line, section, key, val,comment)) {
             case LINE_EMPTY:
             case LINE_COMMENT:
             break ;
 
             case LINE_SECTION:
-            errs = dictionary_set(dict, section, NULL,NULL);
+            errs = iniparser_set(dict, section, NULL,comment);
             break ;
 
             case LINE_VALUE:
             sprintf(tmp, "%s:%s", section, key);
-            errs = dictionary_set(dict, tmp, val,NULL) ;
+            printf("Ini Load: %s %s %s\n",tmp,val,comment);
+            errs = iniparser_set(dict, tmp, val,comment) ;
             break ;
 
             case LINE_ERROR:
@@ -717,6 +740,7 @@ dictionary * iniparser_load_from_string(dictionary *d, char * inistring)
 
     char entry    [ASCIILINESZ+1] ;
     char value    [ASCIILINESZ+1] ;
+    char comment    [ASCIILINESZ+1] ;
     unsigned int  bufsize;
     char *str=NULL,*str1=NULL;
     dictionary * dict ;
@@ -731,13 +755,22 @@ dictionary * iniparser_load_from_string(dictionary *d, char * inistring)
     str1 = strtok(str, "\n") ;
     while (str1!=NULL) {
         str=NULL;
-	sscanf(str1,"%s\t%s\t%u",entry,value,&bufsize);	
+        strcpy(comment,"");
+	sscanf(str1,"%s\t%s\t%s\t%u",entry,value,comment,&bufsize);	
 	if(strcmp(value,"UNDEF")==0) {	
-	  iniparser_set(dict,entry,NULL);	
+	  if(strcmp(comment,"UNDEF")==0) {	
+	    iniparser_set(dict,entry,NULL,NULL);	
+          } else {
+	    iniparser_set(dict,entry,NULL,NULL);	
+          }
 	  iniparser_setbuf(dict,entry,NULL,bufsize);	
 	}
 	else {
-	  iniparser_set(dict,entry,value);	
+	  if(strcmp(comment,"UNDEF")==0) {	
+	    iniparser_set(dict,entry,value,NULL);	
+          } else {
+	    iniparser_set(dict,entry,value,NULL);	
+          }
 	  iniparser_setbuf(dict,entry,NULL,bufsize);	
 	}
         str1 = strtok(str, "\n"); 

@@ -368,7 +368,6 @@ int dictionary_set(dictionary * d, char * key, char * val, char * comment)
 {
 	int			i ;
 	unsigned	hash ;
-
 	if (d==NULL || key==NULL) return -1 ;
 	
 	/* Compute hash for this key */
@@ -382,13 +381,11 @@ int dictionary_set(dictionary * d, char * key, char * val, char * comment)
 				if (!strcmp(key, d->key[i])) {	 /* Same key */
 					/* Found a value: modify and return */
 					if (d->val[i]!=NULL)
-						free(d->val[i]);
+					  free(d->val[i]);
                     			d->val[i] = val ? xstrdup(val) : NULL ;
-					if (comment!=NULL) { 
-					  if (d->comment[i]!=NULL)
-						free(d->comment[i]);
-                   			  d->comment[i] = comment ? xstrdup(comment) : NULL ;
-					}
+					if (d->comment[i]!=NULL)
+					  free(d->comment[i]);
+                   			d->comment[i] = comment ? xstrdup(comment) : xstrdup("") ;
                     /* Value has been modified: return */
 					return 0 ;
 				}
@@ -422,7 +419,7 @@ int dictionary_set(dictionary * d, char * key, char * val, char * comment)
     /* Copy key */
     d->key[i]  = xstrdup(key);
     d->val[i]  = val ? xstrdup(val) : NULL ;
-    d->comment[i]  = comment ? xstrdup(comment) : NULL ;
+    d->comment[i]  = comment ? xstrdup(comment) : xstrdup("") ;
     d->hash[i] = hash;
     d->n ++ ;
 	return 0 ;
