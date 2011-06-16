@@ -369,7 +369,6 @@ int dictionary_set(dictionary * d, char * key, char * val, char * comment)
 	int			i ;
 	unsigned	hash ;
 	if (d==NULL || key==NULL) return -1 ;
-	
 	/* Compute hash for this key */
 	hash = dictionary_hash(key) ;
 	/* Find if value is already in dictionary */

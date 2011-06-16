@@ -303,11 +303,19 @@ void iniparser_dump_ini(dictionary * d, FILE * f)
             if (d->key[j]==NULL)
                 continue ;
             if (!strncmp(d->key[j], keym, seclen+1)) {
-                fprintf(f,
+		if(d->comment[j][0]==';') {
+                  fprintf(f,
+                        "%-30s = %s %s\n",
+                        d->key[j]+seclen+1,
+                        d->val[j] ? d->val[j] : "",
+                        d->comment[j] ? d->comment[j] : "");
+                } else {
+                  fprintf(f,
                         "%-30s = %s ; %s\n",
                         d->key[j]+seclen+1,
                         d->val[j] ? d->val[j] : "",
-                        d->comment[i]);
+                        d->comment[j] ? d->comment[j] : "");
+         	}
             }
         }
     }
@@ -691,7 +699,6 @@ dictionary * iniparser_load(const char * ininame)
 
             case LINE_VALUE:
             sprintf(tmp, "%s:%s", section, key);
-            printf("Ini Load: %s %s %s\n",tmp,val,comment);
             errs = iniparser_set(dict, tmp, val,comment) ;
             break ;
 
