@@ -220,6 +220,8 @@ int iniparser_getboolean(dictionary * d, const char * key, int notfound);
  */
 /*--------------------------------------------------------------------------*/
 int iniparser_setstring(dictionary * ini, char * entry, char * val);
+int iniparser_setbuf(dictionary * ini, char * entry, void * buf,unsigned int bufsize);
+void* iniparser_getbuf(dictionary * ini, char * entry, unsigned int *bufsize);
 
 
 /*-------------------------------------------------------------------------*/

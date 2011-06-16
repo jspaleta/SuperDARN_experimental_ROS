@@ -132,6 +132,7 @@ dictionary * dictionary_new(int size)
 	}
 	d->size = size ;
 	d->val  = (char **)calloc(size, sizeof(char*));
+	d->comment  = (char **)calloc(size, sizeof(char*));
 	d->key  = (char **)calloc(size, sizeof(char*));
 	d->buf  = (void **)calloc(size, sizeof(void*));
 	d->bufsize = (unsigned int *)calloc(size, sizeof(unsigned));
@@ -158,9 +159,12 @@ void dictionary_del(dictionary * d)
 			free(d->key[i]);
 		if (d->val[i]!=NULL)
 			free(d->val[i]);
+		if (d->comment[i]!=NULL)
+			free(d->comment[i]);
 		if (d->buf[i]!=NULL)
 			free(d->buf[i]);
 	}
+	free(d->comment);
 	free(d->val);
 	free(d->key);
 	free(d->hash);
@@ -266,7 +270,7 @@ char * dictionary_get(dictionary * d, char * key, char * def)
   This function returns non-zero in case of failure.
  */
 /*--------------------------------------------------------------------------*/
-int dictionary_setbuf(dictionary * d, char * key, void * buf,int bufsize)
+int dictionary_setbuf(dictionary * d, char * key, void * buf,unsigned int bufsize)
 {
 	int			i ;
 	unsigned	hash ;
@@ -286,6 +290,7 @@ int dictionary_setbuf(dictionary * d, char * key, void * buf,int bufsize)
 	        if(d->buf[i]!=NULL) free(d->buf[i]);
 	        d->buf[i]=malloc(bufsize);
 	        d->bufsize[i] = bufsize;
+	        memset(d->buf[i],0,bufsize);	
 	        memmove(d->buf[i],buf,bufsize);	
                 /* Value has been modified: return */
 	        return 0 ;
@@ -327,6 +332,7 @@ int dictionary_setbuf(dictionary * d, char * key, void * buf,int bufsize)
 	if(d->buf[i]!=NULL) free(d->buf[i]);
 	d->buf[i]=malloc(bufsize);
 	d->bufsize[i] = bufsize;
+	memset(d->buf[i],0,bufsize);	
 	memmove(d->buf[i],buf,bufsize);	
 	d->hash[i] = hash;
 	d->n ++ ;
@@ -358,7 +364,7 @@ int dictionary_setbuf(dictionary * d, char * key, void * buf,int bufsize)
   This function returns non-zero in case of failure.
  */
 /*--------------------------------------------------------------------------*/
-int dictionary_set(dictionary * d, char * key, char * val)
+int dictionary_set(dictionary * d, char * key, char * val, char * comment)
 {
 	int			i ;
 	unsigned	hash ;
@@ -377,7 +383,12 @@ int dictionary_set(dictionary * d, char * key, char * val)
 					/* Found a value: modify and return */
 					if (d->val[i]!=NULL)
 						free(d->val[i]);
-                    d->val[i] = val ? xstrdup(val) : NULL ;
+                    			d->val[i] = val ? xstrdup(val) : NULL ;
+					if (comment!=NULL) { 
+					  if (d->comment[i]!=NULL)
+						free(d->comment[i]);
+                   			  d->comment[i] = comment ? xstrdup(comment) : NULL ;
+					}
                     /* Value has been modified: return */
 					return 0 ;
 				}
@@ -390,6 +401,7 @@ int dictionary_set(dictionary * d, char * key, char * val)
 
 		/* Reached maximum size: reallocate dictionary */
 		d->val  = (char **)mem_double(d->val,  d->size * sizeof(char*)) ;
+		d->comment  = (char **)mem_double(d->comment,  d->size * sizeof(char*)) ;
 		d->key  = (char **)mem_double(d->key,  d->size * sizeof(char*)) ;
 		d->hash = (unsigned int *)mem_double(d->hash, d->size * sizeof(unsigned)) ;
         if ((d->val==NULL) || (d->key==NULL) || (d->hash==NULL)) {
@@ -407,11 +419,12 @@ int dictionary_set(dictionary * d, char * key, char * val)
             break ;
         }
     }
-	/* Copy key */
-	d->key[i]  = xstrdup(key);
+    /* Copy key */
+    d->key[i]  = xstrdup(key);
     d->val[i]  = val ? xstrdup(val) : NULL ;
-	d->hash[i] = hash;
-	d->n ++ ;
+    d->comment[i]  = comment ? xstrdup(comment) : NULL ;
+    d->hash[i] = hash;
+    d->n ++ ;
 	return 0 ;
 }
 
@@ -458,6 +471,10 @@ void dictionary_unset(dictionary * d, char * key)
         free(d->val[i]);
         d->val[i] = NULL ;
     }
+    if (d->comment[i]!=NULL) {
+        free(d->comment[i]);
+        d->comment[i] = NULL ;
+    }
     if (d->buf[i]!=NULL) {
         free(d->buf[i]);
         d->buf[i] = NULL ;
@@ -499,50 +516,6 @@ void dictionary_dump(dictionary * d, FILE * out)
 	return ;
 }
 
-/*-------------------------------------------------------------------------*/
-/**
-  @brief        Dumps Dictionary to a string pointer, 
-		resizes string pointer as needed	
-  @param	d	Dictionary to dump
-  @return	void
-
-  Dumps a dictionary onto an opened file pointer. Key pairs are printed out
-  as @c [Key]=[Value], one per line. It is Ok to provide stdout or stderr as
-  output file pointers.
- */
-/*--------------------------------------------------------------------------*/
-char* dictionary_to_string(dictionary * d)
-{
-	int		i ;
-        char           *str_p;
-	char		temp_str[300];
-	int		max_length=0;
-        str_p=malloc(40*sizeof(char));
-        max_length=40;
-	sprintf(str_p, "");
-	if (d==NULL || str_p==NULL) return NULL;
-	if (d->n<1) {
-		return NULL;
-	}
-	for (i=0 ; i<d->size ; i++) {
-        	if (d->key[i]) {
-            		sprintf(temp_str, "%20s\t[%s]\n",
-                    		d->key[i],
-                    		d->val[i] ? d->val[i] : "UNDEF");
-	    		if(strlen(temp_str)+strlen(str_p)>max_length-1) {
-				max_length=strlen(temp_str)+strlen(str_p)+2; 
-        			str_p = realloc(str_p, max_length*sizeof(char));
-       			if(!str_p) {
-    					printf("Allocation Error\n");
-					free(str_p);
-					return NULL;
-				}
-	    		}	
-	    		strncat(str_p,temp_str,strlen(temp_str));
-        	}
-	}
-	return str_p;
-}
 
 /* Test code */
 #ifdef TESTDIC

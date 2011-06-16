@@ -5,14 +5,14 @@
 
 int process_aux_commands(dictionary *aux,char * driver_type) {
 	char *command=NULL;  // pointer into dict do not free or remap
-	char *buf=NULL;  // pointer into dict do not free or remap
+	//char *buf=NULL;  // pointer into dict do not free or remap
 	char *obuf=NULL;  // malloced pointer that needs to be free'd 
         char entry[200];       
         char value[200];       
 	int  i,radar=-10,r=-1,bytes;
 	unsigned int bufsize; 
         struct tx_status txstatus[MAX_RADARS];
-        struct tx_status *txp=NULL;
+        //struct tx_status *txp=NULL;
 	sprintf(entry,"command");
         command=iniparser_getstring(aux,entry,NULL);
 
@@ -23,7 +23,7 @@ int process_aux_commands(dictionary *aux,char * driver_type) {
 		  printf("AUX: DIO command\n");
 		  if(iniparser_find_entry(aux, "data")==1) { 
 		    printf("AUX: DIO command has a data buffer\n");
-                    buf=dictionary_getbuf(aux,"data",&bufsize);  
+                    //buf=dictionary_getbuf(aux,"data",&bufsize);  
 		    /* Removing the data entry now that we have pulled the buffer */
                     iniparser_unset(aux,"data:bytes");
                     iniparser_unset(aux,"data");
@@ -52,9 +52,9 @@ int process_aux_commands(dictionary *aux,char * driver_type) {
 		      memmove(obuf,&txstatus[r],bytes);
 		      sprintf(entry,"%s:bytes","dio");
 		      sprintf(value,"%d",bytes);
-		      dictionary_set(aux,entry,value);
-		      dictionary_setbuf(aux,"dio",obuf,bytes);
-                      txp=dictionary_getbuf(aux,"dio",&bufsize);
+		      iniparser_set(aux,entry,value,NULL);
+		      iniparser_setbuf(aux,"dio",obuf,bytes);
+                      //txp=dictionary_getbuf(aux,"dio",&bufsize);
  
 		      //for (i=0;i<MAX_TRANSMITTERS;i++) {
                       //  printf("%d : %d %d %d\n",i,

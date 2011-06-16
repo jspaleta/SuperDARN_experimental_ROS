@@ -526,7 +526,7 @@ void *control_handler(struct ControlProgram *control_program)
                   if(temp_buf!=NULL) free(temp_buf);
                   temp_buf=malloc(bytes);
                   recv_data(socket,temp_buf,bytes);
-                  dictionary_setbuf(auxdata.aux_dict,secname_static,temp_buf,bytes);
+                  iniparser_setbuf(auxdata.aux_dict,secname_static,temp_buf,bytes);
                   if(temp_buf!=NULL) free(temp_buf);
                   temp_buf=NULL;
                 }
@@ -548,7 +548,7 @@ void *control_handler(struct ControlProgram *control_program)
                 send_data(socket, &nsecs, sizeof(int32));
                 for(i=0 ; i<nsecs;i++) {
                   secname_in_dict=iniparser_getsecname(auxdata.aux_dict,i);
-                  dict_data_buf=dictionary_getbuf(auxdata.aux_dict,secname_in_dict,&bufsize);
+                  dict_data_buf=iniparser_getbuf(auxdata.aux_dict,secname_in_dict,&bufsize);
                   bytes=strlen(secname_in_dict)+1;
 
                   send_data(socket,&bytes,sizeof(int32));

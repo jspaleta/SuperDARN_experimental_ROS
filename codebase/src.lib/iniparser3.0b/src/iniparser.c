@@ -219,7 +219,7 @@ char* iniparser_to_string(dictionary * d)
         int             max_length=0;
         str_p=malloc(40*sizeof(char));
         max_length=40;
-        sprintf(str_p, "");
+        strcpy(str_p, "");
         if (d==NULL || str_p==NULL) return str_p;
         if (d->n<1) {
                 return str_p;
@@ -229,9 +229,10 @@ char* iniparser_to_string(dictionary * d)
         	if (d->key[i]==NULL)
             		continue ;
         	if (d->val[i]!=NULL) {
-			sprintf(temp_str, "%s\t%s\n",
+			sprintf(temp_str, "%s\t%s\t%d\n",
                                 d->key[i],
-                                d->val[i] ? d->val[i] : "UNDEF");
+                                d->val[i] ? d->val[i] : "UNDEF",
+                                d->bufsize[i] ? d->bufsize[i] : 0);
                         if(strlen(temp_str)+strlen(str_p)>max_length-1) {
                                 max_length=strlen(temp_str)+strlen(str_p)+2;
                                 str_p = realloc(str_p, max_length*sizeof(char));
@@ -244,7 +245,7 @@ char* iniparser_to_string(dictionary * d)
                         strncat(str_p,temp_str,strlen(temp_str));
  
         	} else {
-			sprintf(temp_str, "%s\tUNDEF\n",
+			sprintf(temp_str, "%s\tUNDEF\t0\n",
                                 d->key[i]);
                         if(strlen(temp_str)+strlen(str_p)>max_length-1) {
                                 max_length=strlen(temp_str)+strlen(str_p)+2;
@@ -486,9 +487,17 @@ int iniparser_find_entry(
 /*--------------------------------------------------------------------------*/
 int iniparser_set(dictionary * ini, char * entry, char * val)
 {
-    return dictionary_set(ini, strlwc(entry), val) ;
+    return dictionary_set(ini, strlwc(entry), val, NULL) ;
 }
 
+int iniparser_setbuf(dictionary * ini, char * entry, void * buf,unsigned int bufsize)
+{
+    return dictionary_setbuf(ini, strlwc(entry), buf,bufsize);
+}
+void* iniparser_getbuf(dictionary * ini, char * entry,unsigned int * bufsize)
+{
+    return dictionary_getbuf(ini, strlwc(entry),bufsize);
+}
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Delete an entry in a dictionary
@@ -655,12 +664,12 @@ dictionary * iniparser_load(const char * ininame)
             break ;
 
             case LINE_SECTION:
-            errs = dictionary_set(dict, section, NULL);
+            errs = dictionary_set(dict, section, NULL,NULL);
             break ;
 
             case LINE_VALUE:
             sprintf(tmp, "%s:%s", section, key);
-            errs = dictionary_set(dict, tmp, val) ;
+            errs = dictionary_set(dict, tmp, val,NULL) ;
             break ;
 
             case LINE_ERROR:
@@ -708,7 +717,7 @@ dictionary * iniparser_load_from_string(dictionary *d, char * inistring)
 
     char entry    [ASCIILINESZ+1] ;
     char value    [ASCIILINESZ+1] ;
-
+    unsigned int  bufsize;
     char *str=NULL,*str1=NULL;
     dictionary * dict ;
 
@@ -722,11 +731,15 @@ dictionary * iniparser_load_from_string(dictionary *d, char * inistring)
     str1 = strtok(str, "\n") ;
     while (str1!=NULL) {
         str=NULL;
-	sscanf(str1,"%s\t%s",entry,value);	
-	if(strcmp(value,"UNDEF")==0)	
+	sscanf(str1,"%s\t%s\t%u",entry,value,&bufsize);	
+	if(strcmp(value,"UNDEF")==0) {	
 	  iniparser_set(dict,entry,NULL);	
-	else 
+	  iniparser_setbuf(dict,entry,NULL,bufsize);	
+	}
+	else {
 	  iniparser_set(dict,entry,value);	
+	  iniparser_setbuf(dict,entry,NULL,bufsize);	
+	}
         str1 = strtok(str, "\n"); 
     }
     return dict ;

@@ -11,7 +11,7 @@
 
 int _decodestate(int r,int c,char state){
 
-	int output, code;
+	int code;
 	code=0;
 // Hi (19-32) Bits mapped to radar channels
 	if( (state & 0x80) == 0x80 ) code|=(0x01<<(7+(r+1)*(c+1)));  	//scope sync bit

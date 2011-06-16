@@ -51,6 +51,7 @@ typedef struct _dictionary_ {
 	int				n ;		/** Number of entries in dictionary */
 	int				size ;	/** Storage size */
 	char 		**	val ;	/** List of string values */
+	char 		**	comment ;	/** List of string comments */
 	char 		**  key ;	/** List of string keys */
 	unsigned	 *	hash ;	/** List of hash values for keys */
 	unsigned	 *	bufsize ;	/** List of hash values for keys */
@@ -143,7 +144,7 @@ char * dictionary_get(dictionary * d, char * key, char * def);
   This function returns non-zero in case of failure.
  */
 /*--------------------------------------------------------------------------*/
-int dictionary_set(dictionary * vd, char * key, char * val);
+int dictionary_set(dictionary * vd, char * key, char * val, char * comment);
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -173,19 +174,7 @@ void dictionary_unset(dictionary * d, char * key);
 /*--------------------------------------------------------------------------*/
 void dictionary_dump(dictionary * d, FILE * out);
 
-/*-------------------------------------------------------------------------*/
-/**
-  @brief    Dump a dictionary to an opened string pointer.
-  @param    d   Dictionary to dump
-  @return   string pointer 
-
-  Dumps a dictionary onto an str pointer. Key pairs are printed out
-  as @c [Key]=[Value], one per line. 
- */
-/*--------------------------------------------------------------------------*/
-char* dictionary_to_string(dictionary * d);
-
-int dictionary_setbuf(dictionary * d, char * key, void * buf,int bufsize);
+int dictionary_setbuf(dictionary * d, char * key, void * buf,unsigned int bufsize);
 void * dictionary_getbuf(dictionary * d, char * key, unsigned int *bufsize);
 
 #endif

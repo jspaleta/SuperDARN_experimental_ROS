@@ -129,18 +129,11 @@ void *DIO_aux_command(struct AUXdata *auxdata)
     printf("%s",dict_string);
     send_data(diosock, dict_string, bytes*sizeof(char));
     /* Prepare to send arb. data buf */
-/*
-    if(iniparser_find_entry(aux_dict,"data")==1) {
-      dict_buf=dictionary_getbuf(aux_dict,"data",&bufsize);
-      bytes=bufsize;
-      send_data(diosock,dict_buf,bytes);
-    }
-*/
     nsecs=iniparser_getnsec(aux_dict);
     send_data(diosock, &nsecs, sizeof(int32));
     for(i=0;i<nsecs;i++) {
       secname_in_dict=iniparser_getsecname(aux_dict,i);
-      dict_buf=dictionary_getbuf(aux_dict,secname_in_dict,&bufsize);
+      dict_buf=iniparser_getbuf(aux_dict,secname_in_dict,&bufsize);
       bytes=strlen(secname_in_dict)+1;
       send_data(diosock,&bytes,sizeof(int32));
       send_data(diosock,secname_in_dict,bytes);
@@ -177,7 +170,7 @@ void *DIO_aux_command(struct AUXdata *auxdata)
       if(temp_buf!=NULL) free(temp_buf);
       temp_buf=malloc(bytes);
       recv_data(diosock,temp_buf,bytes);
-      dictionary_setbuf(aux_dict,secname_static,temp_buf,bytes);
+      iniparser_setbuf(aux_dict,secname_static,temp_buf,bytes);
       if(temp_buf!=NULL) free(temp_buf);
       temp_buf=NULL;
     }

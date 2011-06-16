@@ -1,4 +1,4 @@
-int aux_command(int s,dictionary *aux_dict); 
+int send_aux_command(int s,dictionary *aux_dict); 
   /* start of helper function code */
     dict_string=iniparser_to_string(aux_dict);
     bytes=strlen(dict_string)+1;
