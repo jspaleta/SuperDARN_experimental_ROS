@@ -515,7 +515,9 @@ int main ( int argc, char **argv){
                         msg.status=1;
                         if(msg.status==1) {
                           rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-                          /* Prepare to recv command dict and data buf */
+
+/*
+                          // Prepare to recv command dict and data buf 
                           rval=recv_data(msgsock, &bytes, sizeof(int32));
 			  if (verbose > 1 ) printf("AUX_COMMAND: recv dict bytes %d\n",bytes);	
 			  if(command_dict_string!=NULL) {
@@ -529,17 +531,7 @@ int main ( int argc, char **argv){
              		  command_dict_string=malloc((bytes+10)*sizeof(char));
 		          rval=recv_data(msgsock,command_dict_string,bytes);
 			  aux=iniparser_load_from_string(aux,command_dict_string);
-                          /* Prepare to recv arb. buf data buf */
-/*
-			  if(iniparser_find_entry(aux,"data")==1) {
-                            bytes=iniparser_getint(aux,"data:bytes",0);
-			    if (verbose > 1 ) printf("AUX_COMMAND: dict has data buf %d\n",bytes);	
-			    if(buf!=NULL) free(buf);
-                            buf=malloc(bytes);
-		            rval=recv_data(msgsock,buf,bytes);
-			    dictionary_setbuf(aux,"data",buf,bytes);
-			  }
-*/
+                          // Prepare to recv arb. buf data buf 
                           rval=recv_data(msgsock, &nsecs, sizeof(int32));
                           for(i=0 ; i<nsecs;i++) {
 			    recv_data(msgsock,&bytes,sizeof(int32));
@@ -553,17 +545,19 @@ int main ( int argc, char **argv){
 			    if(temp_buf!=NULL) free(temp_buf);
 			    temp_buf=NULL;
 			  }
+*/
+                          recv_aux_dict(msgsock,&aux); 
 			  /* process aux command dictionary here */
 			  process_aux_commands(aux,driver_type);
-
+                          send_aux_dict(msgsock,aux); 
+/*
                           if(command_dict_string!=NULL) free(command_dict_string);
                           command_dict_string=iniparser_to_string(aux);
 			  bytes=strlen(command_dict_string)+1;
                           rval=send_data(msgsock, &bytes, sizeof(int32));
 		          rval=send_data(msgsock,command_dict_string,bytes);
 
-			  //iniparser_dump_ini(aux,stdout);	
-                          /* Prepare to send return dict and section data buffers */
+                          // Prepare to send return dict and section data buffers 
                           nsecs=iniparser_getnsec(aux);
 			  if (verbose > 1 ) printf("AUX_COMMAND: nsecs %d\n",nsecs);	
                           rval=send_data(msgsock, &nsecs, sizeof(int32));
@@ -579,6 +573,7 @@ int main ( int argc, char **argv){
 			  }
 			  if(aux!=NULL) iniparser_freedict(aux);
 			  aux=NULL;	
+*/
 			}
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
