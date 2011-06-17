@@ -13,7 +13,7 @@ int process_aux_commands(dictionary *aux,char * driver_type) {
 	unsigned int bufsize; 
         struct tx_status txstatus[MAX_RADARS];
         //struct tx_status *txp=NULL;
-	sprintf(entry,"command");
+	sprintf(entry,"aux:command");
         command=iniparser_getstring(aux,entry,NULL);
 
 	if (strcmp(driver_type,"DIO")==0) {

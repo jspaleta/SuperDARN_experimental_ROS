@@ -412,7 +412,6 @@ void *control_handler(struct ControlProgram *control_program)
    int32 bytes;
    unsigned int bufsize;
    char *command_dict_string=NULL;
-   struct AUXdata auxdata;
    dictionary *aux_dict=NULL;
    void *buf=NULL; // This is malloced and needs to be freed
    void *temp_buf=NULL; // This is malloced and needs to be freed
@@ -421,7 +420,6 @@ void *control_handler(struct ControlProgram *control_program)
    char  *secname_in_dict=NULL;
    char  secname_static[200];
    char  entry[200];
-   auxdata.aux_dict=NULL;
 /*
 *  Init the Control Program state
 */
@@ -535,11 +533,11 @@ void *control_handler(struct ControlProgram *control_program)
 */
                 if(aux_dict!=NULL) iniparser_freedict(aux_dict);
                 recv_aux_dict(socket,&aux_dict);
+                iniparser_dump_ini(aux_dict,stdout);
                 /* process aux command dictionary here */
-                //process_aux_commands(&auxdata,"DIO");
+                process_aux_commands(&aux_dict,"DIO");
                 send_aux_dict(socket,aux_dict);
 
-                //iniparser_dump_ini(auxdata.aux_dict,stdout);
                 /* Prepare to send return dict and data buf */
 /*
                 if(command_dict_string!=NULL) free(command_dict_string);

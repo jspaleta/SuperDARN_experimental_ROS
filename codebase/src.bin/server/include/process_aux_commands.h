@@ -1,5 +1,5 @@
 #include "global_server_variables.h"
 
-int process_aux_commands(AUXdata *arg,char * driver_type) ;
+int process_aux_commands(dictionary **dict_p,char * driver_type) {
 
 

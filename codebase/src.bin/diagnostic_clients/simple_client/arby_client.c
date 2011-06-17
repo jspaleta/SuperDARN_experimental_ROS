@@ -317,8 +317,8 @@ main( int argc, char *argv[])
     aux_dict=NULL;
 
     aux_dict=dictionary_new(0);
-    iniparser_set(aux_dict,"COMMAND",NULL,NULL);
-    iniparser_set(aux_dict,"command","GET_TX_STATUS",NULL);
+    iniparser_set(aux_dict,"aux","NAME",NULL);
+    iniparser_set(aux_dict,"aux:command","GET_TX_STATUS",NULL);
     iniparser_set(aux_dict,"DIO",NULL,NULL);
     sprintf(value,"%d",r);
     iniparser_set(aux_dict,"DIO:radar",value,NULL);
@@ -339,7 +339,6 @@ main( int argc, char *argv[])
     recv_data(s, &rmsg, sizeof(struct ROSMsg));
     if(rmsg.status==1) {
       printf("AUX Command is valid\n");
-
 /*
       dict_string=iniparser_to_string(aux_dict);
       bytes=strlen(dict_string)+1;

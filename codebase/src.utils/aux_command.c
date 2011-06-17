@@ -27,7 +27,6 @@ int send_aux_dict(int s,dictionary *aux_dict) {
         bytes=bufsize;
         send_data(s,dict_buf,bytes);
     }
-    printf("AUX Command sent %p\n",aux_dict);
 
     if(dict_string!=NULL) free(dict_string);
     return 0;

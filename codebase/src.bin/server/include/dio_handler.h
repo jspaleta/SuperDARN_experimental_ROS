@@ -14,5 +14,5 @@ void *DIO_pretrigger(void *arg);
 //int load_config(FILE *fp,struct dio_hdw *hdw);
 void *DIO_pre_clrfreq(struct ControlProgram *arg);
 void *DIO_post_clrfreq(void *arg);
-void *DIO_aux_command(struct AUXdata *arg);
+void *DIO_aux_command(dictionary **dict_p);
 
