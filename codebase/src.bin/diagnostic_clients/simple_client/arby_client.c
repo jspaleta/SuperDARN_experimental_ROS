@@ -313,16 +313,18 @@ main( int argc, char *argv[])
 *  This is a needed step as the ROS may force parameters to different values than requested 
 *   if multiple operating programs are running. (This relates to priority parameter)
 */
+    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+    aux_dict=NULL;
 
     aux_dict=dictionary_new(0);
-    iniparser_set(aux_dict,"COMMAND",NULL);
-    iniparser_set(aux_dict,"command","GET_TX_STATUS");
-    iniparser_set(aux_dict,"DIO",NULL);
+    iniparser_set(aux_dict,"COMMAND",NULL,NULL);
+    iniparser_set(aux_dict,"command","GET_TX_STATUS",NULL);
+    iniparser_set(aux_dict,"DIO",NULL,NULL);
     sprintf(value,"%d",r);
-    iniparser_set(aux_dict,"DIO:radar",value);
-    iniparser_set(aux_dict,"data",NULL);
+    iniparser_set(aux_dict,"DIO:radar",value,NULL);
+    iniparser_set(aux_dict,"data",NULL,NULL);
     sprintf(value,"%d",sizeof(int32));
-    iniparser_set(aux_dict,"data:bytes",value);
+    iniparser_set(aux_dict,"data:bytes",value,NULL);
     iniparser_setbuf(aux_dict,"data",&temp_data,sizeof(int32));
     nsecs=iniparser_getnsec(aux_dict);
     for(i=0 ; i<nsecs;i++) {
@@ -331,17 +333,19 @@ main( int argc, char *argv[])
       printf("%s: %d\n",secname_in_dict,bufsize);
     }
 
-    dict_string=iniparser_to_string(aux_dict);
-    bytes=strlen(dict_string)+1;
     smsg.type=AUX_COMMAND;
     smsg.status=1;
     send_data(s, &smsg, sizeof(struct ROSMsg));
     recv_data(s, &rmsg, sizeof(struct ROSMsg));
     if(rmsg.status==1) {
       printf("AUX Command is valid\n");
+
+/*
+      dict_string=iniparser_to_string(aux_dict);
+      bytes=strlen(dict_string)+1;
       send_data(s, &bytes, sizeof(int32));
       send_data(s, dict_string, bytes*sizeof(char));
-      /* Prepare to send arb. data buf */
+      // Prepare to send arb. data buf 
       nsecs=iniparser_getnsec(aux_dict);
       send_data(s, &nsecs, sizeof(int32));
       for(i=0 ; i<nsecs;i++) {
@@ -353,19 +357,24 @@ main( int argc, char *argv[])
         bytes=bufsize;
         send_data(s,dict_buf,bytes);
       }
-
-      if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-      aux_dict=NULL;
-      printf("AUX Command send %p\n",aux_dict);
+*/
+        printf("Send AUX dict %p\n",aux_dict);
+	send_aux_dict(s,aux_dict);
+        if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+        aux_dict=NULL;
+	recv_aux_dict(s,&aux_dict);
+        printf("AUX dict sent %p\n",aux_dict);
+/*
       recv_data(s, &bytes, sizeof(int32));
       if(dict_string!=NULL) free(dict_string);
       dict_string=malloc(sizeof(char)*(bytes+10));
       recv_data(s, dict_string, bytes*sizeof(char));
       if(aux_dict!=NULL) iniparser_freedict(aux_dict);
       aux_dict=NULL;
-      aux_dict=iniparser_load_from_string(aux_dict,dict_string);
-      free(dict_string);
-      /* Prepare to recv arb. buf data buf and place it into dict*/
+      aux_dict=iniparser_load_from_string(NULL,dict_string);
+      if(dict_string!=NULL) free(dict_string);
+      dict_string=NULL;
+      // Prepare to recv arb. buf data buf and place it into dict
       nsecs=0;
       recv_data(s,&nsecs,sizeof(int32));
       printf("DIO AUX Command nsecs %d\n",nsecs);
@@ -381,9 +390,9 @@ main( int argc, char *argv[])
         if(temp_buf!=NULL) free(temp_buf);
         temp_buf=NULL;
       }
+*/
       recv_data(s, &rmsg, sizeof(struct ROSMsg));
     }
-
     dict_buf=iniparser_getbuf(aux_dict,"dio",&bufsize);
     printf("Data Bufsize %d tx_status size: %d\n",bufsize,sizeof(struct tx_status));
     printf("TX Status for radar %d\n",r);

@@ -6,7 +6,7 @@ common_libs=-lm -liniparser
 linux_libs=-lrt
 qnx_libs=-lsocket
 INCLUDES=-I"../../include/" -I"./include/" -I"../../../src.lib/iniparser3.0b/src" -I"../../../src.utils/tsg/include"
-SOURCES=arby_client.c  ../../../src.utils/utils.c  ../../../src.utils/tsg/maketsg.c
+SOURCES=arby_client.c  ../../../src.utils/aux_command.c ../../../src.utils/utils.c  ../../../src.utils/tsg/maketsg.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=arby_client
 

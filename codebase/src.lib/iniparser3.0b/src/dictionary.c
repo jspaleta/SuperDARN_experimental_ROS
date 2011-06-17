@@ -230,15 +230,15 @@ char * dictionary_get(dictionary * d, char * key, char * def)
 
 	hash = dictionary_hash(key);
 	for (i=0 ; i<d->size ; i++) {
-        if (d->key[i]==NULL)
+          if (d->key[i]==NULL)
             continue ;
         /* Compare hash */
-		if (hash==d->hash[i]) {
+	  if (hash==d->hash[i]) {
             /* Compare string, to avoid hash collisions */
             if (!strcmp(key, d->key[i])) {
-				return d->val[i] ;
-			}
-		}
+	      return d->val[i] ;
+	    }
+	  }
 	}
 	return def ;
 }

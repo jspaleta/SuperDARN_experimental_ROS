@@ -413,6 +413,7 @@ void *control_handler(struct ControlProgram *control_program)
    unsigned int bufsize;
    char *command_dict_string=NULL;
    struct AUXdata auxdata;
+   dictionary *aux_dict=NULL;
    void *buf=NULL; // This is malloced and needs to be freed
    void *temp_buf=NULL; // This is malloced and needs to be freed
    void *dict_data_buf=NULL; // This is a pointer into a dict.. do not free or realloc 
@@ -502,7 +503,8 @@ void *control_handler(struct ControlProgram *control_program)
             msg.status=1;
             if(msg.status==1) {
                 send_data(socket, &msg, sizeof(struct ROSMsg));
-                /* Prepare to recv command dict and data buf */
+/*
+                // Prepare to recv command dict and data buf  
                 recv_data(socket, &bytes, sizeof(int32));
                 if (verbose > 1 ) printf("  AUX_COMMAND: recv dict bytes %d\n",bytes);
                 if(command_dict_string!=NULL) {
@@ -515,8 +517,8 @@ void *control_handler(struct ControlProgram *control_program)
                 }
                 command_dict_string=malloc((bytes+10)*sizeof(char));
                 recv_data(socket,command_dict_string,bytes);
-                auxdata.aux_dict=iniparser_load_from_string(auxdata.aux_dict,command_dict_string);
-                /* Prepare to recv arb. buf data buf */
+                auxdata.aux_dict=iniparser_load_from_string(NULL,command_dict_string);
+                // Prepare to recv arb. buf data buf 
                 recv_data(socket, &nsecs, sizeof(int32));
                 for(i=0 ; i<nsecs;i++) {
                   recv_data(socket,&bytes,sizeof(int32));
@@ -530,13 +532,16 @@ void *control_handler(struct ControlProgram *control_program)
                   if(temp_buf!=NULL) free(temp_buf);
                   temp_buf=NULL;
                 }
-
-
+*/
+                if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+                recv_aux_dict(socket,&aux_dict);
                 /* process aux command dictionary here */
-                process_aux_commands(&auxdata,"DIO");
+                //process_aux_commands(&auxdata,"DIO");
+                send_aux_dict(socket,aux_dict);
 
                 //iniparser_dump_ini(auxdata.aux_dict,stdout);
                 /* Prepare to send return dict and data buf */
+/*
                 if(command_dict_string!=NULL) free(command_dict_string);
                 command_dict_string=iniparser_to_string(auxdata.aux_dict);
                 printf("Client: AUX dict_string %p\n",command_dict_string);
@@ -558,6 +563,7 @@ void *control_handler(struct ControlProgram *control_program)
                 }
                 if(auxdata.aux_dict!=NULL) iniparser_freedict(auxdata.aux_dict);
                 auxdata.aux_dict=NULL;
+*/
             }
             send_data(socket, &msg, sizeof(struct DriverMsg));
             break;
