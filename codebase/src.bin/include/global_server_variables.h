@@ -261,7 +261,4 @@ struct GPSStatus {
 
 
 };
-struct AUXdata {
-  dictionary *aux_dict;
-};
 #endif
