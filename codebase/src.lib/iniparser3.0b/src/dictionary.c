@@ -209,6 +209,24 @@ void * dictionary_getbuf(dictionary * d, char * key, unsigned int *bufsize)
 	return NULL ;
 }
 
+int dictionary_getbufsize(dictionary * d, char * key)
+{
+	unsigned	hash ;
+	int			i ;
+	hash = dictionary_hash(key);
+	for (i=0 ; i<d->size ; i++) {
+        	if (d->key[i]==NULL)
+            		continue ;
+        	/* Compare hash */ 
+		if (hash==d->hash[i]) {
+            		/* Compare string, to avoid hash collisions */ 
+            		if (!strcmp(key, d->key[i])) {
+				return d->bufsize[i] ;
+	    		}
+		}
+	}
+	return 0 ;
+}
 /*-------------------------------------------------------------------------*/
 /**
   @brief	Get a value from a dictionary.
@@ -291,7 +309,7 @@ int dictionary_setbuf(dictionary * d, char * key, void * buf,unsigned int bufsiz
 	        d->buf[i]=malloc(bufsize);
 	        d->bufsize[i] = bufsize;
 	        memset(d->buf[i],0,bufsize);	
-	        memmove(d->buf[i],buf,bufsize);	
+	        if(buf!=NULL) memmove(d->buf[i],buf,bufsize);	
                 /* Value has been modified: return */
 	        return 0 ;
 	      }
@@ -333,7 +351,7 @@ int dictionary_setbuf(dictionary * d, char * key, void * buf,unsigned int bufsiz
 	d->buf[i]=malloc(bufsize);
 	d->bufsize[i] = bufsize;
 	memset(d->buf[i],0,bufsize);	
-	memmove(d->buf[i],buf,bufsize);	
+	if(buf!=NULL) memmove(d->buf[i],buf,bufsize);	
 	d->hash[i] = hash;
 	d->n ++ ;
 	return 0 ;

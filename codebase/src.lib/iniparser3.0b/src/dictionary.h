@@ -176,5 +176,6 @@ void dictionary_dump(dictionary * d, FILE * out);
 
 int dictionary_setbuf(dictionary * d, char * key, void * buf,unsigned int bufsize);
 void * dictionary_getbuf(dictionary * d, char * key, unsigned int *bufsize);
+int dictionary_getbufsize(dictionary * d, char * key);
 
 #endif

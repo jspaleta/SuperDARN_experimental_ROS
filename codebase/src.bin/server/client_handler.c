@@ -532,11 +532,11 @@ void *control_handler(struct ControlProgram *control_program)
                 }
 */
                 if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-                recv_aux_dict(socket,&aux_dict);
+                recv_aux_dict(socket,&aux_dict,0);
                 iniparser_dump_ini(aux_dict,stdout);
                 /* process aux command dictionary here */
                 process_aux_commands(&aux_dict,"DIO");
-                send_aux_dict(socket,aux_dict);
+                send_aux_dict(socket,aux_dict,1);
 
                 /* Prepare to send return dict and data buf */
 /*

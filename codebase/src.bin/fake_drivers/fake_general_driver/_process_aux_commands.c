@@ -3,7 +3,8 @@
 #include "dictionary.h" 
 #include "global_server_variables.h"
 
-int process_aux_commands(dictionary *aux,char * driver_type) {
+int process_aux_commands(dictionary **dict_p,char * driver_type) {
+        dictionary *aux;
 	char *command=NULL;  // pointer into dict do not free or remap
 	//char *buf=NULL;  // pointer into dict do not free or remap
 	char *obuf=NULL;  // malloced pointer that needs to be free'd 
@@ -12,7 +13,7 @@ int process_aux_commands(dictionary *aux,char * driver_type) {
 	int  i,radar=-10,r=-1,bytes;
 	unsigned int bufsize; 
         struct tx_status txstatus[MAX_RADARS];
-        //struct tx_status *txp=NULL;
+        aux=*dict_p;
 	sprintf(entry,"aux:command");
         command=iniparser_getstring(aux,entry,NULL);
 
@@ -21,15 +22,6 @@ int process_aux_commands(dictionary *aux,char * driver_type) {
 		sprintf(entry,"%s","dio");
 		if(iniparser_find_entry(aux, entry)==1) { 
 		  printf("AUX: DIO command\n");
-		  if(iniparser_find_entry(aux, "data")==1) { 
-		    printf("AUX: DIO command has a data buffer\n");
-                    //buf=dictionary_getbuf(aux,"data",&bufsize);  
-		    /* Removing the data entry now that we have pulled the buffer */
-                    iniparser_unset(aux,"data:bytes");
-                    iniparser_unset(aux,"data");
-		  }
-                  //iniparser_dump_ini(aux,stdout);
-		  /* Process different command strings here */
 		  if(strcmp(command,"GET_TX_STATUS")==0) {
                     for (r=0;r<MAX_RADARS;r++) {
                       for (i=0;i<MAX_TRANSMITTERS;i++) {
@@ -50,26 +42,17 @@ int process_aux_commands(dictionary *aux,char * driver_type) {
 		      if (obuf!=NULL) free(obuf);
                       obuf=malloc(bytes); 
 		      memmove(obuf,&txstatus[r],bytes);
-		      sprintf(entry,"%s:bytes","dio");
-		      sprintf(value,"%d",bytes);
-		      iniparser_set(aux,entry,value,NULL);
 		      iniparser_setbuf(aux,"dio",obuf,bytes);
-                      //txp=dictionary_getbuf(aux,"dio",&bufsize);
- 
-		      //for (i=0;i<MAX_TRANSMITTERS;i++) {
-                      //  printf("%d : %d %d %d\n",i,
-                      //    txp->LOWPWR[i],
-                      //    txp->AGC[i],
-                      //    txp->status[i]);
-                      //}
-
 		      if (obuf!=NULL) free(obuf);
                       obuf=NULL;
               	    }
+		    printf("AUX: DIO: GET_TX_STATUS Done %d\n",iniparser_getbufsize(aux,"dio"));
 		  }
 		}	
+          *dict_p=aux;
           return 1;
 	}
+        *dict_p=aux;
         return 0;
 }
 

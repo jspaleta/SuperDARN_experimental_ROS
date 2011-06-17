@@ -111,10 +111,8 @@ void *DIO_aux_command(dictionary **dict_p)
   void *temp_buf=NULL; // malloced buffer needs to be freed 
   int i,radar=1;
   pthread_mutex_lock(&dio_comm_lock);
-  
   aux_dict=*dict_p;
-  printf("DIO AUX Pre Dict pointer: %p\n",aux_dict);
-  iniparser_dump_ini(aux_dict,stdout);
+  printf("DIO AUX Pre Dict pointer: %u\n",aux_dict);
 
   dict_string=iniparser_to_string(aux_dict);
   bytes=strlen(dict_string)+1;
@@ -126,68 +124,22 @@ void *DIO_aux_command(dictionary **dict_p)
   if(r_msg.status==1) {
     printf("DIO AUX Command is valid\n");
 
-/*
-    send_data(diosock, &bytes, sizeof(int32));
-    printf("%s",dict_string);
-    send_data(diosock, dict_string, bytes*sizeof(char));
-    // Prepare to send arb. data buf 
-    nsecs=iniparser_getnsec(aux_dict);
-    send_data(diosock, &nsecs, sizeof(int32));
-    for(i=0;i<nsecs;i++) {
-      secname_in_dict=iniparser_getsecname(aux_dict,i);
-      dict_buf=iniparser_getbuf(aux_dict,secname_in_dict,&bufsize);
-      bytes=strlen(secname_in_dict)+1;
-      send_data(diosock,&bytes,sizeof(int32));
-      send_data(diosock,secname_in_dict,bytes);
-      bytes=bufsize;
-      send_data(diosock,dict_buf,bytes);
-    }
+    send_aux_dict(diosock,aux_dict,0);
+    printf("Sent to DIO driver\n");
     if(aux_dict!=NULL) iniparser_freedict(aux_dict);
     aux_dict=NULL;
-    printf("AUX dict and buffers sent %p\n",aux_dict);
-*/
 
-    send_aux_dict(diosock,aux_dict);
-    recv_aux_dict(diosock,&aux_dict);
-/*
-    recv_data(diosock, &bytes, sizeof(int32));
-    if(dict_string!=NULL) free(dict_string);
-    dict_string=malloc(sizeof(char)*(bytes+10));
-    sprintf(dict_string,"");
-    recv_data(diosock, dict_string, bytes*sizeof(char));
-    printf("%s",dict_string);
-    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-    aux_dict=NULL;
-    aux_dict=iniparser_load_from_string(NULL,dict_string);
-    free(dict_string);
-    // Prepare to recv arb. buf data buf and place it into dict
-    nsecs=0;
-    recv_data(diosock,&nsecs,sizeof(int32));
-    printf("DIO AUX Command nsecs %d\n",nsecs);
-    for(i=0;i<nsecs;i++) {
-      recv_data(diosock,&bytes,sizeof(int32));
-      printf("%d :",bytes);
-      recv_data(diosock,secname_static,bytes);
-      printf(" %s :",secname_static);
-      sprintf(entry,"%s:bytes",secname_static);
-      bytes=iniparser_getint(aux_dict,entry,0);
-      printf(" %d\n",bytes);
-      if(temp_buf!=NULL) free(temp_buf);
-      temp_buf=malloc(bytes);
-      recv_data(diosock,temp_buf,bytes);
-      iniparser_setbuf(aux_dict,secname_static,temp_buf,bytes);
-      if(temp_buf!=NULL) free(temp_buf);
-      temp_buf=NULL;
-    }
-*/
+    printf("DIO AUX recv Dict pointer: %u\n",aux_dict);
+    recv_aux_dict(diosock,&aux_dict,1);
+
     recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
   } else {
-    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-    aux_dict=dictionary_new(0);
-    printf("AUX Command is invalid\n");
+    //if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+    //aux_dict=dictionary_new(0);
+    printf("DIO AUX Command is invalid\n");
   }
-  printf("AUX POST Dict pointer: %p\n",aux_dict);
-  iniparser_dump_ini(aux_dict,stdout);
+  printf("DIO AUX POST Dict pointer: %u\n",aux_dict);
+  iniparser_dump(aux_dict,stdout);
   *dict_p=aux_dict;
   
   pthread_mutex_unlock(&dio_comm_lock);

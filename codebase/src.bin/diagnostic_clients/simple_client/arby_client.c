@@ -319,13 +319,10 @@ main( int argc, char *argv[])
     aux_dict=dictionary_new(0);
     iniparser_set(aux_dict,"aux","NAME",NULL);
     iniparser_set(aux_dict,"aux:command","GET_TX_STATUS",NULL);
-    iniparser_set(aux_dict,"DIO",NULL,NULL);
+    iniparser_set(aux_dict,"dio",NULL,NULL);
     sprintf(value,"%d",r);
-    iniparser_set(aux_dict,"DIO:radar",value,NULL);
-    iniparser_set(aux_dict,"data",NULL,NULL);
+    iniparser_set(aux_dict,"dio:radar",value,NULL);
     sprintf(value,"%d",sizeof(int32));
-    iniparser_set(aux_dict,"data:bytes",value,NULL);
-    iniparser_setbuf(aux_dict,"data",&temp_data,sizeof(int32));
     nsecs=iniparser_getnsec(aux_dict);
     for(i=0 ; i<nsecs;i++) {
       secname_in_dict=iniparser_getsecname(aux_dict,i);
@@ -358,10 +355,10 @@ main( int argc, char *argv[])
       }
 */
         printf("Send AUX dict %p\n",aux_dict);
-	send_aux_dict(s,aux_dict);
+	send_aux_dict(s,aux_dict,1);
         if(aux_dict!=NULL) iniparser_freedict(aux_dict);
         aux_dict=NULL;
-	recv_aux_dict(s,&aux_dict);
+	recv_aux_dict(s,&aux_dict,1);
         printf("AUX dict sent %p\n",aux_dict);
 /*
       recv_data(s, &bytes, sizeof(int32));

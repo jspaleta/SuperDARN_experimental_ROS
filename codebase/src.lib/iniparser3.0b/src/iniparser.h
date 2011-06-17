@@ -223,6 +223,7 @@ int iniparser_setstring(dictionary * ini, char * entry, char * val,char *comment
 int iniparser_set(dictionary * ini, char * entry, char * val,char *comment);
 int iniparser_setbuf(dictionary * ini, char * entry, void * buf,unsigned int bufsize);
 void* iniparser_getbuf(dictionary * ini, char * entry, unsigned int *bufsize);
+int iniparser_getbufsize(dictionary * ini, char * entry);
 
 
 /*-------------------------------------------------------------------------*/

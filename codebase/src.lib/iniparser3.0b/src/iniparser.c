@@ -191,9 +191,9 @@ void iniparser_dump(dictionary * d, FILE * f)
         if (d->key[i]==NULL)
             continue ;
         if (d->val[i]!=NULL) {
-            fprintf(f, "[%s]=[%s]\n", d->key[i], d->val[i]);
+            fprintf(f, "[%s]=[%s] %d\n", d->key[i], d->val[i],d->bufsize[i]);
         } else {
-            fprintf(f, "[%s]=UNDEF\n", d->key[i]);
+            fprintf(f, "[%s]=UNDEF %d\n", d->key[i],d->bufsize[i]);
         }
     }
     return ;
@@ -246,8 +246,9 @@ char* iniparser_to_string(dictionary * d)
                         strncat(str_p,temp_str,strlen(temp_str));
  
         	} else {
-			sprintf(temp_str, "%s\tUNDEF\tUNDEF\t0\n",
-                                d->key[i]);
+			sprintf(temp_str, "%s\tUNDEF\tUNDEF\t%d\n",
+                                d->key[i],
+                                d->bufsize[i] ? d->bufsize[i] : 0);
                         if(strlen(temp_str)+strlen(str_p)>max_length-1) {
                                 max_length=strlen(temp_str)+strlen(str_p)+2;
                                 str_p = realloc(str_p, max_length*sizeof(char));
@@ -508,6 +509,10 @@ void* iniparser_getbuf(dictionary * ini, char * entry,unsigned int * bufsize)
 {
     return dictionary_getbuf(ini, strlwc(entry),bufsize);
 }
+int iniparser_getbufsize(dictionary * ini, char * entry)
+{
+    return dictionary_getbufsize(ini, strlwc(entry));
+}
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Delete an entry in a dictionary
@@ -758,12 +763,15 @@ dictionary * iniparser_load_from_string(dictionary *d, char * inistring)
     if (!dict) {
         return NULL ;
     }
+    printf("Load from string start\n");
     str=inistring;
     str1 = strtok(str, "\n") ;
     while (str1!=NULL) {
         str=NULL;
         strcpy(comment,"");
+        bufsize=0;
 	sscanf(str1,"%s\t%s\t%s\t%u",entry,value,comment,&bufsize);	
+        printf("  [%s] [%s] [%s] [%d]\n",entry,value,comment,bufsize);
 	if(strcmp(value,"UNDEF")==0) {	
 	  if(strcmp(comment,"UNDEF")==0) {	
 	    iniparser_set(dict,entry,NULL,NULL);	
@@ -782,6 +790,7 @@ dictionary * iniparser_load_from_string(dictionary *d, char * inistring)
 	}
         str1 = strtok(str, "\n"); 
     }
+    printf("Load from string done\n");
     return dict ;
 }
 /*-------------------------------------------------------------------------*/

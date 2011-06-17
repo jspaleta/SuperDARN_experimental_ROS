@@ -546,10 +546,10 @@ int main ( int argc, char **argv){
 			    temp_buf=NULL;
 			  }
 */
-                          recv_aux_dict(msgsock,&aux); 
+                          recv_aux_dict(msgsock,&aux,1); 
 			  /* process aux command dictionary here */
-			  process_aux_commands(aux,driver_type);
-                          send_aux_dict(msgsock,aux); 
+			  process_aux_commands(&aux,driver_type);
+                          send_aux_dict(msgsock,aux,1); 
 /*
                           if(command_dict_string!=NULL) free(command_dict_string);
                           command_dict_string=iniparser_to_string(aux);
