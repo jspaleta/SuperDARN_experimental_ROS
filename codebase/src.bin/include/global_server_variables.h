@@ -128,7 +128,7 @@ struct BlackList {
 // ros state variables
      int32 start;
      int32 end;
-     uint32 program;
+     uint64 program;
 };
 #define REGISTER_SEQ '+'
 #define TIMING_REGISTER_SEQ '+'

@@ -16,13 +16,12 @@ extern int trigger_type;
 extern int32 gpsrate;
 
 void *settings_parse_ini_file(struct SiteSettings *ros_settings) {
-     char ini_name[80]="/root/test.ini";
      char entry_name[80]="";
      int exists_flag;
      int temp_int;
 
      pthread_mutex_unlock(&settings_lock);
-
+/*
      if(Site_INI!=NULL) {
        iniparser_freedict(Site_INI);
        Site_INI=NULL;
@@ -35,6 +34,7 @@ void *settings_parse_ini_file(struct SiteSettings *ros_settings) {
        pthread_mutex_unlock(&settings_lock);
        pthread_exit(NULL);
      }
+*/
      ros_settings->ifmode=iniparser_getboolean(Site_INI,"site_settings:ifmode",IF_DISABLED);
      sprintf(ros_settings->name,"%s",iniparser_getstring(Site_INI,"site_settings:name",SITE_NAME));
      temp_int=iniparser_getint(Site_INI,"site_settings:trigger_type",0);

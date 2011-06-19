@@ -23,9 +23,9 @@
 #include "tsg.h"
 #include "iniparser.h"
 
+/* Required Driver Global Variables */
 char *ros_ip=ROS_IP;
 int ros_port=ROS_PORT;
-/* Required Driver Global Variables */
 char *diohostip=DIO_HOST_IP;
 int dioport=DIO_HOST_PORT;
 int diosock=-1;
@@ -48,11 +48,13 @@ pthread_mutex_t controlprogram_list_lock,ros_state_lock,coord_lock,exit_lock;
 pthread_mutex_t dds_comm_lock,timing_comm_lock,gps_comm_lock,timing_comm_lock,recv_comm_lock,dio_comm_lock;
 pthread_mutex_t thread_list_lock,settings_lock;
 pthread_cond_t ready_flag;
-pthread_t status_thread=NULL,timeout_thread=NULL;
+pthread_t status_thread=0,timeout_thread=0;
 
 /* State Global Variables */
 dictionary *Site_INI;
-void *radar_channels[MAX_RADARS*MAX_CHANNELS];
+int num_radars=0,num_channels=0;
+void* **radar_channels;
+//void *radar_channels[MAX_RADARS][MAX_CHANNELS];
 int *trigger_state_pointer; 
 int trigger_type;
 int *ready_state_pointer,*ready_count_pointer;
@@ -65,9 +67,9 @@ int die_on_socket_failure=0;
 int clear_frequency_request;
 struct BlackList *blacklist=NULL;
 int *blacklist_count_pointer;
-struct ClrPwr *latest_clr_fft[MAX_RADARS];
-struct timeval latest_full_clr_time;
-int full_clr_wait=MAX_CLR_WAIT;
+
+struct ClrPwr* *latest_clr_fft;
+//struct ClrPwr *latest_clr_fft[MAX_RADARS];
 int full_clr_start=FULL_CLR_FREQ_START;
 int full_clr_end=FULL_CLR_FREQ_END;
 int max_freqs=0;
@@ -79,19 +81,18 @@ void graceful_cleanup(int signum)
 {
   int t=0,i=0;
   struct Thread_List_Item *thread_list,*thread_item,*thread_next;
-  struct ControlProgram *data;
 
   if (verbose>-1) fprintf(stderr,"Attempting graceful clean up of control program threads\n");
   thread_list=controlprogram_threads;
   t=0;
   if (thread_list!=NULL) {
     while(thread_list!=NULL){
-      if (verbose>0) fprintf(stderr,"Cancelling thread %ld\n",t);
+      if (verbose>0) fprintf(stderr,"Cancelling thread %d\n",t);
       pthread_cancel(thread_list->id);       
-      if (verbose>0) fprintf(stderr,"Done Cancelling thread %ld\n",t);
-      if (verbose>0) fprintf(stderr,"Joining thread %ld\n",t);
+      if (verbose>0) fprintf(stderr,"Done Cancelling thread %d\n",t);
+      if (verbose>0) fprintf(stderr,"Joining thread %d\n",t);
       pthread_join(thread_list->id,NULL);
-      if (verbose>0) fprintf(stderr,"Done Joining thread %ld\n",t);
+      if (verbose>0) fprintf(stderr,"Done Joining thread %d\n",t);
       pthread_mutex_lock(&controlprogram_list_lock);
       thread_item=thread_list;   
       if (verbose>0) fprintf(stderr,"thread item %p\n",thread_item);
@@ -111,7 +112,7 @@ void graceful_cleanup(int signum)
     }
   }
   if (verbose>0) fprintf(stderr,"Done with control program threads now lets do worker threads\n");
-  if (status_thread!=NULL) {
+  if (status_thread!=0) {
     if (verbose>0) fprintf(stderr,"Cancelling Status thread\n");
     pthread_cancel(status_thread);       
     if (verbose>0) fprintf(stderr,"  Status thread cancelled\n");
@@ -119,7 +120,7 @@ void graceful_cleanup(int signum)
     pthread_join(status_thread,NULL);
     if (verbose>0) fprintf(stderr,"  Status thread done\n");
   }
-  if (timeout_thread!=NULL) {
+  if (timeout_thread!=0) {
     if (verbose>0) fprintf(stderr,"Cancelling Timeout thread\n");
     pthread_cancel(timeout_thread);
     if (verbose>0) fprintf(stderr,"  Timeout thread cancelled\n");
@@ -162,41 +163,57 @@ void graceful_socket_cleanup(int signum)
 
 int main()
 {
-  struct sockaddr_un serv_addr;
   struct sockaddr_un cli_addr;
   struct Thread_List_Item *thread_list;
   struct ControlProgram *control_program;
   struct DriverMsg s_msg,r_msg;
-  int newsockfd, clilen,rc,i,r;
+  int newsockfd, rc,i,j,r;
+  unsigned int clilen;
   int num_threads;
   int restrict_count,blacklist_count,start,end;
   char restrict_file[120],hmm[120];
   pthread_t thread;
-  struct timeval t0,current_time,default_timeout;
-/* DIO Variables may need to move */
-  char *frq_name=NULL;
-  char *cnf_name=NULL;
-  struct FreqTable *fptr=NULL;
-  FILE *fp,*fd;
+  struct timeval current_time,default_timeout;
+  char ini_name[120];
+  FILE *fd;
   char *s,*line,*field;
-  int dfrq=13000;
-/* end DIO */
-  printf("Size of Struct ROSMsg  %d\n",sizeof(struct ROSMsg));
-  printf("Size of Struct int32  %d\n",sizeof(int32));
-  printf("Size of Struct float  %d\n",sizeof(float));
-  printf("Size of Struct unsigned char  %d\n",sizeof(unsigned char));
-  printf("Size of Struct ControlPRM  %d\n",sizeof(struct ControlPRM));
-  printf("Size of Struct CLRFreqPRM  %d\n",sizeof(struct CLRFreqPRM));
-  printf("Size of Struct SeqPRM  %d\n",sizeof(struct SeqPRM));
-  printf("Size of Struct DataPRM  %d\n",sizeof(struct DataPRM));
-  printf("Size of Struct SiteSettings  %d\n",sizeof(struct SiteSettings));
 
-  gettimeofday(&t0,NULL);
-  default_timeout.tv_sec=10;
+  printf("Size of Struct ROSMsg  %lu\n",(unsigned long) sizeof(struct ROSMsg));
+  printf("Size of Struct int32  %lu\n",(unsigned long) sizeof(int32));
+  printf("Size of Struct float  %lu\n",(unsigned long) sizeof(float));
+  printf("Size of Struct unsigned char  %lu\n",(unsigned long) sizeof(unsigned char));
+  printf("Size of Struct ControlPRM  %lu\n",(unsigned long) sizeof(struct ControlPRM));
+  printf("Size of Struct CLRFreqPRM  %lu\n",(unsigned long) sizeof(struct CLRFreqPRM));
+  printf("Size of Struct SeqPRM  %lu\n",(unsigned long) sizeof(struct SeqPRM));
+  printf("Size of Struct DataPRM  %lu\n",(unsigned long) sizeof(struct DataPRM));
+  printf("Size of Struct SiteSettings  %lu\n",(unsigned long) sizeof(struct SiteSettings));
+/* Put in Commandline arg parsing here */
+
+/* Load Site INI file */
+  if(Site_INI!=NULL) {
+    iniparser_freedict(Site_INI);
+    Site_INI=NULL;
+  }
+  sprintf(ini_name,"%s/site.ini",SITE_DIR);
+  fprintf(stderr, "parsing file: %s\n", ini_name);
+  Site_INI=iniparser_load(ini_name);
+  if (Site_INI==NULL) {
+     fprintf(stderr, "cannot parse file: %s\n", ini_name);
+  }
+/* Load important Variable Values */
+  num_radars=iniparser_getint(Site_INI,"site_settings:num_radars",MAX_RADARS);
+  num_channels=iniparser_getint(Site_INI,"site_settings:num_channels",MAX_CHANNELS);
+  default_timeout.tv_sec=iniparser_getint(Site_INI,"site_settings:client_timeout_secs",10);
+  radar_channels=malloc(num_radars*sizeof(void *));
+  for(r=0;r<num_radars;r++){
+    radar_channels[r]=malloc(num_channels*sizeof(void *));
+  }
+  latest_clr_fft=malloc(num_radars*sizeof(void *));
+
+
 /* Set up global CLR_Frequecy */
   max_freqs=(full_clr_end-full_clr_start);
-  latest_full_clr_time=t0;
-  for(r=0;r<MAX_RADARS;r++){
+  for(r=0;r<num_radars;r++){
     latest_clr_fft[r]=calloc(max_freqs,sizeof(struct ClrPwr));
     if (latest_clr_fft[r]!=NULL) {
       for(i=0;i<max_freqs;i++){
@@ -237,8 +254,10 @@ int main()
   *ready_count_pointer=0; //no control programs ready
   *trigger_state_pointer=0; //pre-trigger state
   trigger_type=0; //strict control program ready trigger type
-  for(i=0;i<MAX_RADARS*MAX_CHANNELS;i++) {
-    radar_channels[i]=NULL ;
+  for(i=0;i<num_radars;i++) {
+    for(j=0;j<num_channels;j++) {
+      radar_channels[i][j]=NULL ;
+    }
   }
   bad_transmit_times.length=0;
   bad_transmit_times.start_usec=NULL;
@@ -275,7 +294,7 @@ int main()
           end=atoi(field);
           blacklist[blacklist_count].start=start;
           blacklist[blacklist_count].end=end;
-          blacklist[blacklist_count].program=NULL;
+          blacklist[blacklist_count].program=(uint64)NULL;
           blacklist_count++;
         } else {
 //        //printf("found something else: %s\n",s);
@@ -285,20 +304,6 @@ int main()
   }
   fclose(fd);
   *blacklist_count_pointer=blacklist_count; 
-/*
- * Setup DIO State Variables
- * 
- */
-  if (frq_name !=NULL) {
-    fp=fopen(frq_name,"r");
-    if (fp==NULL) {
-      perror("Could not load frequency table");
-      exit(1);
-    }
-    fptr=FreqLoadTable(fp);
-    dfrq=fptr->dfrq;
-    fclose(fp);
-  }
 /*
  * Setup Radar Setting State Variables
  *

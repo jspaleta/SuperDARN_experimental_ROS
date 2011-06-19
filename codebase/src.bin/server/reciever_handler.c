@@ -21,9 +21,8 @@ extern int *ready_state_pointer;
 extern struct Thread_List_Item *controlprogram_threads;
 extern struct BlackList *blacklist;
 extern int *blacklist_count_pointer;
-extern struct ClrPwr *latest_clr_fft[MAX_RADARS];
-extern struct timeval latest_full_clr_time;
-extern int max_freqs,full_clr_wait,full_clr_start,full_clr_end;
+extern struct ClrPwr* *latest_clr_fft;
+extern int max_freqs,full_clr_start,full_clr_end;
 extern unsigned long error_count,collection_count;
 extern dictionary *Site_INI;
 
@@ -32,7 +31,7 @@ extern dictionary *Site_INI;
  *        -1 : b > a
  *         0 : a == b
  */
-int compare_structs(const void *a, const void *b){
+int compare_fft_structs(const void *a, const void *b){
 
     t_fft_index *struct_a = (t_fft_index *) a;
     t_fft_index *struct_b = (t_fft_index *) b;
@@ -71,16 +70,12 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 	struct Thread_List_Item *thread_list;
 	struct ControlProgram *controlprogram;
 	t_fft_index *fft_array=NULL, *detrend_fft_array=NULL, *sub_fft_array=NULL;
-	int i,j,acount,k,clean;
+	int i,j,k,acount,clean;
 	int ncfs, nfreq;
 	int blacklist_count=0;
 	int numclients=0;
 	int best_index=0; 
-	int finding_best=0;
-	int finding_current=0;
-	int assigning_best=0;
-	int assigning_current=0;
-	int padded_tx_sideband,padded_rx_sideband; //in KHz
+	int rx_bandwidth_khz,padded_tx_sideband_khz,padded_rx_sideband_khz; //in KHz
         int detrend_enabled=0; 
         int detrend_sideband=0; 
 	/* Variables for FFT diagnostic output
@@ -231,13 +226,14 @@ void receiver_assign_frequency(struct ControlProgram *arg){
    *       2.) smoothing separate from the sideband use for blacklisting an
    *           assigned frequency window
    */ 
+  rx_bandwidth_khz=arg->parameters->baseband_samplerate/1000.0;
   /* padded_tx_sideband defined but unused currently */
-  padded_tx_sideband = MAX(2*ceil(arg->parameters->baseband_samplerate/1000.0),0);
+  padded_tx_sideband_khz = MAX(2*ceil(rx_bandwidth_khz),0);
   /* TODO: optimize padded_rx_sideband  to account for over sampling and wide-band modes*/
-  padded_rx_sideband = MAX(2*ceil(arg->parameters->baseband_samplerate/1000.0),0);
+  padded_rx_sideband_khz = MAX(2*ceil(rx_bandwidth_khz),0);
 
   if (verbose > -1) {
-    fprintf(stderr," Padded Rx Side Band: %d [kHz]\n",padded_rx_sideband);
+    fprintf(stderr," Padded Rx Side Band: %d [kHz]\n",padded_rx_sideband_khz);
     fprintf(stderr, "%d frequencies in fft \n",arg->state->N);
     fprintf(stderr, "  freq[%8d]: %8.3lf\n",0,(double)fft_array[0].freq);
     fprintf(stderr, "  freq[%8d]: %8.3lf\n",
@@ -296,13 +292,13 @@ void receiver_assign_frequency(struct ControlProgram *arg){
   for (i=0; i<arg->state->N; i++){	/* run through all FFT samples */
     fft_array[i].apwr = 0;
     acount = 0;
-    for (j=-padded_rx_sideband; j<=padded_rx_sideband; j++) {
+    for (j=-padded_rx_sideband_khz; j<=padded_rx_sideband_khz; j++) {
       if( ((i+j) >= 0) && ((i+j) < arg->state->N) ) {
         fft_array[i].apwr += fft_array[i+j].pwr;
         acount++;
       }
     }
-    if (acount > 2*padded_rx_sideband) {
+    if (acount > 2*padded_rx_sideband_khz) {
       fft_array[i].apwr = (double)fft_array[i].apwr/(double)acount;
     } else {
       /* Bias against selecting a frequency too near the edge of the search
@@ -315,9 +311,9 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 	/* Put input fft info into diagnostic file */
   	if(f_fft>=0){
         	 //sidebands in use
-        	 temp=padded_rx_sideband;
+        	 temp=padded_rx_sideband_khz;
         	 write(f_fft, &temp, sizeof(int32));
-        	 temp=padded_tx_sideband;
+        	 temp=padded_tx_sideband_khz;
         	 write(f_fft, &temp, sizeof(int32));
         	 //ControlState
         	 temp=arg->state->N;
@@ -359,10 +355,8 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		if ( (fft_array[i].freq <= arg->clrfreqsearch.end) &&
 				(fft_array[i].freq >= arg->clrfreqsearch.start) ) {
 			if (j >= ncfs) {	/* this should never happend, but good to check... */
-				/* Jeff, not sure what level of verbosity this should be ... */
 				if (verbose > -1)
-					fprintf(stderr, "Too many frequencies in "
-													"clrfreqsearch band: %d\n", j);
+					fprintf(stderr, "Too many frequencies in clrfreqsearch band: %d\n", j);
 				j = ncfs - 1;	/* make sure there is no overstepping array bounds */
 			}
 			/* fill the elements of the sub__fft_array from the fft_array */
@@ -383,7 +377,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 	/* this should be a really high level of verbosity */
 	if (verbose > 10) {
 		for (i=0; i<ncfs; i++) {
-			fprintf(stderr, "%5d\n", sub_fft_array[i]);
+			fprintf(stderr, "%8.3g\n", sub_fft_array[i].freq);
 		}
 	}
 	/* We now have an array of only the frequencies in the clrfreqsearch
@@ -409,19 +403,17 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		if (verbose>1) fprintf(stderr,"%d %d :: Filling backlist\n",arg->parameters->radar,arg->parameters->channel);	
 		/*
 		* First add all other control program's assigned frequencies to the black list   
-		* priority is like golf: lower number wins
 		*/
 		thread_list=controlprogram_threads;
      		while (thread_list!=NULL) {
        			controlprogram=thread_list->data;
 			if(controlprogram!=arg) {                   
        				if(controlprogram->active!=0) {
-         			//if (controlprogram->parameters->priority < arg->parameters->priority){
            				if (blacklist_count < (numclients*2)) {  
            					/* place controlprogram's assigned frequency on the blacklist */
            					blacklist[blacklist_count].start=controlprogram->state->best_assigned_freq-controlprogram->state->rx_sideband;
            					blacklist[blacklist_count].end=controlprogram->state->best_assigned_freq+controlprogram->state->rx_sideband;
-           					blacklist[blacklist_count].program=(unsigned int)controlprogram;
+           					blacklist[blacklist_count].program=(uint64)controlprogram;
            					if (verbose>-11) printf("  %d %d :: Adding backlist :: %d %d :  %d %d\n",
                        					arg->parameters->radar,arg->parameters->channel,
                        					controlprogram->parameters->radar,controlprogram->parameters->channel,
@@ -437,7 +429,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		if(verbose > -1 ) {
 			fprintf(stderr,"Current blacklist:\n");
 			for (k=0; k<blacklist_count; k++) {
-				fprintf(stderr," %8d %8d : %p\n",blacklist[k].start,blacklist[k].end,blacklist[k].program);
+				fprintf(stderr," %8d %8d : %lu\n",blacklist[k].start,blacklist[k].end,(unsigned long) blacklist[k].program);
 			}
 		}
 
@@ -509,7 +501,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 	 * any of the restricted frequency bands */
 
 	/* sort the array of allowable frequencies */
-	qsort(sub_fft_array, nfreq, sizeof(sub_fft_array[0]), compare_structs);
+	qsort(sub_fft_array, nfreq, sizeof(sub_fft_array[0]), compare_fft_structs);
         if (detrend_enabled) {
 		/* Add back the detrended value to get the correct noise value */
          	for(i=0;i<nfreq;i++) {
@@ -565,15 +557,15 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		*/
   		best_index=0; 
         	arg->state->current_assigned_freq=sub_fft_array[best_index].freq;
-        	arg->state->current_assigned_noise=sub_fft_array[best_index].apwr;
+        	arg->state->current_assigned_noise=sub_fft_array[best_index].apwr*rx_bandwidth_khz;
   		arg->state->best_assigned_freq=sub_fft_array[best_index].freq;
-  		arg->state->best_assigned_noise=sub_fft_array[best_index].apwr;
+  		arg->state->best_assigned_noise=sub_fft_array[best_index].apwr*(rx_bandwidth_khz);
 
   		if(verbose > 1 ) fprintf(stderr,"%lf best frequency: %d assigned frequency: %d\n",sub_fft_array[best_index].freq,
                            arg->state->best_assigned_freq,arg->state->current_assigned_freq);
 
-		arg->state->tx_sideband=padded_tx_sideband;
-		arg->state->rx_sideband=padded_rx_sideband;
+		arg->state->tx_sideband=padded_tx_sideband_khz;
+		arg->state->rx_sideband=padded_rx_sideband_khz;
 		/*
 		* TODO: check to see if any controlprogram has a currently assigned frequency that conflicts with the best freq   
 		* priority :high number wins
@@ -587,7 +579,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
         	arg->state->current_assigned_freq=0;
         	arg->state->current_assigned_noise=1E10;
   		arg->state->best_assigned_freq=0;
-  		arg->state->best_assigned_noise=0;
+  		arg->state->best_assigned_noise=1E10;
 
 	}
 	/* Put assignment data into diagnostic file */
@@ -612,121 +604,17 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 }
 
 
-/* JDS: Old Dead logic still to be re-integrated */
-/*
-     assigning_best=1;
-     assigning_current=0;
-     while(assigning_best||assigning_current) {
-       finding_best=1;
-       while(finding_best) {
-         // Test to see if stored freq is inside clrfreqsearch band of interest 
-         if((sub_fft_array[best_index].freq<arg->clrfreqsearch.start) || 
-          (sub_fft_array[best_index].freq<arg->clrfreqsearch.start)) {
-           best_index++;
-           if (best_index>=(arg->state->N-1)) finding_best=0;
-           continue; 
-         }
-         if (verbose>1) fprintf(stderr,"%d %d :: Blacklist Count %d\n",
-                    arg->parameters->radar,arg->parameters->channel,blacklist_count);
-         // test to see if frequency is in a blacklisted transmit window 
-         for (i=0;i<blacklist_count;i++) {
-           if ((sub_fft_array[best_index].freq<=blacklist[i].end) && 
-            (sub_fft_array[best_index].freq>=blacklist[i].start)) {
-             if (verbose>1) fprintf(stderr,"%d %d :: freq %lf in backlist  %d %d \n",
-                       arg->parameters->radar,arg->parameters->channel,
-                       sub_fft_array[best_index].freq,
-                       blacklist[blacklist_count].start,blacklist[blacklist_count].end);
-
-          // increment best_index and start over.
-             best_index++;
-
-             if (best_index>=(arg->state->N-1)) finding_best=0;
-             break; 
-           }        
-         }
-         finding_best=0;
-       }
-       thread_list=controlprogram_threads;
-       if(assigning_best) {
-         arg->state->best_assigned_freq=sub_fft_array[best_index].freq;
-         arg->state->best_assigned_noise=sub_fft_array[best_index].apwr;
-         if(verbose > 1 ) fprintf(stderr,"%lf best frequency: %d assigned frequency: %d\n",sub_fft_array[best_index].freq,
-                           arg->state->best_assigned_freq,arg->state->current_assigned_freq);
-       }
-       arg->state->current_assigned_freq=sub_fft_array[best_index].freq;
-       arg->state->current_assigned_noise=fft_array[best_index].apwr;
-       arg->state->tx_sideband=padded_tx_sideband;
-       arg->state->rx_sideband=padded_rx_sideband;
-       assigning_best=0;
-//
-// Now check to see if any controlprogram has a currently assigned frequency that conflicts with the best freq   
-// priority :high number wins
-// Kick lower priority control programs to give up their frequency.
-//
-       assigning_current=1;
-       finding_current=0;
-       if (verbose>1) fprintf(stderr,"Finding current using freq %d\n",arg->state->current_assigned_freq);	
-       while (thread_list!=NULL) {
-         controlprogram=thread_list->data;
-         if(controlprogram->active!=0) {
-           if (abs(controlprogram->state->best_assigned_freq-arg->state->best_assigned_freq) < padded_tx_sideband ){
-             if (controlprogram->parameters->priority < arg->parameters->priority){
-               controlprogram->state->freq_change_needed=1;
-             }
-           }
-           if (controlprogram!=arg){
-           // controlprogram different from arg 
-             if (abs(controlprogram->state->current_assigned_freq-arg->state->current_assigned_freq) < arg->state->padded_tx_sideband ){
-               finding_current=1;
-               for(j=0;j<blacklist_count;j++) {
-                 if(blacklist[j].program==(unsigned int)controlprogram) break;
-               }
-               if(j==blacklist_count) {
-                 blacklist[blacklist_count].start=controlprogram->state->current_assigned_freq-arg->state->padded_tx_sideband;
-                 blacklist[blacklist_count].end=controlprogram->state->current_assigned_freq+arg->state->padded_tx_sideband;
-                 blacklist[blacklist_count].program=(unsigned int)controlprogram;
-                 if (verbose>1) fprintf(stderr,"%d %d :: freq conflict %d %d: Adding backlist :  %d %d\n",
-                       arg->parameters->radar,arg->parameters->channel,
-                       controlprogram->state->current_assigned_freq,arg->state->current_assigned_freq,
-                       blacklist[blacklist_count].start,blacklist[blacklist_count].end);
-      
-                 blacklist_count++;
-                 if (blacklist_count >= (numclients*2)) blacklist_count=numclients*2-1;
-               }
-               if (controlprogram->parameters->priority < arg->parameters->priority){
-                 controlprogram->state->freq_change_needed=1;
-               }
-               best_index++;
-               if (best_index>=(arg->state->N-1)) finding_current=0;
-               break;
-             }
-           } else {
-         // controlprogram is arg: do nothing
-           }
-         }
-         thread_list=thread_list->prev;
-       }
-       if(!finding_current) {
-         assigning_current=0;
-         if (verbose>1) fprintf(stderr,"Current Assigned %d\n",arg->state->current_assigned_freq);	
-//       arg->state->current_assigned_freq=fft_array[best_index].freq;
-       }
-     }
-     //if (blacklist!=NULL) free(blacklist);
-     if(sub_fft_array!=NULL) free(sub_fft_array);
-     sub_fft_array=NULL;
-     pthread_exit(NULL);
-  }
-*/
 
 
 void receiver_exit(void *arg)
 {
+/*
    int *sockfd = (int *) arg;
    pthread_t tid;
-/* get the calling thread's ID */
+// get the calling thread's ID 
    tid = pthread_self();
-/* print where the thread was in its search when it was cancelled */
+// print where the thread was in its search when it was cancelled 
+*/
 }
 
 void *receiver_end_controlprogram(struct ControlProgram *arg)
@@ -800,12 +688,10 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
   struct DriverMsg s_msg,r_msg;
   struct timeval t0,t1,t3;
   char *timestr;
-  int rval,ready_state;
+  int rval;
   char shm_device[80];
   int shm_fd;
-  int32 r,c,b,i;
-  short I,Q;
-  long long P;
+  int32 r,c,b;
   unsigned long wait_elapsed;
   double error_percent=0;
   int error_flag;
@@ -929,14 +815,9 @@ void *receiver_clrfreq(struct ControlProgram *arg)
   struct timeval t0;
   struct CLRFreqPRM clrfreq_parameters;
   unsigned long wait_elapsed;
-  int i,j,r,bandwidth,index,min_index,max_index,radars,length;
-  int temp1,temp2;
-  int i_min[MAX_CHANNELS*MAX_RADARS];
-  double m_min[MAX_CHANNELS*MAX_RADARS];
-  double best_freq[MAX_CHANNELS*MAX_RADARS];
-  double best_bandwidth_min[MAX_CHANNELS*MAX_RADARS];
+  int i,j,r,bandwidth,index;
   double *pwr=NULL;
-  int start,end,centre,acount;
+  int start,end,centre;
 
   printf("CLRFREQ: %d %d\n",arg->parameters->radar-1,arg->parameters->channel-1);
   printf(" FFT FREQ: %d %d\n",arg->clrfreqsearch.start,arg->clrfreqsearch.end);

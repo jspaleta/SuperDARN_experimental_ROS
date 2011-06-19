@@ -9,16 +9,17 @@ extern int ddssock;
 extern pthread_mutex_t dds_comm_lock;
 void dds_exit(void *arg)
 {
+/*
    int *sockfd = (int *) arg;
    pthread_t tid;
    tid = pthread_self();
+*/
 }
 
 void *dds_register_seq(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   struct ControlProgram *control_program;
-  struct timeval t0,t1;
   int32 index;
 
   control_program=arg;
@@ -65,12 +66,13 @@ void *dds_site_settings(void *arg)
     }
   }
   pthread_mutex_unlock(&dds_comm_lock);
+  pthread_exit(NULL);
 }
+
 void *dds_ready_controlprogram(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   struct ControlProgram *control_program;
-  struct timeval t0,t1;
   control_program=arg;
   pthread_mutex_lock(&dds_comm_lock);
    if (control_program!=NULL) {
@@ -87,60 +89,49 @@ void *dds_ready_controlprogram(void *arg)
    }
    pthread_mutex_unlock(&dds_comm_lock);
    pthread_exit(NULL);
-
-
-};
+}
 
 void *dds_end_controlprogram(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   struct ControlProgram *control_program;
-  struct timeval t0,t1;
-  int total=0;
   control_program=arg;
   pthread_mutex_lock(&dds_comm_lock);
   s_msg.type=CtrlProg_END;
   s_msg.status=1;
   send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
-  total=recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
+  recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
   if(r_msg.status==1) {
          send_data(ddssock, control_program->parameters, sizeof(struct ControlPRM));
          recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
   }
   pthread_mutex_unlock(&dds_comm_lock);
   pthread_exit(NULL);
-
-
-};
-
+}
 
 void *dds_pretrigger(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
-  struct ControlProgram *control_program;
-  struct timeval t0,t1;
-  int total=0;
-  control_program=arg;
   pthread_mutex_lock(&dds_comm_lock);
   s_msg.type=PRETRIGGER;
   s_msg.status=1;
   send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
-  total=recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
+  recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
   pthread_mutex_unlock(&dds_comm_lock);
   pthread_exit(NULL);
 
-};
+}
 
 void *dds_posttrigger(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
-  int total=0;
   pthread_mutex_lock(&dds_comm_lock);
   s_msg.type=POSTTRIGGER;
   s_msg.status=1;
   send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
-  total=recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
+  recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
   pthread_mutex_unlock(&dds_comm_lock);
-};
+  pthread_exit(NULL);
+}
 
 

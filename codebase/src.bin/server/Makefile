@@ -1,7 +1,7 @@
 OS:=$(shell uname -s)
 
 CC=gcc
-CFLAGS=-c 
+CFLAGS=-c -Wall 
 LFLAGS  = -L"../../src.lib/iniparser3.0b"
 common_libs=-lm -liniparser
 linux_libs=-lm -lpthread -lrt
