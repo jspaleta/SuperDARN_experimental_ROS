@@ -13,7 +13,7 @@ extern int diosock;
 extern int verbose;
 extern pthread_mutex_t dio_comm_lock;
 extern struct tx_status txstatus[MAX_RADARS];
-
+/*
 struct FreqTable *FreqLoadTable(FILE *fp) {
   char line[1024];
   char *tkn;
@@ -23,7 +23,7 @@ struct FreqTable *FreqLoadTable(FILE *fp) {
   ptr=malloc(sizeof(struct FreqTable));
   if (ptr==NULL) return NULL;
 
-  /*start scanning records from the file*/ 
+  //start scanning records from the file
 
   ptr->dfrq=DEFAULT_FREQ;
   ptr->num=0;
@@ -33,12 +33,12 @@ struct FreqTable *FreqLoadTable(FILE *fp) {
     for (i=0; (line[i] !=0) && 
               ((line[i] ==' ') || (line[i]=='\n'));i++);
 
-    /* ignore comments or empty lines */
+    // ignore comments or empty lines 
 
     if ((line[i]==0) || (line[i]=='#')) continue;
 
     tkn=line+i; 
-    if ((tkn[0]=='d') || (tkn[0]=='D')) { /* default frequency */
+    if ((tkn[0]=='d') || (tkn[0]=='D')) { // default frequency 
       for (j=0;(tkn[j] !='=') && (tkn[j] !=0);j++);
       if (tkn[j] !=0) {
         ptr->dfrq=atoi(tkn+j+1);
@@ -60,6 +60,7 @@ struct FreqTable *FreqLoadTable(FILE *fp) {
   }
   return ptr;
 }
+*/
 
 void *DIO_ready_controlprogram(struct ControlProgram *arg)
 {
@@ -67,7 +68,7 @@ void *DIO_ready_controlprogram(struct ControlProgram *arg)
   pthread_mutex_lock(&dio_comm_lock);
    if (arg!=NULL) {
      if (arg->state->pulseseqs[arg->parameters->current_pulseseq_index]!=NULL) {
-       s_msg.type=DIO_CtrlProg_READY;
+       s_msg.type=CtrlProg_READY;
        s_msg.status=1;
        send_data(diosock, &s_msg, sizeof(struct DriverMsg));
        recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
@@ -86,7 +87,7 @@ void *DIO_pretrigger(void *arg)
   struct DriverMsg s_msg, r_msg;
   pthread_mutex_lock(&dio_comm_lock);
 
-   s_msg.type=DIO_PRETRIGGER;
+   s_msg.type=PRETRIGGER;
    s_msg.status=1;
    send_data(diosock, &s_msg, sizeof(struct DriverMsg));
    recv_data(diosock, &r_msg, sizeof(struct DriverMsg));

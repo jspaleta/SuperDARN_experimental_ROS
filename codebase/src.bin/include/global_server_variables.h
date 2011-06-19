@@ -131,45 +131,45 @@ struct BlackList {
      uint64 program;
 };
 #define REGISTER_SEQ '+'
-#define TIMING_REGISTER_SEQ '+'
-#define DDS_REGISTER_SEQ '+'
+//#define TIMING_REGISTER_SEQ '+'
+//#define DDS_REGISTER_SEQ '+'
 
 #define CtrlProg_READY '1'
-#define DIO_CtrlProg_READY '1'
-#define DDS_CtrlProg_READY '1'
-#define RECV_CtrlProg_READY '1'
-#define TIMING_CtrlProg_READY '1'
+//#define DIO_CtrlProg_READY '1'
+//#define DDS_CtrlProg_READY '1'
+//#define RECV_CtrlProg_READY '1'
+//#define TIMING_CtrlProg_READY '1'
 
 #define CtrlProg_END '@'
-#define DIO_CtrlProg_END '@'
-#define DDS_CtrlProg_END '@'
-#define RECV_CtrlProg_END '@'
-#define TIMING_CtrlProg_END '@'
+//#define DIO_CtrlProg_END '@'
+//#define DDS_CtrlProg_END '@'
+//#define RECV_CtrlProg_END '@'
+//#define TIMING_CtrlProg_END '@'
 
 #define WAIT 'W'
-#define TIMING_WAIT 'W'
+//#define TIMING_WAIT 'W'
 
 #define PRETRIGGER '3'
-#define DIO_PRETRIGGER '3'
-#define DDS_PRETRIGGER '3'
-#define RECV_PRETRIGGER '3'
-#define TIMING_PRETRIGGER '3'
+//#define DIO_PRETRIGGER '3'
+//#define DDS_PRETRIGGER '3'
+//#define RECV_PRETRIGGER '3'
+//#define TIMING_PRETRIGGER '3'
 
 #define EXTERNAL_TRIGGER '6'
 #define GET_TRTIMES '7'
 
 #define TRIGGER '4'
-#define DIO_TRIGGER '4'
-#define TIMING_TRIGGER '4'
-#define TIMING_GPS_TRIGGER 'G'
+//#define DIO_TRIGGER '4'
+//#define TIMING_TRIGGER '4'
+//#define TIMING_GPS_TRIGGER 'G'
 
 #define POSTTRIGGER '5'
-#define RECV_POSTTRIGGER '5'
-#define TIMING_POSTTRIGGER '5'
+//#define RECV_POSTTRIGGER '5'
+//#define TIMING_POSTTRIGGER '5'
 
 #define GET_DATA 'd'
 #define GET_DATA_STATUS 'D'
-#define RECV_GET_DATA 'd'
+//#define RECV_GET_DATA 'd'
 
 #define PRE_CLRFREQ 'c'
 #define POST_CLRFREQ 'C'
@@ -190,7 +190,7 @@ struct BlackList {
 //#define GPS_MSG_ERROR 248
 
 #define REFRESHRATE	1
-#define MAX_ERROR 0.002
+//#define MAX_ERROR 0.002
 #define TIME_INTERVAL	100000000
 
 
@@ -203,12 +203,12 @@ struct DriverMsg {
 
 #define DEFAULT_FREQ 13000
 #define SIDEBAND 100
-struct FreqTable {
-  int32 num;
-  int32 dfrq;
-  int32 *start;
-  int32 *end;
-};
+//struct FreqTable {
+//  int32 num;
+//  int32 dfrq;
+//  int32 *start;
+//  int32 *end;
+//};
 
 /*
 struct tx_status {
@@ -217,7 +217,7 @@ struct tx_status {
   int32 status[MAX_TRANSMITTERS];
 };
 */
-
+/*
 struct GPSStatus {
 	
 	int32	hardware;
@@ -261,4 +261,5 @@ struct GPSStatus {
 
 
 };
+*/
 #endif

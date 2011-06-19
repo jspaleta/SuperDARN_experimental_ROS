@@ -620,7 +620,7 @@ void *receiver_end_controlprogram(struct ControlProgram *arg)
   pthread_mutex_lock(&recv_comm_lock);
   if (arg!=NULL) {
      if (arg->state->pulseseqs[arg->parameters->current_pulseseq_index]!=NULL) {
-       s_msg.type=RECV_CtrlProg_END;
+       s_msg.type=CtrlProg_END;
        s_msg.status=1;
        send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
        recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
@@ -640,7 +640,7 @@ void *receiver_ready_controlprogram(struct ControlProgram *arg)
   pthread_mutex_lock(&recv_comm_lock);
   if (arg!=NULL) {
      if (arg->state->pulseseqs[arg->parameters->current_pulseseq_index]!=NULL) {
-       s_msg.type=RECV_CtrlProg_READY;
+       s_msg.type=CtrlProg_READY;
        s_msg.status=1;
        send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
        recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
@@ -658,7 +658,7 @@ void *receiver_pretrigger(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&recv_comm_lock);
-   s_msg.type=RECV_PRETRIGGER;
+   s_msg.type=PRETRIGGER;
    s_msg.status=1;
    send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
    recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
@@ -672,7 +672,7 @@ void *receiver_posttrigger(void *arg)
   struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&recv_comm_lock);
 
-   s_msg.type=RECV_POSTTRIGGER;
+   s_msg.type=POSTTRIGGER;
    s_msg.status=1;
    send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
    recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));

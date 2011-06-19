@@ -59,7 +59,7 @@ int *trigger_state_pointer;
 int trigger_type;
 int *ready_state_pointer,*ready_count_pointer;
 struct SiteSettings site_settings;
-struct GPSStatus gpsstatus;
+//struct GPSStatus gpsstatus;
 struct TRTimes bad_transmit_times;
 int32 gpsrate=REFRESHRATE;
 int verbose=10;
