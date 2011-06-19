@@ -32,7 +32,7 @@ void *coordination_handler(struct ControlProgram *control_program)
    ready_state=*ready_state_pointer;
    trigger_state=*trigger_state_pointer;
    ready_count=*ready_count_pointer;
-   if (control_program->active==1) {
+   if (control_program->state->active==1) {
      ready_count++;
      //control_program->state->ready=1;
      control_program->state->processing=0;
@@ -44,7 +44,7 @@ void *coordination_handler(struct ControlProgram *control_program)
      while(thread_list!=NULL){
        cprog=thread_list->data;
          if (cprog!=NULL) {
-           if (cprog->active==1) {
+           if (cprog->state->active==1) {
              numcontrolprograms++;
              if (cprog->state->ready==1) {
                numready++;
@@ -89,7 +89,7 @@ void *coordination_handler(struct ControlProgram *control_program)
           while(thread_list!=NULL){
             cprog=thread_list->data;
             if (cprog!=NULL) {
-              if (cprog->active==1) {
+              if (cprog->state->active==1) {
                 if (cprog->state->ready==1) {
                 }
                 if (cprog->state->processing==1) {
@@ -121,7 +121,7 @@ void *coordination_handler(struct ControlProgram *control_program)
           rc = pthread_create(&threads[0], NULL, (void *) &timing_trigger, (void *)&trigger_type);
           pthread_join(threads[0],NULL);
           trigger_state=3;//post-trigger
-          s_msg.type=GET_EVENT_TIME;
+          s_msg.command_type=GET_EVENT_TIME;
           s_msg.status=1;
           send_data(gpssock, &s_msg, sizeof(struct DriverMsg));
           recv_data(gpssock, &r_msg, sizeof(struct DriverMsg));
@@ -132,7 +132,7 @@ void *coordination_handler(struct ControlProgram *control_program)
             recv_data(gpssock, &r_msg, sizeof(struct DriverMsg));
           }
           i=0;
-          if(control_program->active==1) { 
+          if(control_program->state->active==1) { 
             control_program->state->gpssecond=gpssecond;
             control_program->state->gpsnsecond=gpsnsecond;
           }

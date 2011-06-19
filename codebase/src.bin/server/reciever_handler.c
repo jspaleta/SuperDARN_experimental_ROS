@@ -50,7 +50,7 @@ void *receiver_site_settings(void *arg) {
   site_settings=arg;
   pthread_mutex_lock(&recv_comm_lock);
   if (site_settings!=NULL) {
-    s_msg.type=SITE_SETTINGS;
+    s_msg.command_type=SITE_SETTINGS;
     s_msg.status=1;
     send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
     recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
@@ -404,11 +404,11 @@ void receiver_assign_frequency(struct ControlProgram *arg){
      		while (thread_list!=NULL) {
        			controlprogram=thread_list->data;
 			if(controlprogram!=arg) {                   
-       				if(controlprogram->active!=0) {
+       				if(controlprogram->state->active!=0) {
            				if (blacklist_count < (numclients*2)) {  
            					/* place controlprogram's assigned frequency on the blacklist */
-           					blacklist[blacklist_count].start=controlprogram->state->best_assigned_freq-controlprogram->state->rx_sideband;
-           					blacklist[blacklist_count].end=controlprogram->state->best_assigned_freq+controlprogram->state->rx_sideband;
+           					blacklist[blacklist_count].start=controlprogram->state->current_assigned_freq-controlprogram->state->rx_sideband;
+           					blacklist[blacklist_count].end=controlprogram->state->current_assigned_freq+controlprogram->state->rx_sideband;
            					blacklist[blacklist_count].program=(uint64)controlprogram;
            					if (verbose> 0) 
 							fprintf(stderr,"  %d %d :: Adding backlist :: %d %d :  %d %d\n", \
@@ -555,11 +555,9 @@ void receiver_assign_frequency(struct ControlProgram *arg){
   		best_index=0; 
         	arg->state->current_assigned_freq=sub_fft_array[best_index].freq;
         	arg->state->current_assigned_noise=sub_fft_array[best_index].apwr*rx_bandwidth_khz;
-  		arg->state->best_assigned_freq=sub_fft_array[best_index].freq;
-  		arg->state->best_assigned_noise=sub_fft_array[best_index].apwr*(rx_bandwidth_khz);
 
-  		if(verbose > 0 ) fprintf(stderr,"%lf best frequency: %d assigned frequency: %d\n",sub_fft_array[best_index].freq,
-                           arg->state->best_assigned_freq,arg->state->current_assigned_freq);
+  		if(verbose > 0 ) fprintf(stderr,"%lf current assigned frequency: %d\n",sub_fft_array[best_index].freq, \
+                                   arg->state->current_assigned_freq);
 
 		arg->state->tx_sideband=padded_tx_sideband_khz;
 		arg->state->rx_sideband=padded_rx_sideband_khz;
@@ -575,8 +573,6 @@ void receiver_assign_frequency(struct ControlProgram *arg){
    		if (verbose>-1) fprintf(stderr,"No valid frequencies Setting best available frequency to zero with very high noise\n");
         	arg->state->current_assigned_freq=0;
         	arg->state->current_assigned_noise=1E10;
-  		arg->state->best_assigned_freq=0;
-  		arg->state->best_assigned_noise=1E10;
 
 	}
 	/* Put assignment data into diagnostic file */
@@ -584,10 +580,6 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 	       temp=arg->state->current_assigned_freq;
 	       write(f_fft, &temp, sizeof(int32));
 	       tempf=arg->state->current_assigned_noise;
-	       write(f_fft, &tempf, sizeof(float));
-	       temp=arg->state->best_assigned_freq;
-	       write(f_fft, &temp, sizeof(int32));
-	       tempf=arg->state->best_assigned_noise;
 	       write(f_fft, &tempf, sizeof(float));
 	       close(f_fft);
 	}
@@ -597,6 +589,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
  */
 	if(sub_fft_array!=NULL) free(sub_fft_array);
 	sub_fft_array=NULL;
+        if (verbose>-1) fprintf(stderr,"Exiting assignment\n");
 	pthread_exit(NULL);
 }
 
@@ -620,7 +613,7 @@ void *receiver_end_controlprogram(struct ControlProgram *arg)
   pthread_mutex_lock(&recv_comm_lock);
   if (arg!=NULL) {
      if (arg->state->pulseseqs[arg->parameters->current_pulseseq_index]!=NULL) {
-       s_msg.type=CtrlProg_END;
+       s_msg.command_type=CtrlProg_END;
        s_msg.status=1;
        send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
        recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
@@ -640,7 +633,7 @@ void *receiver_ready_controlprogram(struct ControlProgram *arg)
   pthread_mutex_lock(&recv_comm_lock);
   if (arg!=NULL) {
      if (arg->state->pulseseqs[arg->parameters->current_pulseseq_index]!=NULL) {
-       s_msg.type=CtrlProg_READY;
+       s_msg.command_type=CtrlProg_READY;
        s_msg.status=1;
        send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
        recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
@@ -658,7 +651,7 @@ void *receiver_pretrigger(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&recv_comm_lock);
-   s_msg.type=PRETRIGGER;
+   s_msg.command_type=PRETRIGGER;
    s_msg.status=1;
    send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
    recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
@@ -672,7 +665,7 @@ void *receiver_posttrigger(void *arg)
   struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&recv_comm_lock);
 
-   s_msg.type=POSTTRIGGER;
+   s_msg.command_type=POSTTRIGGER;
    s_msg.status=1;
    send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
    recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
@@ -718,7 +711,7 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         arg->data->samples=arg->parameters->number_of_samples;
         if(arg->main!=NULL) munmap(arg->main,sizeof(unsigned int)*arg->data->samples);
         if(arg->back!=NULL) munmap(arg->back,sizeof(unsigned int)*arg->data->samples);
-        s_msg.type=GET_DATA_STATUS;
+        s_msg.command_type=GET_DATA_STATUS;
         s_msg.status=1;
         send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
         recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
@@ -737,7 +730,7 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         arg->data->samples=0;
       }      
       if (arg->data->status>0 ) {
-        s_msg.type=GET_DATA;
+        s_msg.command_type=GET_DATA;
         s_msg.status=1;
         send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
         recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
@@ -748,8 +741,6 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
           recv_data(recvsock,&arg->data->frame_header,sizeof(int32));
           recv_data(recvsock,&arg->data->bufnum,sizeof(int32));
           recv_data(recvsock,&arg->data->samples,sizeof(int32));
-          recv_data(recvsock,&arg->main_address,sizeof(int32));
-          recv_data(recvsock,&arg->back_address,sizeof(int32));
           recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
         }
       } 
@@ -766,19 +757,19 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
             arg->back=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->frame_header);
             close(shm_fd);
           } else {
-#ifdef __QNX__
-            arg->main =mmap( 0, sizeof(unsigned int)*arg->data->samples, 
-                        PROT_READ|PROT_NOCACHE, MAP_PHYS, NOFD, 
-                            arg->main_address+sizeof(unsigned int)*arg->data->frame_header);
-//                            arg->main_address);
-            arg->back =mmap( 0, sizeof(unsigned int)*arg->data->samples, 
-                        PROT_READ|PROT_NOCACHE, MAP_PHYS, NOFD, 
-                        arg->back_address+sizeof(unsigned int)*arg->data->frame_header);
-#else
+//#ifdef __QNX__
+//            arg->main =mmap( 0, sizeof(unsigned int)*arg->data->samples, 
+//                        PROT_READ|PROT_NOCACHE, MAP_PHYS, NOFD, 
+//                            arg->main_address+sizeof(unsigned int)*arg->data->frame_header);
+////                            arg->main_address);
+//            arg->back =mmap( 0, sizeof(unsigned int)*arg->data->samples, 
+//                        PROT_READ|PROT_NOCACHE, MAP_PHYS, NOFD, 
+//                        arg->back_address+sizeof(unsigned int)*arg->data->frame_header);
+//#else
             arg->data->samples=0;
             arg->main=NULL;
             arg->back=NULL;
-#endif
+//#endif
           if((arg->main==NULL) || (arg->back==NULL)) {
             error_flag=-1;
             arg->data->status=error_flag;
@@ -814,7 +805,7 @@ void *receiver_clrfreq(struct ControlProgram *arg)
   gettimeofday(&t0,NULL);
 
   r=arg->parameters->radar-1;
-  s_msg.type=RECV_CLRFREQ;
+  s_msg.command_type=RECV_CLRFREQ;
   s_msg.status=1;
   send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
   recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));

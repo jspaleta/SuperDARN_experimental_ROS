@@ -25,7 +25,7 @@ void *dds_register_seq(void *arg)
   control_program=arg;
   pthread_mutex_lock(&dds_comm_lock);
 
-  s_msg.type=REGISTER_SEQ;
+  s_msg.command_type=REGISTER_SEQ;
   s_msg.status=1;
   send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
   recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
@@ -54,7 +54,7 @@ void *dds_site_settings(void *arg)
   site_settings=arg;
   pthread_mutex_lock(&dds_comm_lock);
   if (site_settings!=NULL) {
-    s_msg.type=SITE_SETTINGS;
+    s_msg.command_type=SITE_SETTINGS;
     s_msg.status=1;
     send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
     recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
@@ -77,7 +77,7 @@ void *dds_ready_controlprogram(void *arg)
   pthread_mutex_lock(&dds_comm_lock);
    if (control_program!=NULL) {
      if (control_program->state->pulseseqs[control_program->parameters->current_pulseseq_index]!=NULL) {
-       s_msg.type=CtrlProg_READY;
+       s_msg.command_type=CtrlProg_READY;
        s_msg.status=1;
        send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
        recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
@@ -97,7 +97,7 @@ void *dds_end_controlprogram(void *arg)
   struct ControlProgram *control_program;
   control_program=arg;
   pthread_mutex_lock(&dds_comm_lock);
-  s_msg.type=CtrlProg_END;
+  s_msg.command_type=CtrlProg_END;
   s_msg.status=1;
   send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
   recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
@@ -113,7 +113,7 @@ void *dds_pretrigger(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&dds_comm_lock);
-  s_msg.type=PRETRIGGER;
+  s_msg.command_type=PRETRIGGER;
   s_msg.status=1;
   send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
   recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
@@ -126,7 +126,7 @@ void *dds_posttrigger(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&dds_comm_lock);
-  s_msg.type=POSTTRIGGER;
+  s_msg.command_type=POSTTRIGGER;
   s_msg.status=1;
   send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
   recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));

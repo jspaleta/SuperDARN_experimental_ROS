@@ -55,6 +55,14 @@
 #define RECV_SAMPLE_HEADER 2 
 #define RECV_CLRFREQ_SAMPLES  2000
 
+struct DriverMsg {
+     char command_type;
+     char command_name[80];
+     int32 bytes_to_send;
+     int32 bytes_to_recv;
+     int32 status; // 0 = inactive  negative = error  postive = good
+};
+
 typedef struct _fft_index{ 
 // Struct to store and order the values of the fft preserving the index in the original array
 	double pwr;
@@ -81,128 +89,78 @@ struct ControlState {
 /* State Variables for internal ROS Usage */
      int32 cancelled;
      int32 socket;
+     int32 active;
      char ready;
      char processing;
-     int32 linked; //required: DO NOT SET MANUALLY
-     int32 best_assigned_freq; 
-     float best_assigned_noise; 
+//     int32 linked; //required: DO NOT SET MANUALLY
+//     int32 best_assigned_freq; 
+//     float best_assigned_noise; 
      int32 current_assigned_freq; 
      float current_assigned_noise; 
      int32 gpssecond;
      int32 gpsnsecond;
-     double best_assigned_pwr; 
+//     double best_assigned_pwr; 
      double current_assigned_pwr; 
-     int32 freq_change_needed; 
+//     int32 freq_change_needed; 
      int32 tx_sideband; //in kHz 
      int32 rx_sideband; //in kHz
      int32 N; 
      struct TSGbuf *pulseseqs[MAX_SEQS]; //array of pulseseq pointers
-     struct ControlProgram *linked_program;
+     int32 num_registered_seqs;
+     int32 max_allowed_seqs;
+//     struct ControlProgram *linked_program;
      struct timeval trigger_timeout;
-//     struct timeval last_trigger_event;
      struct Thread_List_Item *thread;
      t_fft_index *fft_array;
 };
 
 struct ControlProgram {
-// ros state variables
      struct ControlState *state;
      struct DataPRM *data;
      struct CLRFreqPRM clrfreqsearch; 
      struct ControlPRM *parameters;
      struct RadarPRM *radarinfo;
-     uint32 *main;
-     uint64 main_address;
-     uint32 *back;
-     uint64 back_address;
-     int32 active;
+     uint32 *main;  // pointer to memory space holding the data samples
+     uint32 *back;  // pointer to memory space holding the data samples
 };
 
 struct ClrPwr {
-// ros state variables
      double freq;
      double pwr;
 };
 
 struct BlackList {
-// ros state variables
      int32 start;
      int32 end;
      uint64 program;
 };
+
 #define REGISTER_SEQ '+'
-//#define TIMING_REGISTER_SEQ '+'
-//#define DDS_REGISTER_SEQ '+'
-
 #define CtrlProg_READY '1'
-//#define DIO_CtrlProg_READY '1'
-//#define DDS_CtrlProg_READY '1'
-//#define RECV_CtrlProg_READY '1'
-//#define TIMING_CtrlProg_READY '1'
-
 #define CtrlProg_END '@'
-//#define DIO_CtrlProg_END '@'
-//#define DDS_CtrlProg_END '@'
-//#define RECV_CtrlProg_END '@'
-//#define TIMING_CtrlProg_END '@'
-
 #define WAIT 'W'
-//#define TIMING_WAIT 'W'
-
 #define PRETRIGGER '3'
-//#define DIO_PRETRIGGER '3'
-//#define DDS_PRETRIGGER '3'
-//#define RECV_PRETRIGGER '3'
-//#define TIMING_PRETRIGGER '3'
-
 #define EXTERNAL_TRIGGER '6'
 #define GET_TRTIMES '7'
-
 #define TRIGGER '4'
-//#define DIO_TRIGGER '4'
-//#define TIMING_TRIGGER '4'
-//#define TIMING_GPS_TRIGGER 'G'
-
 #define POSTTRIGGER '5'
-//#define RECV_POSTTRIGGER '5'
-//#define TIMING_POSTTRIGGER '5'
-
 #define GET_DATA 'd'
 #define GET_DATA_STATUS 'D'
-//#define RECV_GET_DATA 'd'
-
 #define PRE_CLRFREQ 'c'
 #define POST_CLRFREQ 'C'
-
 #define RECV_CLRFREQ 'F'
-#define FULL_CLRFREQ '-'
+//#define FULL_CLRFREQ '-'
 
 
 #define GET_EVENT_TIME 'E' 
 #define SITE_SETTINGS 'R'
 
-//#define GPS_GET_HDW_STATUS 240 
-//#define GPS_GET_SOFT_TIME 241
-//#define GPS_SCHEDULE_SINGLE_SCAN 244
-//#define GPS_SCHEDULE_REPEAT_SCAN 245
-//#define GPS_TRIGGER_NOW 246
 #define GPS_SET_TRIGGER_RATE 'b'
-//#define GPS_MSG_ERROR 248
 
-#define REFRESHRATE	1
-//#define MAX_ERROR 0.002
-#define TIME_INTERVAL	100000000
-
-
-
-struct DriverMsg {
-     char type;
-     int32 status;
-
-};
-
+//#define TIME_INTERVAL	100000000
 #define DEFAULT_FREQ 13000
-#define SIDEBAND 100
+
+//#define SIDEBAND 100
 //struct FreqTable {
 //  int32 num;
 //  int32 dfrq;

@@ -12,6 +12,8 @@
 #define TIMING_PCI_INDEX 1
 #define GC214_PCI_INDEX 0 
 #define STATUS_PORT 3
+#define REFRESHRATE   1
+
 #endif
 
 

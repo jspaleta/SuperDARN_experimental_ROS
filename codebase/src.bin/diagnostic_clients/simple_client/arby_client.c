@@ -40,7 +40,8 @@ main( int argc, char *argv[])
 {
   int nrang,frang,rsep,smsep,txpl,mpinc,mppul,nbaud,samples;
   int *pcode=NULL;
-  int status,index,i,r,c,freq,j=0;
+  int status,index,i,freq,j=0;
+  int32 r,c;
   int flag,counter;
   short I,Q;
   char command;
@@ -146,6 +147,8 @@ main( int argc, char *argv[])
           perror("control program - ros tcp connection failed");
           exit(0);
   }
+   sleep(15);
+   exit(0);
 
 /*
  * send and receive the Radar request structure.
@@ -155,8 +158,8 @@ main( int argc, char *argv[])
     send_data(s, &smsg, sizeof(struct ROSMsg)); //Send the Command Message
     r=1;  //Ask for radar 1  
     c=1;  //Ask for channel 1
-    send_data(s, &r, sizeof(r)); //Send the radar request
-    send_data(s, &c, sizeof(c)); //Send the channel request
+    send_data(s, &r, sizeof(int32)); //Send the radar request
+    send_data(s, &c, sizeof(int32)); //Send the channel request
     recv_data(s, &rmsg, sizeof(struct ROSMsg)); //resv the handshake back
     if(verbose>1) printf("Radar Chan Transfer Status: %d\n",rmsg.status); 
 
@@ -259,6 +262,7 @@ main( int argc, char *argv[])
    elapsed=(t2.tv_sec-t0.tv_sec)*1E6;
    elapsed+=(t2.tv_usec-t0.tv_usec);
    if(verbose>0) printf("  Ready Elapsed Microseconds: %ld\n",elapsed);
+
    if(verbose>1) printf("Sending the get data Command %d\n",GET_DATA);
     smsg.type=GET_DATA;
       send_data(s, &smsg, sizeof(struct ROSMsg));

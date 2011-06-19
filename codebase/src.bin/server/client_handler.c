@@ -79,7 +79,7 @@ struct ControlPRM controlprogram_fill_parameters(struct ControlProgram *control_
       for (c=1;c<=num_channels;c++) {
         cp=find_registered_controlprogram_by_radar_channel(r,c);
         if (cp!=NULL) {
-          if (cp->active!=0) {
+          if (cp->state->active!=0) {
             if (cp->parameters!=NULL) {
               if (cp->parameters->priority<priority) {
                 best[r-1]=cp;
@@ -191,17 +191,15 @@ struct ControlProgram *control_init() {
        struct ControlProgram *control_program;
 
        control_program=malloc(sizeof(struct ControlProgram));
-       control_program->active=1;
        control_program->clrfreqsearch.start=0;
        control_program->clrfreqsearch.end=0;
        control_program->parameters=malloc(sizeof(struct ControlPRM));
        control_program->state=malloc(sizeof(struct ControlState));
+       control_program->state->active=1;
        control_program->radarinfo=malloc(sizeof(struct RadarPRM));
        control_program->data=malloc(sizeof(struct DataPRM));
        control_program->main=NULL;
        control_program->back=NULL;
-       control_program->main_address=(uint64)NULL;
-       control_program->back_address=(uint64)NULL;
        strcpy(control_program->parameters->name,"Generic Control Program Name - 80");
        strcpy(control_program->parameters->description,"Generic  Control Program  Description - 120");
        control_program->parameters->radar=-1;
@@ -237,11 +235,8 @@ struct ControlProgram *control_init() {
 
        control_program->state->cancelled=0;
        control_program->state->ready=0;
-       control_program->state->linked=0;
        control_program->state->processing=0;
-       control_program->state->best_assigned_freq=0;
        control_program->state->current_assigned_freq=0;
-       control_program->state->freq_change_needed=0;
        control_program->state->thread=NULL;
        control_program->state->fft_array=NULL;
        control_program->radarinfo->site=-1;
@@ -266,7 +261,7 @@ void controlprogram_exit(struct ControlProgram *control_program)
      control_program->state->cancelled=1;
      pthread_mutex_lock(&exit_lock);
      tid = pthread_self();
-     control_program->active=0;
+     control_program->state->active=0;
      rc = pthread_create(&thread, NULL, (void *)&coordination_handler,(void *) control_program);
      pthread_join(thread,NULL);
      i=0;
@@ -305,13 +300,10 @@ void controlprogram_exit(struct ControlProgram *control_program)
      if(control_program->back!=NULL) munmap(control_program->back,control_program->data->samples);
      control_program->main=NULL;
      control_program->back=NULL;
-     control_program->main_address=(uint64)NULL;
-     control_program->back_address=(uint64)NULL;
      if(control_program->data!=NULL) {
        free(control_program->data);
        control_program->data=NULL;
      }
-     control_program->active=0;
      if (verbose>0) fprintf(stderr,"Client Exit: Done with control program %p\n",control_program); 
    }
    pthread_mutex_unlock(&exit_lock);
@@ -371,8 +363,8 @@ void *control_handler(struct ControlProgram *control_program)
         break;
       }
       /* Look for messages from external controlprogram process */
-      FD_ZERO(&rfds);
-      FD_SET(socket, &rfds);
+      FD_ZERO(&rfds); // zero out the watched state
+      FD_SET(socket, &rfds); //Add the socket to the fdds to watch
            /* Wait up to five seconds. */
       tv.tv_sec = 5;
       tv.tv_usec = 0;
@@ -380,6 +372,7 @@ void *control_handler(struct ControlProgram *control_program)
            /* Don’t rely on the value of tv now! */
       if (retval == -1) perror("select()");
       else if (retval) {
+        printf("Select returned %d %d\n",retval,FD_ISSET(socket,&rfds));
         pthread_mutex_lock(&controlprogram_list_lock);
         r=control_program->radarinfo->radar-1;
         c=control_program->radarinfo->channel-1;
@@ -388,7 +381,12 @@ void *control_handler(struct ControlProgram *control_program)
        /* Read controlprogram msg */
         msg.status=-300;
         msg.type=0;
-        recv_data(socket, &msg, sizeof(struct ROSMsg));
+        retval=recv_data(socket, &msg, sizeof(struct ROSMsg));
+        if ( retval <= 0 ) {
+          fprintf(stderr,"Socket not responding\n");
+          sleep(1);
+          continue;
+        }
         gettimeofday(&current_time,NULL);
         if((current_time.tv_sec-last_report.tv_sec)>5) {
 #ifdef __QNX__
@@ -425,7 +423,7 @@ void *control_handler(struct ControlProgram *control_program)
                 process_aux_commands(&aux_dict,"DIO");
                 send_aux_dict(socket,aux_dict,1);
             }
-            send_data(socket, &msg, sizeof(struct DriverMsg));
+            send_data(socket, &msg, sizeof(struct ROSMsg));
             break;
 
           case PING:
@@ -438,8 +436,8 @@ void *control_handler(struct ControlProgram *control_program)
               send_data(socket, &msg, sizeof(struct ROSMsg));
             } else {
               pthread_mutex_lock(&controlprogram_list_lock);
-              if(control_program->active!=0) {
-                control_program->active=-1;
+              if(control_program->state->active!=0) {
+                control_program->state->active=-1;
                 control_program->state->ready=0;
                 rc = pthread_create(&thread, NULL, (void *)&coordination_handler,(void *) control_program);
                 pthread_join(thread,NULL);
@@ -455,8 +453,8 @@ void *control_handler(struct ControlProgram *control_program)
               send_data(socket, &msg, sizeof(struct ROSMsg));
             } else {
               pthread_mutex_lock(&controlprogram_list_lock);
-              if(control_program->active!=0) {
-                control_program->active=1;
+              if(control_program->state->active!=0) {
+                control_program->state->active=1;
                 control_program->state->ready=0;
                 rc = pthread_create(&thread, NULL, (void *)&coordination_handler,(void *) control_program);
                 pthread_join(thread,NULL);
@@ -533,6 +531,7 @@ void *control_handler(struct ControlProgram *control_program)
               pthread_mutex_unlock(&controlprogram_list_lock);
               send_data(socket, &msg, sizeof(struct ROSMsg));
             break;
+/*
           case LINK_RADAR_CHAN:
             msg.status=1;
             recv_data(socket, &r, sizeof(r)); //requested radar
@@ -550,6 +549,7 @@ void *control_handler(struct ControlProgram *control_program)
             pthread_mutex_unlock(&controlprogram_list_lock);
             send_data(socket, &msg, sizeof(struct ROSMsg));
             break;
+*/
           case GET_PARAMETERS:
             if ( (r < 0) || (c < 0)) {
               send_data(socket, &control_parameters, sizeof(struct ControlPRM));
@@ -571,7 +571,6 @@ void *control_handler(struct ControlProgram *control_program)
               msg.status=-1;
               send_data(socket, &msg, sizeof(struct ROSMsg));
             } else {
-              msg.status=status;
               rc = pthread_create(&thread, NULL,(void *)&receiver_controlprogram_get_data,(void *) control_program);
               pthread_join(thread,NULL);
 //JDS: TODO do some GPS timestamp checking here
@@ -580,12 +579,14 @@ void *control_handler(struct ControlProgram *control_program)
               control_program->data->event_nsecs=control_program->state->gpsnsecond;
               send_data(socket, control_program->data, sizeof(struct DataPRM));
               if(control_program->data->status>0) {
+                msg.status=control_program->data->status;
                 send_data(socket, control_program->main, sizeof(uint32)*control_program->data->samples);
                 send_data(socket, control_program->back, sizeof(uint32)*control_program->data->samples);
                 send_data(socket, &bad_transmit_times.length, sizeof(bad_transmit_times.length));
                 send_data(socket, bad_transmit_times.start_usec, sizeof(uint32)*bad_transmit_times.length);
                 send_data(socket, bad_transmit_times.duration_usec, sizeof(uint32)*bad_transmit_times.length);
               } else {
+                msg.status=-1;
                 if (verbose > -1 ) fprintf(stderr,"CLIENT:GET_DATA: Bad status %d\n",control_program->data->status);
               } 
               send_data(socket, &msg, sizeof(struct ROSMsg));
@@ -593,6 +594,7 @@ void *control_handler(struct ControlProgram *control_program)
             }
             break;
           case SET_PARAMETERS:
+            printf("Client Start Set Parameters\n");
             if ( (r < 0) || (c < 0)) {
               recv_data(socket, control_program->parameters, sizeof(struct ControlPRM));
               msg.status=-1;
@@ -605,6 +607,7 @@ void *control_handler(struct ControlProgram *control_program)
               send_data(socket, &msg, sizeof(struct ROSMsg));
               pthread_mutex_unlock(&controlprogram_list_lock);
             }
+            printf("Client End Set Parameters\n");
             break;
           case REGISTER_SEQ:
             msg.status=1;
@@ -639,13 +642,15 @@ void *control_handler(struct ControlProgram *control_program)
             send_data(socket, &msg, sizeof(struct ROSMsg));
             break;
           case SET_READY_FLAG:
+            printf("Client Start READY\n");
             if ( (r < 0) || (c < 0)) {
               msg.status=-1;
             } else {
-              msg.status=0;
+              msg.status=1;
               pthread_mutex_lock(&controlprogram_list_lock);
-              if (control_program->active!=0) control_program->active=1;
+              if (control_program->state->active!=0) control_program->state->active=1;
               pthread_mutex_unlock(&controlprogram_list_lock);
+/*
               i=0;
               rc = pthread_create(&threads[i], NULL,(void *) &timing_wait, NULL);
               pthread_join(threads[0],NULL);
@@ -665,8 +670,10 @@ void *control_handler(struct ControlProgram *control_program)
               rc = pthread_create(&thread, NULL, (void *)&coordination_handler,(void *) control_program);
               pthread_join(thread,NULL);
               pthread_mutex_unlock(&controlprogram_list_lock);
+*/
             }
             send_data(socket, &msg, sizeof(struct ROSMsg));
+            printf("Client END READY\n");
             break;
 
           case REQUEST_CLEAR_FREQ_SEARCH:
@@ -681,7 +688,7 @@ void *control_handler(struct ControlProgram *control_program)
               pthread_join(threads[0],NULL);
               rc = pthread_create(&threads[0], NULL, (void *) &DIO_post_clrfreq,NULL);
               pthread_join(threads[0],NULL);
-              msg.status=control_program->state->freq_change_needed;
+              msg.status=1;
             }
             send_data(socket, &msg, sizeof(struct ROSMsg));
             pthread_mutex_unlock(&controlprogram_list_lock);
@@ -695,13 +702,15 @@ void *control_handler(struct ControlProgram *control_program)
             } else {
               rc = pthread_create(&threads[0], NULL, (void *) &receiver_assign_frequency,(void *)  control_program);
               pthread_join(threads[0],NULL);
-              msg.status=control_program->state->best_assigned_freq!=control_program->state->current_assigned_freq;
+              msg.status=1;
             }
             current_freq=control_program->state->current_assigned_freq; 
+            printf("Current freq: %d\n",current_freq);
             send_data(socket, &current_freq, sizeof(int32));
             send_data(socket, &control_program->state->current_assigned_noise, sizeof(float));
             send_data(socket, &msg, sizeof(struct ROSMsg));
             pthread_mutex_unlock(&controlprogram_list_lock);
+            printf("Client End Assignement\n");
             break;
 
           case QUIT:
@@ -719,6 +728,7 @@ void *control_handler(struct ControlProgram *control_program)
       } else { 
         if (verbose > 1 ) fprintf(stderr,"No data within select timeout\n");
       }
+      //FD_CLR(socket, &rfds); //Remove the socket to the fdds to watch
       pthread_testcancel();
    }
    pthread_testcancel();

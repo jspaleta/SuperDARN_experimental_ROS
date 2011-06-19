@@ -54,12 +54,10 @@ pthread_t status_thread=0,timeout_thread=0;
 dictionary *Site_INI;
 int num_radars=0,num_channels=0;
 void* **radar_channels;
-//void *radar_channels[MAX_RADARS][MAX_CHANNELS];
 int *trigger_state_pointer; 
 int trigger_type;
 int *ready_state_pointer,*ready_count_pointer;
 struct SiteSettings site_settings;
-//struct GPSStatus gpsstatus;
 struct TRTimes bad_transmit_times;
 int32 gpsrate=REFRESHRATE;
 int verbose=10;
@@ -69,7 +67,6 @@ struct BlackList *blacklist=NULL;
 int *blacklist_count_pointer;
 
 struct ClrPwr* *latest_clr_fft;
-//struct ClrPwr *latest_clr_fft[MAX_RADARS];
 int full_clr_start=FULL_CLR_FREQ_START;
 int full_clr_end=FULL_CLR_FREQ_END;
 int max_freqs=0;
@@ -179,6 +176,7 @@ int main()
   char *s,*line,*field;
 
   fprintf(stderr,"Size of Struct ROSMsg  %lu\n",(unsigned long) sizeof(struct ROSMsg));
+  fprintf(stderr,"Size of Struct DriverMsg  %lu\n",(unsigned long) sizeof(struct DriverMsg));
   fprintf(stderr,"Size of Struct int32  %lu\n",(unsigned long) sizeof(int32));
   fprintf(stderr,"Size of Struct float  %lu\n",(unsigned long) sizeof(float));
   fprintf(stderr,"Size of Struct unsigned char  %lu\n",(unsigned long) sizeof(unsigned char));
@@ -385,7 +383,8 @@ int main()
       graceful_socket_cleanup(1);
   } else {
     if (verbose>0) fprintf(stderr,"GPS Socket %d\n",gpssock);
-    s_msg.type=GPS_SET_TRIGGER_RATE;
+    s_msg.command_type=GPS_SET_TRIGGER_RATE;
+    strcpy(s_msg.command_name,"GPS_SET_TRIGGER_RATE");
     s_msg.status=1;
     send_data(gpssock, &s_msg, sizeof(struct DriverMsg));
     recv_data(gpssock, &r_msg, sizeof(struct DriverMsg));

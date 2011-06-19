@@ -16,7 +16,7 @@ void *timing_ready_controlprogram(struct ControlProgram *arg)
   pthread_mutex_lock(&timing_comm_lock);
    if (arg!=NULL) {
      if (arg->state->pulseseqs[arg->parameters->current_pulseseq_index]!=NULL) {
-       s_msg.type=CtrlProg_READY;
+       s_msg.command_type=CtrlProg_READY;
        s_msg.status=1;
        send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
        recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
@@ -35,7 +35,7 @@ void *timing_end_controlprogram(struct ControlProgram *arg)
   struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&timing_comm_lock);
   if (arg!=NULL) {
-    s_msg.type=CtrlProg_END;
+    s_msg.command_type=CtrlProg_END;
     s_msg.status=1;
     send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
     recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
@@ -53,7 +53,7 @@ void *timing_register_seq(struct ControlProgram *control_program)
   struct DriverMsg s_msg , r_msg;
   int32 index;
   pthread_mutex_lock(&timing_comm_lock);
-  s_msg.type=REGISTER_SEQ;
+  s_msg.command_type=REGISTER_SEQ;
   s_msg.status=1;
   send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
   recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
@@ -75,12 +75,12 @@ void *timing_pretrigger(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&timing_comm_lock);
-  s_msg.type=PRETRIGGER;
+  s_msg.command_type=PRETRIGGER;
   s_msg.status=1;
   send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
   recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
 
-  s_msg.type=GET_TRTIMES;
+  s_msg.command_type=GET_TRTIMES;
   s_msg.status=1;
   send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
   recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
@@ -114,13 +114,13 @@ void *timing_trigger(int *trigger_type_p)
  
   switch(trigger_type) {
     case 0:
-      s_msg.type=TRIGGER;
+      s_msg.command_type=TRIGGER;
       break;
     case 1:
-      s_msg.type=TRIGGER;
+      s_msg.command_type=TRIGGER;
       break;
     case 2:
-      s_msg.type=EXTERNAL_TRIGGER;
+      s_msg.command_type=EXTERNAL_TRIGGER;
       break;
   }
   s_msg.status=1;
@@ -134,7 +134,7 @@ void *timing_wait(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&timing_comm_lock);
-  s_msg.type=WAIT;
+  s_msg.command_type=WAIT;
   s_msg.status=1;
   send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
   recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
@@ -146,7 +146,7 @@ void *timing_posttrigger(void *arg)
   struct DriverMsg s_msg,r_msg;
   pthread_mutex_lock(&timing_comm_lock);
 
-   s_msg.type=POSTTRIGGER;
+   s_msg.command_type=POSTTRIGGER;
    s_msg.status=1;
    send_data(timingsock, &s_msg, sizeof(struct DriverMsg));
    recv_data(timingsock, &r_msg, sizeof(struct DriverMsg));
