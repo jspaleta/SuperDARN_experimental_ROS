@@ -99,20 +99,10 @@ void *DIO_aux_command(dictionary **dict_p)
   dictionary *aux_dict=NULL;
   struct DriverMsg s_msg,r_msg;
   char *dict_string=NULL;
-  char value[200];
-  char entry[200];
-  char secname_static[200];
-  char *secname_in_dict;
+  int32 bytes;
 
-  int32 nsecs,bytes;
-  unsigned int bufsize;
-  struct tx_status *txp=NULL;  
-  void *dict_buf=NULL; // pointer into dictionary do not free
-  void *temp_buf=NULL; // malloced buffer needs to be freed 
-  int i,radar=1;
   pthread_mutex_lock(&dio_comm_lock);
   aux_dict=*dict_p;
-  printf("DIO AUX Pre Dict pointer: %u\n",aux_dict);
 
   dict_string=iniparser_to_string(aux_dict);
   bytes=strlen(dict_string)+1;
@@ -122,23 +112,14 @@ void *DIO_aux_command(dictionary **dict_p)
   send_data(diosock, &s_msg, sizeof(struct DriverMsg));
   recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
   if(r_msg.status==1) {
-    printf("DIO AUX Command is valid\n");
-
     send_aux_dict(diosock,aux_dict,0);
-    printf("Sent to DIO driver\n");
     if(aux_dict!=NULL) iniparser_freedict(aux_dict);
     aux_dict=NULL;
-
-    printf("DIO AUX recv Dict pointer: %u\n",aux_dict);
     recv_aux_dict(diosock,&aux_dict,1);
-
     recv_data(diosock, &r_msg, sizeof(struct DriverMsg));
   } else {
-    //if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-    //aux_dict=dictionary_new(0);
-    printf("DIO AUX Command is invalid\n");
+    fprintf(stderr,"DIO AUX Command is invalid\n");
   }
-  printf("DIO AUX POST Dict pointer: %u\n",aux_dict);
   iniparser_dump(aux_dict,stdout);
   *dict_p=aux_dict;
   
@@ -202,6 +183,7 @@ void *dio_site_settings(void *arg)
     }
   }
   pthread_mutex_unlock(&dio_comm_lock);
+  pthread_exit(NULL);
 }
 
 

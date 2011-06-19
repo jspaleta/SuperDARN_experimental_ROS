@@ -19,17 +19,14 @@ extern int gpssock;
 int oldv;
 void *coordination_handler(struct ControlProgram *control_program)
 {
-   int numcontrolprograms=0,numready=0,numprocessing=0,rc,i,temp;
-   char *timestr;
+   int numcontrolprograms=0,numready=0,numprocessing=0,rc,i;
    pthread_t threads[4];
    struct Thread_List_Item *thread_list;
    int32 gps_event,gpssecond,gpsnsecond;
    struct DriverMsg s_msg,r_msg;
    struct ControlProgram *cprog;
    int ready_state,trigger_state,ready_count;
-   struct timeval t0,t1,t2,t3,t4,t5,t6;
-   unsigned long elapsed;
-   if(verbose > 1 ) gettimeofday(&t0,NULL);
+
    pthread_mutex_lock(&coord_lock); //lock the global structures
 
    ready_state=*ready_state_pointer;
@@ -83,12 +80,6 @@ void *coordination_handler(struct ControlProgram *control_program)
           break;
         case 2:
         //printf("Coord: All control programs ready\n"); 
-        if(verbose > 1 ) gettimeofday(&t1,NULL);
-          if (verbose > 1) { 
-              elapsed=(t1.tv_sec-t0.tv_sec)*1E6;
-              elapsed+=(t1.tv_usec-t0.tv_usec);
-              printf("Coord: Start Ready State Case 2 Elapsed Microseconds: %ld\n",elapsed);
-          }
         /*all control programs ready for trigger*/
           trigger_state=1;
           thread_list=controlprogram_threads;
@@ -109,97 +100,31 @@ void *coordination_handler(struct ControlProgram *control_program)
             thread_list=thread_list->prev;
           }
 
-          if(verbose > 1 ) gettimeofday(&t2,NULL);
-          if (verbose > 1) { 
-              elapsed=(t2.tv_sec-t1.tv_sec)*1E6;
-              elapsed+=(t2.tv_usec-t1.tv_usec);
-              printf("Coord: Pre-Trigger Active Check %d Elapsed Microseconds: %ld\n",i,elapsed);
-          }
-            if(verbose > -1 ) gettimeofday(&t4,NULL);
           i=0;
-          if(verbose > 1) {
-            printf("Coord: Start DDS Pre-Trigger\n");
-            gettimeofday(&t4,NULL);
-          }
           //printf("Coord: DDS Pre-trigger\n"); 
           rc = pthread_create(&threads[i], NULL, (void *) &dds_pretrigger, NULL);
-          if(verbose > 1 ) {
-              gettimeofday(&t5,NULL);
-              elapsed=(t5.tv_sec-t4.tv_sec)*1E6;
-              elapsed+=(t5.tv_usec-t4.tv_usec);
-              printf("Coord: Pre-Trigger DDS Thread Elapsed Microseconds: %ld\n",elapsed);
-          }
           i++;
-          if(verbose > 1) {
-            printf("Coord: Start Recv Pre-Trigger\n");
-            gettimeofday(&t4,NULL);
-          }
           rc = pthread_create(&threads[i], NULL, (void *) &receiver_pretrigger, NULL);
-          if(verbose > 1 ) {
-              gettimeofday(&t5,NULL);
-              elapsed=(t5.tv_sec-t4.tv_sec)*1E6;
-              elapsed+=(t5.tv_usec-t4.tv_usec);
-              printf("Coord: Pre-Trigger Recv Thread Elapsed Microseconds: %ld\n",elapsed);
-          }
           i++;
-          if(verbose > 1) {
-            printf("Coord: Start DIO Pre-Trigger\n");
-            gettimeofday(&t4,NULL);
-          }
           rc = pthread_create(&threads[i], NULL, (void *) &DIO_pretrigger, NULL);
-          if(verbose > 1 ) {
-              gettimeofday(&t5,NULL);
-              elapsed=(t5.tv_sec-t4.tv_sec)*1E6;
-              elapsed+=(t5.tv_usec-t4.tv_usec);
-              printf("Coord: Pre-Trigger DIO Thread Elapsed Microseconds: %ld\n",elapsed);
-          }
           i++;
-          if(verbose > 1) {
-            printf("Coord: Start Timing Pre-Trigger\n");
-            gettimeofday(&t4,NULL);
-          }
           rc = pthread_create(&threads[i], NULL, (void *) &timing_pretrigger, NULL);
-          if(verbose > 1 ) {
-              gettimeofday(&t5,NULL);
-              elapsed=(t5.tv_sec-t4.tv_sec)*1E6;
-              elapsed+=(t5.tv_usec-t4.tv_usec);
-              printf("Coord: Pre-Trigger Timing Thread Elapsed Microseconds: %ld\n",elapsed);
-          }
           for (;i>=0;i--) {
             pthread_join(threads[i],NULL);
-          }
-            if(verbose > 1 ) gettimeofday(&t5,NULL);
-            if (verbose > 1) { 
-              elapsed=(t5.tv_sec-t4.tv_sec)*1E6;
-              elapsed+=(t5.tv_usec-t4.tv_usec);
-              printf("Coord: Pre-Trigger Thread %d Elapsed Microseconds: %ld\n",i,elapsed);
-            }
-          if (verbose > 1) { 
-            gettimeofday(&t3,NULL);
-            elapsed=(t3.tv_sec-t2.tv_sec)*1E6;
-            elapsed+=(t3.tv_usec-t2.tv_usec);
-            printf("Coord: Pre-Trigger Elapsed Microseconds: %ld\n",elapsed);
           }
           //printf("Coord: Pre-trigger done\n"); 
           trigger_state=2; //trigger
 /*
  *             trigger_type:  0: free run  1: elapsed-time  2: gps
  */       
-          usleep(1000);
-          rc = pthread_create(&threads[0], NULL, (void *) &timing_trigger, (void *)trigger_type);
+          usleep(100);
+          rc = pthread_create(&threads[0], NULL, (void *) &timing_trigger, (void *)&trigger_type);
           pthread_join(threads[0],NULL);
-          if (verbose > 1) { 
-            gettimeofday(&t4,NULL);
-            elapsed=(t4.tv_sec-t3.tv_sec)*1E6;
-            elapsed+=(t4.tv_usec-t3.tv_usec);
-            printf("Coord: Trigger Elapsed Microseconds: %ld\n",elapsed);
-          }
           trigger_state=3;//post-trigger
           s_msg.type=GET_EVENT_TIME;
           s_msg.status=1;
           send_data(gpssock, &s_msg, sizeof(struct DriverMsg));
           recv_data(gpssock, &r_msg, sizeof(struct DriverMsg));
-          if (verbose > 1 ) printf("GET_EVENT_TIME: %d\n",r_msg.status);
 	  if(r_msg.status==1) {
             recv_data(gpssock,&gps_event, sizeof(int32));
             recv_data(gpssock,&gpssecond, sizeof(int32));
@@ -234,17 +159,6 @@ void *coordination_handler(struct ControlProgram *control_program)
           trigger_state=0;//post-trigger
           ready_count=0;
           ready_state=0;
-          if(verbose > 1 ) gettimeofday(&t6,NULL);
-          if (verbose > 1) { 
-            elapsed=(t6.tv_sec-t4.tv_sec)*1E6;
-            elapsed+=(t6.tv_usec-t4.tv_usec);
-            printf("Coord: Post Trigger Elapsed Microseconds: %ld\n",elapsed);
-          }
-          if (verbose > 1) { 
-            elapsed=(t6.tv_sec-t0.tv_sec)*1E6;
-            elapsed+=(t6.tv_usec-t0.tv_usec);
-            printf("Coord: Total Elapsed Microseconds: %ld\n",elapsed);
-          }
           break; 
    } // end of ready_state switch
    *ready_state_pointer=ready_state;

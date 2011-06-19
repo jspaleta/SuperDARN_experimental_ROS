@@ -40,12 +40,8 @@ int send_aux_dict(int s,dictionary *aux_dict, int verbose ) {
 int recv_aux_dict(int s,dictionary **dict_p,int verbose) { 
     dictionary *aux_dict=NULL;
     char *dict_string=NULL; // pointer into dict do not free or realloc
-    char *secname_in_dict=NULL; // pointer into dict do not free or realloc
-    void *dict_buf=NULL; // pointer into dict do not free or realloc
     void *temp_buf=NULL; // point that needs to be malloc'd and free'd
     char secname_static[200]; 	
-    char entry[200]; 	
-    unsigned int bufsize;
     int32 bytes;
     int32 nsecs;
     int i;
@@ -79,10 +75,10 @@ int recv_aux_dict(int s,dictionary **dict_p,int verbose) {
     *dict_p=aux_dict;
     if(dict_string!=NULL) free(dict_string);
     dict_string=NULL;
-    if ( verbose ) printf("AUX Recv: Dict\n");
-    if ( verbose ) iniparser_dump(*dict_p,stdout);
-    if ( verbose ) printf("AUX Recv: Dict\n");
-    if ( verbose ) iniparser_dump(aux_dict,stdout);
-    if ( verbose ) printf("AUX Recv: Done %u %u\n",aux_dict,*dict_p);
+    if ( verbose > 1 ) fprintf(stderr,"AUX Recv: Dict\n");
+    if ( verbose > 1 ) iniparser_dump(*dict_p,stdout);
+    if ( verbose > 1 ) fprintf(stderr,"AUX Recv: Dict\n");
+    if ( verbose > 1) iniparser_dump(aux_dict,stdout);
+    if ( verbose > 1) fprintf(stderr,"AUX Recv: Done %lu %lu\n",(unsigned long) aux_dict,(unsigned long) *dict_p);
     return 0;
 }

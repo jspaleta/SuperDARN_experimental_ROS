@@ -49,7 +49,6 @@ void *receiver_site_settings(void *arg) {
 
   site_settings=arg;
   pthread_mutex_lock(&recv_comm_lock);
-//  printf("RECV_rxfe_settins\n");
   if (site_settings!=NULL) {
     s_msg.type=SITE_SETTINGS;
     s_msg.status=1;
@@ -63,6 +62,7 @@ void *receiver_site_settings(void *arg) {
     }                                    
   }                                                                                        
   pthread_mutex_unlock(&recv_comm_lock);
+  pthread_exit(NULL);
 }                                                           
 
 void receiver_assign_frequency(struct ControlProgram *arg){
@@ -94,12 +94,12 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 	/* SGS: where does stderr go? 
 	*  http://en.wikipedia.org/wiki/Standard_streams
         */
-        if(verbose > -1) {
-		fprintf(stdout, "ASSIGN FREQ: %d %d\n",
+        if(verbose > 1) {
+		fprintf(stderr, "ASSIGN FREQ: %d %d\n",
 					arg->parameters->radar-1,arg->parameters->channel-1);
-		fprintf(stdout, " FFT FREQ: %d %d\n",
+		fprintf(stderr, " FFT FREQ: %d %d\n",
 					arg->clrfreqsearch.start,arg->clrfreqsearch.end);
-		fprintf(stdout, " Start Freq: %lf\n",
+		fprintf(stderr, " Start Freq: %lf\n",
 					arg->state->fft_array[0].freq);
 	}
 
@@ -232,7 +232,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
   /* TODO: optimize padded_rx_sideband  to account for over sampling and wide-band modes*/
   padded_rx_sideband_khz = MAX(2*ceil(rx_bandwidth_khz),0);
 
-  if (verbose > -1) {
+  if (verbose > 1) {
     fprintf(stderr," Padded Rx Side Band: %d [kHz]\n",padded_rx_sideband_khz);
     fprintf(stderr, "%d frequencies in fft \n",arg->state->N);
     fprintf(stderr, "  freq[%8d]: %8.3lf\n",0,(double)fft_array[0].freq);
@@ -246,8 +246,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
   detrend_enabled = iniparser_getboolean(Site_INI,
                                    "site_settings:use_clr_detrend",0);
   if (detrend_enabled) {
-    if (verbose > -1) 
-      fprintf(stderr," Detrending Enabled\n");
+    if (verbose > 1) fprintf(stderr," Detrending Enabled\n");
     /* Get the sidebandwidth to use for detrending. Default to 50 if not set */
     detrend_sideband = iniparser_getint(Site_INI,
                                     "site_settings:detrend_sideband",50);
@@ -273,8 +272,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
     if(detrend_fft_array!=NULL) free(detrend_fft_array);
     detrend_fft_array=NULL;
   } else {
-	if (verbose > -1) 
-	     	fprintf(stderr," Detrending Disabled\n");
+	if (verbose > -1) fprintf(stderr," Detrending Disabled\n");
 	for (i=0; i<arg->state->N; i++) {
 		fft_array[i].detrend=0;
         }
@@ -355,8 +353,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		if ( (fft_array[i].freq <= arg->clrfreqsearch.end) &&
 				(fft_array[i].freq >= arg->clrfreqsearch.start) ) {
 			if (j >= ncfs) {	/* this should never happend, but good to check... */
-				if (verbose > -1)
-					fprintf(stderr, "Too many frequencies in clrfreqsearch band: %d\n", j);
+				if (verbose > -1) fprintf(stderr, "Too many frequencies in clrfreqsearch band: %d\n", j);
 				j = ncfs - 1;	/* make sure there is no overstepping array bounds */
 			}
 			/* fill the elements of the sub__fft_array from the fft_array */
@@ -369,8 +366,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		}
 	}
 
-	if (verbose > -1)
-		fprintf(stderr, "%d frequencies in clrfreqsearch band\n", j);
+	if (verbose > -1) fprintf(stderr, "%d frequencies in clrfreqsearch band\n", j);
 
 	ncfs = j;	/* note that these should be the same, but perhaps should check */
 
@@ -414,10 +410,11 @@ void receiver_assign_frequency(struct ControlProgram *arg){
            					blacklist[blacklist_count].start=controlprogram->state->best_assigned_freq-controlprogram->state->rx_sideband;
            					blacklist[blacklist_count].end=controlprogram->state->best_assigned_freq+controlprogram->state->rx_sideband;
            					blacklist[blacklist_count].program=(uint64)controlprogram;
-           					if (verbose>-11) printf("  %d %d :: Adding backlist :: %d %d :  %d %d\n",
-                       					arg->parameters->radar,arg->parameters->channel,
-                       					controlprogram->parameters->radar,controlprogram->parameters->channel,
-                       					blacklist[blacklist_count].start,blacklist[blacklist_count].end);	
+           					if (verbose> 0) 
+							fprintf(stderr,"  %d %d :: Adding backlist :: %d %d :  %d %d\n", \
+                       					  arg->parameters->radar,arg->parameters->channel, \
+                       					  controlprogram->parameters->radar,controlprogram->parameters->channel, \
+                       					  blacklist[blacklist_count].start,blacklist[blacklist_count].end);	
            					blacklist_count++;
            					if (blacklist_count >= (numclients*2)) blacklist_count=numclients*2-1; 
 					}
@@ -426,7 +423,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
        			}
        			thread_list=thread_list->prev;
      		}
-		if(verbose > -1 ) {
+		if(verbose > 0 ) {
 			fprintf(stderr,"Current blacklist:\n");
 			for (k=0; k<blacklist_count; k++) {
 				fprintf(stderr," %8d %8d : %lu\n",blacklist[k].start,blacklist[k].end,(unsigned long) blacklist[k].program);
@@ -476,7 +473,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		nfreq = j;	/* these are the number of allowed frequencies */
 
 		if (verbose > 1)
-			fprintf(stderr, "%d frequencies that are allowed\n", nfreq);
+			fprintf(stderr, "%d frequencies allowed\n", nfreq);
 
 		/* now let's get an array that is the proper size and transfer
 		 * everything to that array */
@@ -534,7 +531,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 
         if(nfreq > 0 ) {
 		/* Just here for logging purposes */
-   		if (verbose>-1) {	
+   		if (verbose>0) {	
      			fprintf(stderr," Highest 5 freqs: \n");
      			for(i = nfreq-1; i > nfreq-6; i--){
     				if(i >= 0) { 
@@ -561,7 +558,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
   		arg->state->best_assigned_freq=sub_fft_array[best_index].freq;
   		arg->state->best_assigned_noise=sub_fft_array[best_index].apwr*(rx_bandwidth_khz);
 
-  		if(verbose > 1 ) fprintf(stderr,"%lf best frequency: %d assigned frequency: %d\n",sub_fft_array[best_index].freq,
+  		if(verbose > 0 ) fprintf(stderr,"%lf best frequency: %d assigned frequency: %d\n",sub_fft_array[best_index].freq,
                            arg->state->best_assigned_freq,arg->state->current_assigned_freq);
 
 		arg->state->tx_sideband=padded_tx_sideband_khz;
@@ -687,8 +684,6 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
 {
   struct DriverMsg s_msg,r_msg;
   struct timeval t0,t1,t3;
-  char *timestr;
-  int rval;
   char shm_device[80];
   int shm_fd;
   int32 r,c,b;
@@ -741,13 +736,11 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         arg->data->status=error_flag;
         arg->data->samples=0;
       }      
-      printf("GET_DATA_STATUS: %d\n",arg->data->status);
       if (arg->data->status>0 ) {
         s_msg.type=GET_DATA;
         s_msg.status=1;
         send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
         recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
-        printf("GET_DATA: r_msg %d\n",r_msg.status);
         if(r_msg.status>0) {
           send_data(recvsock, &r, sizeof(int32));
           send_data(recvsock, &c, sizeof(int32));
@@ -813,14 +806,10 @@ void *receiver_clrfreq(struct ControlProgram *arg)
 {
   struct DriverMsg s_msg,r_msg;
   struct timeval t0;
-  struct CLRFreqPRM clrfreq_parameters;
-  unsigned long wait_elapsed;
-  int i,j,r,bandwidth,index;
+  int i,r,bandwidth,index;
   double *pwr=NULL;
   int start,end,centre;
 
-  printf("CLRFREQ: %d %d\n",arg->parameters->radar-1,arg->parameters->channel-1);
-  printf(" FFT FREQ: %d %d\n",arg->clrfreqsearch.start,arg->clrfreqsearch.end);
   pthread_mutex_lock(&recv_comm_lock);
   gettimeofday(&t0,NULL);
 
@@ -833,12 +822,12 @@ void *receiver_clrfreq(struct ControlProgram *arg)
     send_data(recvsock, &arg->clrfreqsearch, sizeof(struct CLRFreqPRM));
     send_data(recvsock, arg->parameters, sizeof(struct ControlPRM));
     recv_data(recvsock, &arg->clrfreqsearch, sizeof(struct CLRFreqPRM));
-    if(verbose > -1 ) printf("  final search parameters\n");  
-    if(verbose > -1 ) printf("  start: %d\n",arg->clrfreqsearch.start);        
-    if(verbose > -1 ) printf("  end: %d\n",arg->clrfreqsearch.end);    
-    if(verbose > -1 ) printf("  nave:  %d\n",arg->clrfreqsearch.nave); 
+    if(verbose > 1 ) fprintf(stderr,"  final search parameters\n");  
+    if(verbose > 1 ) fprintf(stderr,"  start: %d\n",arg->clrfreqsearch.start);        
+    if(verbose > 1 ) fprintf(stderr,"  end: %d\n",arg->clrfreqsearch.end);    
+    if(verbose > 1 ) fprintf(stderr,"  nave:  %d\n",arg->clrfreqsearch.nave); 
     recv_data(recvsock, &arg->state->N, sizeof(int32));
-    if(verbose > -1 ) printf("  N:  %d\n",arg->state->N); 
+    if(verbose > 1 ) fprintf(stderr,"  N:  %d\n",arg->state->N); 
     if(pwr!=NULL) free(pwr); 
     pwr=NULL;
     pwr = (double*) malloc(sizeof(double) * arg->state->N);
@@ -876,7 +865,6 @@ void *receiver_clrfreq(struct ControlProgram *arg)
       arg->state->fft_array[i].pwr=1E6;
     }
   }
-  printf(" Start Freq: %lf\n",arg->state->fft_array[0].freq);
   if (pwr!=NULL) free(pwr);
   pwr=NULL;
   pthread_mutex_unlock(&recv_comm_lock);

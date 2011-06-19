@@ -105,21 +105,21 @@ void *timing_pretrigger(void *arg)
   pthread_exit(NULL);
 };
 
-void *timing_trigger(int trigger_type)
+void *timing_trigger(int *trigger_type_p)
 {
   struct DriverMsg s_msg,r_msg;
+  int trigger_type;
+  trigger_type=*trigger_type_p;
   pthread_mutex_lock(&timing_comm_lock);
+ 
   switch(trigger_type) {
     case 0:
-//  printf("TIMING: Normal Trigger Type %d\n",trigger_type);
       s_msg.type=TIMING_TRIGGER;
       break;
     case 1:
-//  printf("TIMING: Normal Trigger Type %d\n",trigger_type);
       s_msg.type=TIMING_TRIGGER;
       break;
     case 2:
-//  printf("TIMING: GPS Trigger Type %d\n",trigger_type);
       s_msg.type=EXTERNAL_TRIGGER;
       break;
   }

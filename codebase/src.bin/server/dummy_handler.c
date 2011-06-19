@@ -6,12 +6,11 @@
 
 void dummy_exit(void *arg)
 {
-   int *sockfd = (int *) arg;
    pthread_t tid;
 /* get the calling thread's ID */
    tid = pthread_self();
 /* print where the thread was in its search when it was cancelled */
-   printf("Dummy thread %p has been cancelled\n", tid); 
+   printf("Dummy thread %d has been cancelled\n", (int )tid); 
 }
 
 void *dummy_handler(void *arg)

@@ -17,10 +17,9 @@ void timeout_exit(void *arg)
 void *timeout_handler(void *arg)
 {
    struct Thread_List_Item *thread_list,*thread_item,*thread_next;
-   struct ControlProgram *data;
    struct timeval t1;
    unsigned long elapsed;
-   int i,cancelled;
+   int cancelled;
    struct ControlProgram *cprog;
 /* set the cancellation parameters --
    - Enable thread cancellation 
@@ -37,11 +36,11 @@ void *timeout_handler(void *arg)
      while(thread_list!=NULL){
        cancelled=0;
        elapsed=t1.tv_sec-thread_list->last_seen.tv_sec;
-       if (verbose > 1 ) fprintf(stderr,"TIMEOUT: Thread %d: elapsed time: %d %d\n",thread_list->id, elapsed,thread_list->timeout.tv_sec);
+       if (verbose > 1 ) fprintf(stderr,"TIMEOUT: Thread %d: elapsed time: %lu %lu\n",(int) thread_list->id, elapsed,(unsigned long)thread_list->timeout.tv_sec);
        if (elapsed > thread_list->timeout.tv_sec) {
-         if (verbose > 1 ) fprintf(stderr,"TIMEOUT: elapsed time! %d %d\n",elapsed,thread_list->timeout.tv_sec);
-         if (verbose > 1 ) fprintf(stderr,"  controlprogram addr: %p thread addr: %p id: %p\n",
-                                   thread_list->data,thread_list,thread_list->id);
+         if (verbose > 1 ) fprintf(stderr,"TIMEOUT: elapsed time! %lu %lu\n",elapsed,(unsigned long)thread_list->timeout.tv_sec);
+         if (verbose > 1 ) fprintf(stderr,"  controlprogram addr: %p thread addr: %p id: %d\n",
+                                   thread_list->data,thread_list,(int) thread_list->id);
          if (verbose> 0) fprintf(stderr,"    thread next: %p\n",thread_list->next);
          if (verbose> 0) fprintf(stderr,"    thread prev: %p\n",thread_list->prev);
          cprog=thread_list->data;
@@ -51,11 +50,11 @@ void *timeout_handler(void *arg)
            if(cprog->state!=NULL) {      
              cancelled=cprog->state->cancelled; 
              if (verbose>0) fprintf(stderr,"    control cancelled: %d\n",cancelled);
-             if (verbose > 0) fprintf(stderr,"controlprogram thread %p %p over ran timeout...trying to cancel\n",
-                                   thread_list,thread_list->id);
+             if (verbose > 0) fprintf(stderr,"controlprogram thread %p %d over ran timeout...trying to cancel\n",
+                                   thread_list,(int) thread_list->id);
              if(cancelled==0) {
                  pthread_mutex_unlock(&exit_lock);  //unlock exit lock
-                 if (verbose > 1 ) fprintf(stderr,"TIMEOUT: Canceling client thread %p %d\n",thread_list, thread_list->id);
+                 if (verbose > 1 ) fprintf(stderr,"TIMEOUT: Canceling client thread %p %d\n",thread_list, (int) thread_list->id);
                  pthread_cancel(thread_list->id);       
                  pthread_join(thread_list->id,NULL);
                  pthread_mutex_lock(&exit_lock);  //hold the exit lock

@@ -178,15 +178,15 @@ int main()
   FILE *fd;
   char *s,*line,*field;
 
-  printf("Size of Struct ROSMsg  %lu\n",(unsigned long) sizeof(struct ROSMsg));
-  printf("Size of Struct int32  %lu\n",(unsigned long) sizeof(int32));
-  printf("Size of Struct float  %lu\n",(unsigned long) sizeof(float));
-  printf("Size of Struct unsigned char  %lu\n",(unsigned long) sizeof(unsigned char));
-  printf("Size of Struct ControlPRM  %lu\n",(unsigned long) sizeof(struct ControlPRM));
-  printf("Size of Struct CLRFreqPRM  %lu\n",(unsigned long) sizeof(struct CLRFreqPRM));
-  printf("Size of Struct SeqPRM  %lu\n",(unsigned long) sizeof(struct SeqPRM));
-  printf("Size of Struct DataPRM  %lu\n",(unsigned long) sizeof(struct DataPRM));
-  printf("Size of Struct SiteSettings  %lu\n",(unsigned long) sizeof(struct SiteSettings));
+  fprintf(stderr,"Size of Struct ROSMsg  %lu\n",(unsigned long) sizeof(struct ROSMsg));
+  fprintf(stderr,"Size of Struct int32  %lu\n",(unsigned long) sizeof(int32));
+  fprintf(stderr,"Size of Struct float  %lu\n",(unsigned long) sizeof(float));
+  fprintf(stderr,"Size of Struct unsigned char  %lu\n",(unsigned long) sizeof(unsigned char));
+  fprintf(stderr,"Size of Struct ControlPRM  %lu\n",(unsigned long) sizeof(struct ControlPRM));
+  fprintf(stderr,"Size of Struct CLRFreqPRM  %lu\n",(unsigned long) sizeof(struct CLRFreqPRM));
+  fprintf(stderr,"Size of Struct SeqPRM  %lu\n",(unsigned long) sizeof(struct SeqPRM));
+  fprintf(stderr,"Size of Struct DataPRM  %lu\n",(unsigned long) sizeof(struct DataPRM));
+  fprintf(stderr,"Size of Struct SiteSettings  %lu\n",(unsigned long) sizeof(struct SiteSettings));
 /* Put in Commandline arg parsing here */
 
 /* Load Site INI file */

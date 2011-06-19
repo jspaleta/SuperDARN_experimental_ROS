@@ -441,9 +441,7 @@ void *control_handler(struct ControlProgram *control_program)
               if(control_program->active!=0) {
                 control_program->active=-1;
                 control_program->state->ready=0;
-                printf("Controlprogram Inactive: run coordinator\n"); 
-                rc = pthread_create(&thread, NULL, (void *)&coordination_handler,(void *)
-control_program);
+                rc = pthread_create(&thread, NULL, (void *)&coordination_handler,(void *) control_program);
                 pthread_join(thread,NULL);
               }
               pthread_mutex_unlock(&controlprogram_list_lock);
@@ -588,7 +586,7 @@ control_program);
                 send_data(socket, bad_transmit_times.start_usec, sizeof(uint32)*bad_transmit_times.length);
                 send_data(socket, bad_transmit_times.duration_usec, sizeof(uint32)*bad_transmit_times.length);
               } else {
-                if (verbose > -1 ) printf(stderr,"CLIENT:GET_DATA: Bad status %d\n",control_program->data->status);
+                if (verbose > -1 ) fprintf(stderr,"CLIENT:GET_DATA: Bad status %d\n",control_program->data->status);
               } 
               send_data(socket, &msg, sizeof(struct ROSMsg));
               pthread_mutex_unlock(&controlprogram_list_lock);
@@ -731,5 +729,5 @@ control_program);
 
 void *controlprogram_free(struct ControlProgram *control_program)
 {
-
+  pthread_exit(NULL);
 }
