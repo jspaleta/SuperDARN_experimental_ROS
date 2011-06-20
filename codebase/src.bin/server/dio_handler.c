@@ -72,7 +72,7 @@ void *DIO_aux_command(dictionary **dict_p)
   } else {
     fprintf(stderr,"DIO AUX Command is invalid\n");
   }
-  iniparser_dump(aux_dict,stdout);
+  //iniparser_dump(aux_dict,stderr);
   *dict_p=aux_dict;
   
   pthread_mutex_unlock(&dio_comm_lock);

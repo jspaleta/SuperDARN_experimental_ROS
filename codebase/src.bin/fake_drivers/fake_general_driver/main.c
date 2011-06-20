@@ -241,7 +241,7 @@ int main ( int argc, char **argv){
                     if (verbose>1) printf("Data is ready to be read\n");
 		    if (verbose > 1) printf("%d Recv Msg\n",msgsock);
                     rval=recv_data(msgsock,&msg,sizeof(struct DriverMsg));
-                    datacode=msg.type;
+                    datacode=msg.command_type;
 		    if (verbose > 1) printf("\nmsg code is %c\n", datacode);
 		/* Process commands that have come in on the socket */	
 		    switch( datacode ){

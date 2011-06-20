@@ -147,8 +147,6 @@ main( int argc, char *argv[])
           perror("control program - ros tcp connection failed");
           exit(0);
   }
-   sleep(15);
-   exit(0);
 
 /*
  * send and receive the Radar request structure.

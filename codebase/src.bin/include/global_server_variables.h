@@ -10,24 +10,24 @@
 #define _GLOBAL_SERVER_H
 
 
-#define SITE_NAME "mcm"
+#define SITE_NAME "tst"
 
 #define SITE_DIR "/tmp/site_data/"
 
 #define IF_ENABLED         1 
 #define IF_DISABLED         0 
-#define IF_FREQ            71000 // in KHz
 
+//#define IF_FREQ            71000 // in KHz
 #define FULL_CLR_FREQ_START	8000  // in KHz	
 #define FULL_CLR_FREQ_END	20000 // in KHz
-#define MAX_CLR_WAIT	0     // in secs	
+//#define MAX_CLR_WAIT	0     // in secs	
 
 #define RECV_COMPLEX_SAMPLE_SIZE 32  //IQ together 
 #define RECV_REAL_OFFSET 0
 #define RECV_IMAG_OFFSET 1
 
 #define Max_Control_THREADS     30
-#define Max_Viewer_THREADS     5
+
 #define TIMING_HOST_PORT 45001
 #define GPS_HOST_PORT 45004
 #define DDS_HOST_PORT 45002

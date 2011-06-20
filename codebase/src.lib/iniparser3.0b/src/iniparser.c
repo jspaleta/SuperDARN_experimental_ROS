@@ -763,7 +763,6 @@ dictionary * iniparser_load_from_string(dictionary *d, char * inistring)
     if (!dict) {
         return NULL ;
     }
-    printf("Load from string start\n");
     str=inistring;
     str1 = strtok(str, "\n") ;
     while (str1!=NULL) {
@@ -771,7 +770,6 @@ dictionary * iniparser_load_from_string(dictionary *d, char * inistring)
         strcpy(comment,"");
         bufsize=0;
 	sscanf(str1,"%s\t%s\t%s\t%u",entry,value,comment,&bufsize);	
-        printf("  [%s] [%s] [%s] [%d]\n",entry,value,comment,bufsize);
 	if(strcmp(value,"UNDEF")==0) {	
 	  if(strcmp(comment,"UNDEF")==0) {	
 	    iniparser_set(dict,entry,NULL,NULL);	
@@ -790,7 +788,6 @@ dictionary * iniparser_load_from_string(dictionary *d, char * inistring)
 	}
         str1 = strtok(str, "\n"); 
     }
-    printf("Load from string done\n");
     return dict ;
 }
 /*-------------------------------------------------------------------------*/

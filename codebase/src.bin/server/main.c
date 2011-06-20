@@ -60,7 +60,7 @@ int *ready_state_pointer,*ready_count_pointer;
 struct SiteSettings site_settings;
 struct TRTimes bad_transmit_times;
 int32 gpsrate=REFRESHRATE;
-int verbose=10;
+int verbose=1;
 int die_on_socket_failure=0;
 int clear_frequency_request;
 struct BlackList *blacklist=NULL;
@@ -79,66 +79,66 @@ void graceful_cleanup(int signum)
   int t=0,i=0;
   struct Thread_List_Item *thread_list,*thread_item,*thread_next;
 
-  if (verbose>-1) fprintf(stderr,"Attempting graceful clean up of control program threads\n");
+  if (verbose>1) fprintf(stderr,"Attempting graceful clean up of control program threads\n");
   thread_list=controlprogram_threads;
   t=0;
   if (thread_list!=NULL) {
     while(thread_list!=NULL){
-      if (verbose>0) fprintf(stderr,"Cancelling thread %d\n",t);
+      if (verbose>1) fprintf(stderr,"Cancelling thread %d\n",t);
       pthread_cancel(thread_list->id);       
-      if (verbose>0) fprintf(stderr,"Done Cancelling thread %d\n",t);
-      if (verbose>0) fprintf(stderr,"Joining thread %d\n",t);
+      if (verbose>1) fprintf(stderr,"Done Cancelling thread %d\n",t);
+      if (verbose>1) fprintf(stderr,"Joining thread %d\n",t);
       pthread_join(thread_list->id,NULL);
-      if (verbose>0) fprintf(stderr,"Done Joining thread %d\n",t);
+      if (verbose>1) fprintf(stderr,"Done Joining thread %d\n",t);
       pthread_mutex_lock(&controlprogram_list_lock);
       thread_item=thread_list;   
-      if (verbose>0) fprintf(stderr,"thread item %p\n",thread_item);
+      if (verbose>1) fprintf(stderr,"thread item %p\n",thread_item);
       if (thread_item!=NULL) {
         thread_next=thread_item->next;
         thread_list=thread_item->prev;
         if (thread_next != NULL) thread_next->prev=thread_list;
         else controlprogram_threads=thread_list;
         if (thread_list != NULL) thread_list->next=thread_item->next;
-        if (verbose>0) fprintf(stderr,"freeing thread item\n");
+        if (verbose>1) fprintf(stderr,"freeing thread item\n");
         free(thread_item);
-        if (verbose>0) fprintf(stderr,"freed thread item\n");
+        if (verbose>1) fprintf(stderr,"freed thread item\n");
         thread_item=NULL;
       }
       pthread_mutex_unlock(&controlprogram_list_lock);
       t++;
     }
   }
-  if (verbose>0) fprintf(stderr,"Done with control program threads now lets do worker threads\n");
+  if (verbose>1) fprintf(stderr,"Done with control program threads now lets do worker threads\n");
   if (status_thread!=0) {
-    if (verbose>0) fprintf(stderr,"Cancelling Status thread\n");
+    if (verbose>1) fprintf(stderr,"Cancelling Status thread\n");
     pthread_cancel(status_thread);       
-    if (verbose>0) fprintf(stderr,"  Status thread cancelled\n");
-    if (verbose>0) fprintf(stderr,"  Waiting for Status thread to end\n");
+    if (verbose>1) fprintf(stderr,"  Status thread cancelled\n");
+    if (verbose>1) fprintf(stderr,"  Waiting for Status thread to end\n");
     pthread_join(status_thread,NULL);
-    if (verbose>0) fprintf(stderr,"  Status thread done\n");
+    if (verbose>1) fprintf(stderr,"  Status thread done\n");
   }
   if (timeout_thread!=0) {
-    if (verbose>0) fprintf(stderr,"Cancelling Timeout thread\n");
+    if (verbose>1) fprintf(stderr,"Cancelling Timeout thread\n");
     pthread_cancel(timeout_thread);
-    if (verbose>0) fprintf(stderr,"  Timeout thread cancelled\n");
-    if (verbose>0) fprintf(stderr,"  joining Timeout thread\n");
+    if (verbose>1) fprintf(stderr,"  Timeout thread cancelled\n");
+    if (verbose>1) fprintf(stderr,"  joining Timeout thread\n");
     pthread_join(timeout_thread,NULL);
-    if (verbose>0) fprintf(stderr,"  Back from joining Timeout thread\n");
+    if (verbose>1) fprintf(stderr,"  Back from joining Timeout thread\n");
   }
   errno=ECANCELED;
-  if (verbose>0) fprintf(stderr,"Done with worker threads now lets exit\t");
+  if (verbose>1) fprintf(stderr,"Done with worker threads now lets exit\t");
   perror( "--> Stopping the ROS server process");
-  fprintf(stderr,"Closing Main socket: %d\n",sockfd);
+  if(verbose > 1 ) fprintf(stderr,"Closing Main socket: %d\n",sockfd);
   close(sockfd);
-  fprintf(stderr,"Closing DIO socket: %d\n",diosock);
+  if(verbose > 1 )   fprintf(stderr,"Closing DIO socket: %d\n",diosock);
   close(diosock);   
-  fprintf(stderr,"Closing timing socket: %d\n",timingsock);
+  if(verbose > 1 )   fprintf(stderr,"Closing timing socket: %d\n",timingsock);
   close(timingsock);   
-  fprintf(stderr,"Closing RECV socket: %d\n",recvsock);
+  if(verbose > 1 )   fprintf(stderr,"Closing RECV socket: %d\n",recvsock);
   close(recvsock);   
-  fprintf(stderr,"Closing DDS socket: %d\n",ddssock);
+  if(verbose > 1 )   fprintf(stderr,"Closing DDS socket: %d\n",ddssock);
   close(ddssock);   
-  fprintf(stderr,"Closing GPS socket: %d\n",gpssock);
+  if(verbose > 1 )   fprintf(stderr,"Closing GPS socket: %d\n",gpssock);
   close(gpssock);   
   pthread_mutex_destroy(&controlprogram_list_lock);
   pthread_mutex_destroy(&coord_lock);
@@ -263,20 +263,20 @@ int main()
   blacklist_count_pointer=malloc(sizeof(int));
   blacklist_count=0;
   sprintf(restrict_file,"%s/restrict.dat",SITE_DIR);
-  fprintf(stdout,"Opening restricted file: %s\n",restrict_file);
+  fprintf(stderr,"Opening restricted file: %s\n",restrict_file);
   fd=fopen(restrict_file,"r+");
   restrict_count=0;
   s=fgets(hmm,120,fd);
   while (s!=NULL) {
-    restrict_count++;
+    if(s[0]!='#') 
+      restrict_count++;
     s=fgets(hmm,120,fd);
   }
-  fprintf(stdout,"Number of restricted windows: %d\n",restrict_count);
-  fprintf(stdout,"max blacklist: %d\n",restrict_count+Max_Control_THREADS*4);
+  fprintf(stderr,"Number of restricted windows in file: %d\n",restrict_count);
+  fprintf(stderr,"max blacklist: %d\n",restrict_count+Max_Control_THREADS*4);
   fclose(fd);
   blacklist = (struct BlackList*) malloc(sizeof(struct BlackList) * (restrict_count+Max_Control_THREADS*4));
-  fprintf(stdout,"Blacklist : %p\n",blacklist);
-  
+  if( verbose > 1 ) fprintf(stderr,"Blacklist : %p\n",blacklist);
   sprintf(restrict_file,"%s/restrict.dat",SITE_DIR);
   fd=fopen(restrict_file,"r+");
   s=fgets(hmm,120,fd);
@@ -301,12 +301,13 @@ int main()
       s=fgets(hmm,120,fd);
   }
   fclose(fd);
+
   *blacklist_count_pointer=blacklist_count; 
 /*
  * Setup Radar Setting State Variables
  *
 */
-  fprintf(stdout,"Default IF Enable flag : %d\n",IF_ENABLED);
+  if (verbose > 1) fprintf(stderr,"Default IF Enable flag : %d\n",IF_ENABLED);
   Site_INI=NULL;
   sprintf(site_settings.name,"%s",SITE_NAME);
   site_settings.ifmode=IF_ENABLED;
@@ -333,7 +334,7 @@ int main()
   pthread_join(thread,NULL);
   rc = pthread_create(&thread, NULL, (void *) &settings_rxfe_update_if,(void *)&site_settings.if_settings);
   pthread_join(thread,NULL);
-  fprintf(stdout,"Configured IF Enable flag : %d\n",site_settings.ifmode);
+  if(verbose > 1 )fprintf(stderr,"Configured IF Enable flag : %d\n",site_settings.ifmode);
 /*
  * Set up the signal handling
 
@@ -393,7 +394,7 @@ int main()
       recv_data(gpssock, &r_msg, sizeof(struct DriverMsg));
     }
   }
-  if (verbose>0) fprintf(stderr,"Done with Sockets\n");
+  if (verbose>1) fprintf(stderr,"Done with Sockets\n");
 /*
  * Set up all main worker threads here
  * 
@@ -401,19 +402,18 @@ int main()
 ///* Hdw Status handler */
 //  rc = pthread_create(&status_thread, NULL, status_handler, NULL);
 /* Control Program Activity Timeout handler */
-  if (verbose>0) fprintf(stderr,"Create timeout thread\n");
+  if (verbose>1) fprintf(stderr,"Create timeout thread\n");
   rc = pthread_create(&timeout_thread, NULL, timeout_handler, NULL);
 
-  if (verbose>0) fprintf(stderr,"start reciever RXFE settings thread\n");
+  if (verbose>1) fprintf(stderr,"start reciever RXFE settings thread\n");
   rc = pthread_create(&thread, NULL, &receiver_site_settings,(void *)&site_settings);
   pthread_join(thread,NULL);
-  if (verbose>0) fprintf(stderr,"start dds RXFE settings thread\n");
+  if (verbose>1) fprintf(stderr,"start dds RXFE settings thread\n");
   rc = pthread_create(&thread, NULL, &dds_site_settings,(void *)&site_settings);
   pthread_join(thread,NULL);
-  if (verbose>0) fprintf(stderr,"start dio RXFE settings thread\n");
+  if (verbose>1) fprintf(stderr,"start dio RXFE settings thread\n");
   rc = pthread_create(&thread, NULL, &dio_site_settings,(void *)&site_settings);
   pthread_join(thread,NULL);
-  if (verbose>0) fprintf(stderr,"Done with RXFE settings threads\n");
 /******************* Init transmitter status arrays ***********/
 //rc = pthread_create(&thread, NULL, DIO_transmitter_status, &tstatus);
 /******************* Unix Socket Connection ***********/
@@ -449,7 +449,7 @@ int main()
          perror("arby server: accept error\n");
          exit(0);
        }
-       if (verbose > 1) fprintf(stdout,"ROS Main: New Client!\n");
+       if (verbose > 1) fprintf(stderr,"ROS Main: New Client!\n");
        gettimeofday(&current_time,NULL);
        pthread_mutex_lock(&controlprogram_list_lock);
 

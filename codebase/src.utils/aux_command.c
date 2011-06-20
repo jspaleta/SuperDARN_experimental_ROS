@@ -12,11 +12,11 @@ int send_aux_dict(int s,dictionary *aux_dict, int verbose ) {
     if(dict_string!=NULL) free(dict_string);
     dict_string=NULL;
 
-    if ( verbose ) printf("AUX Send: Dict\n");
-    if ( verbose ) iniparser_dump_ini(aux_dict,stdout);
+    if ( verbose > 2 ) printf("AUX Send: Dict\n");
+    if ( verbose > 2 ) iniparser_dump_ini(aux_dict,stdout);
     dict_string=iniparser_to_string(aux_dict);
-    if ( verbose ) printf("AUX Send: String\n");
-    if ( verbose ) printf("%s",dict_string);
+    if ( verbose > 2 ) printf("AUX Send: String\n");
+    if ( verbose > 2 ) printf("%s",dict_string);
     bytes=strlen(dict_string)+1;
     send_data(s, &bytes, sizeof(int32));
     send_data(s, dict_string, bytes*sizeof(char));
@@ -33,7 +33,7 @@ int send_aux_dict(int s,dictionary *aux_dict, int verbose ) {
     }
 
     if(dict_string!=NULL) free(dict_string);
-    if ( verbose ) printf("AUX Send: Done\n");
+    if ( verbose > 2 ) printf("AUX Send: Done\n");
     return 0;
 }
 
@@ -47,16 +47,16 @@ int recv_aux_dict(int s,dictionary **dict_p,int verbose) {
     int i;
 
 
-    if ( verbose ) printf("AUX Recv: start\n");
+    if ( verbose > 2 ) printf("AUX Recv: start\n");
     recv_data(s, &bytes, sizeof(int32));
-    if ( verbose ) printf("AUX Recv: bytes %d\n",bytes);
+    if ( verbose > 2 ) printf("AUX Recv: bytes %d\n",bytes);
     if(dict_string!=NULL) free(dict_string);
     dict_string=malloc(sizeof(char)*(bytes+10));
-    if (verbose ) printf("AUX Recv: string malloced\n");
+    if (verbose > 2 ) printf("AUX Recv: string malloced\n");
     recv_data(s, dict_string, bytes*sizeof(char));
-    if ( verbose ) printf("AUX Recv: got string\n");
-    if ( verbose ) printf("AUX Recv: String\n");
-    if ( verbose ) printf("%s",dict_string);
+    if ( verbose > 2 ) printf("AUX Recv: got string\n");
+    if ( verbose > 2) printf("AUX Recv: String\n");
+    if ( verbose > 2) printf("%s",dict_string);
     if(aux_dict!=NULL) iniparser_freedict(aux_dict);
     aux_dict=iniparser_load_from_string(NULL,dict_string);
     nsecs=0;
@@ -75,10 +75,10 @@ int recv_aux_dict(int s,dictionary **dict_p,int verbose) {
     *dict_p=aux_dict;
     if(dict_string!=NULL) free(dict_string);
     dict_string=NULL;
-    if ( verbose > 1 ) fprintf(stderr,"AUX Recv: Dict\n");
-    if ( verbose > 1 ) iniparser_dump(*dict_p,stdout);
-    if ( verbose > 1 ) fprintf(stderr,"AUX Recv: Dict\n");
-    if ( verbose > 1) iniparser_dump(aux_dict,stdout);
-    if ( verbose > 1) fprintf(stderr,"AUX Recv: Done %lu %lu\n",(unsigned long) aux_dict,(unsigned long) *dict_p);
+    if ( verbose > 2 ) fprintf(stderr,"AUX Recv: Dict\n");
+    if ( verbose > 2 ) iniparser_dump(*dict_p,stdout);
+    if ( verbose > 2 ) fprintf(stderr,"AUX Recv: Dict\n");
+    if ( verbose > 2 ) iniparser_dump(aux_dict,stdout);
+    if ( verbose > 2 ) fprintf(stderr,"AUX Recv: Done %lu %lu\n",(unsigned long) aux_dict,(unsigned long) *dict_p);
     return 0;
 }

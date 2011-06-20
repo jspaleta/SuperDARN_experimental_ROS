@@ -43,7 +43,8 @@ void *coordination_handler(struct ControlProgram *control_program)
      thread_list=controlprogram_threads;
      while(thread_list!=NULL){
        cprog=thread_list->data;
-         if (cprog!=NULL) {
+       if (cprog!=NULL) {
+         if (cprog->state!=NULL) {
            if (cprog->state->active==1) {
              numcontrolprograms++;
              if (cprog->state->ready==1) {
@@ -52,9 +53,8 @@ void *coordination_handler(struct ControlProgram *control_program)
              if (cprog->state->processing==1) {
                numprocessing++;
              }
-
            }
-         } else {
+         }
        }
        thread_list=thread_list->prev;
      }

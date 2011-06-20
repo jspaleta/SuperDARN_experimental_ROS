@@ -314,7 +314,7 @@ void *control_handler(struct ControlProgram *control_program)
 {
    int tid,i,r=-1,c=-1,status,rc;
    fd_set rfds;
-   int retval,socket,socket_err;
+   int cancel=0,retval,socket,socket_err;
    unsigned int length=sizeof(int);
    int32 current_freq,radar=0,channel=0;
    struct timeval tv,current_time,last_report;
@@ -372,11 +372,11 @@ void *control_handler(struct ControlProgram *control_program)
            /* Don’t rely on the value of tv now! */
       if (retval == -1) perror("select()");
       else if (retval) {
-        printf("Select returned %d %d\n",retval,FD_ISSET(socket,&rfds));
-        pthread_mutex_lock(&controlprogram_list_lock);
         r=control_program->radarinfo->radar-1;
         c=control_program->radarinfo->channel-1;
+        pthread_mutex_lock(&controlprogram_list_lock);
         if ((r<0) || (c<0)) control_program->data->status=-1;
+        pthread_mutex_unlock(&controlprogram_list_lock);
  
        /* Read controlprogram msg */
         msg.status=-300;
@@ -384,8 +384,7 @@ void *control_handler(struct ControlProgram *control_program)
         retval=recv_data(socket, &msg, sizeof(struct ROSMsg));
         if ( retval <= 0 ) {
           fprintf(stderr,"Socket not responding\n");
-          sleep(1);
-          continue;
+          pthread_exit(NULL);
         }
         gettimeofday(&current_time,NULL);
         if((current_time.tv_sec-last_report.tv_sec)>5) {
@@ -396,6 +395,7 @@ void *control_handler(struct ControlProgram *control_program)
 #endif
           last_report=current_time;
         }
+        pthread_mutex_lock(&controlprogram_list_lock);
         if(msg.type!=0) {
           control_program->state->thread->last_seen=current_time;
         }
@@ -418,7 +418,7 @@ void *control_handler(struct ControlProgram *control_program)
                 send_data(socket, &msg, sizeof(struct ROSMsg));
                 if(aux_dict!=NULL) iniparser_freedict(aux_dict);
                 recv_aux_dict(socket,&aux_dict,0);
-                iniparser_dump_ini(aux_dict,stdout);
+                //iniparser_dump_ini(aux_dict,stdout);
                 /* process aux command dictionary here */
                 process_aux_commands(&aux_dict,"DIO");
                 send_aux_dict(socket,aux_dict,1);
@@ -594,7 +594,6 @@ void *control_handler(struct ControlProgram *control_program)
             }
             break;
           case SET_PARAMETERS:
-            printf("Client Start Set Parameters\n");
             if ( (r < 0) || (c < 0)) {
               recv_data(socket, control_program->parameters, sizeof(struct ControlPRM));
               msg.status=-1;
@@ -607,7 +606,6 @@ void *control_handler(struct ControlProgram *control_program)
               send_data(socket, &msg, sizeof(struct ROSMsg));
               pthread_mutex_unlock(&controlprogram_list_lock);
             }
-            printf("Client End Set Parameters\n");
             break;
           case REGISTER_SEQ:
             msg.status=1;
@@ -642,7 +640,6 @@ void *control_handler(struct ControlProgram *control_program)
             send_data(socket, &msg, sizeof(struct ROSMsg));
             break;
           case SET_READY_FLAG:
-            printf("Client Start READY\n");
             if ( (r < 0) || (c < 0)) {
               msg.status=-1;
             } else {
@@ -673,7 +670,6 @@ void *control_handler(struct ControlProgram *control_program)
 */
             }
             send_data(socket, &msg, sizeof(struct ROSMsg));
-            printf("Client END READY\n");
             break;
 
           case REQUEST_CLEAR_FREQ_SEARCH:
@@ -705,19 +701,16 @@ void *control_handler(struct ControlProgram *control_program)
               msg.status=1;
             }
             current_freq=control_program->state->current_assigned_freq; 
-            printf("Current freq: %d\n",current_freq);
             send_data(socket, &current_freq, sizeof(int32));
             send_data(socket, &control_program->state->current_assigned_noise, sizeof(float));
             send_data(socket, &msg, sizeof(struct ROSMsg));
             pthread_mutex_unlock(&controlprogram_list_lock);
-            printf("Client End Assignement\n");
             break;
 
           case QUIT:
             if (verbose > 0 ) fprintf(stderr,"Client QUIT\n");
             msg.status=0;
             send_data(socket, &msg, sizeof(struct ROSMsg));
-            //controlprogram_exit(control_program);
             pthread_exit(NULL);
             break;
           default:

@@ -90,16 +90,18 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 	int32 temp;
 	float tempf;
 
-
+	if(verbose > 0 ) {
+		fprintf(stderr, "Start Freq Assignment\n");
+	}
 	/* SGS: where does stderr go? 
 	*  http://en.wikipedia.org/wiki/Standard_streams
         */
         if(verbose > 1) {
-		fprintf(stderr, "ASSIGN FREQ: %d %d\n",
+		fprintf(stderr, "  ASSIGN FREQ: %d %d\n",
 					arg->parameters->radar-1,arg->parameters->channel-1);
-		fprintf(stderr, " FFT FREQ: %d %d\n",
+		fprintf(stderr, "  FFT FREQ: %d %d\n",
 					arg->clrfreqsearch.start,arg->clrfreqsearch.end);
-		fprintf(stderr, " Start Freq: %lf\n",
+		fprintf(stderr, "  Start Freq: %lf\n",
 					arg->state->fft_array[0].freq);
 	}
 
@@ -233,8 +235,8 @@ void receiver_assign_frequency(struct ControlProgram *arg){
   padded_rx_sideband_khz = MAX(2*ceil(rx_bandwidth_khz),0);
 
   if (verbose > 1) {
-    fprintf(stderr," Padded Rx Side Band: %d [kHz]\n",padded_rx_sideband_khz);
-    fprintf(stderr, "%d frequencies in fft \n",arg->state->N);
+    fprintf(stderr,"  Padded Rx Side Band: %d [kHz]\n",padded_rx_sideband_khz);
+    fprintf(stderr, "  %d frequencies in fft \n",arg->state->N);
     fprintf(stderr, "  freq[%8d]: %8.3lf\n",0,(double)fft_array[0].freq);
     fprintf(stderr, "  freq[%8d]: %8.3lf\n",
             arg->state->N-1,(double)fft_array[arg->state->N-1].freq);
@@ -246,7 +248,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
   detrend_enabled = iniparser_getboolean(Site_INI,
                                    "site_settings:use_clr_detrend",0);
   if (detrend_enabled) {
-    if (verbose > 1) fprintf(stderr," Detrending Enabled\n");
+    if (verbose > 0) fprintf(stderr,"  Detrending Enabled\n");
     /* Get the sidebandwidth to use for detrending. Default to 50 if not set */
     detrend_sideband = iniparser_getint(Site_INI,
                                     "site_settings:detrend_sideband",50);
@@ -272,7 +274,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
     if(detrend_fft_array!=NULL) free(detrend_fft_array);
     detrend_fft_array=NULL;
   } else {
-	if (verbose > -1) fprintf(stderr," Detrending Disabled\n");
+	if (verbose > 0) fprintf(stderr,"  Detrending Disabled\n");
 	for (i=0; i<arg->state->N; i++) {
 		fft_array[i].detrend=0;
         }
@@ -353,7 +355,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		if ( (fft_array[i].freq <= arg->clrfreqsearch.end) &&
 				(fft_array[i].freq >= arg->clrfreqsearch.start) ) {
 			if (j >= ncfs) {	/* this should never happend, but good to check... */
-				if (verbose > -1) fprintf(stderr, "Too many frequencies in clrfreqsearch band: %d\n", j);
+				if (verbose > 0) fprintf(stderr, "Too many frequencies in clrfreqsearch band: %d\n", j);
 				j = ncfs - 1;	/* make sure there is no overstepping array bounds */
 			}
 			/* fill the elements of the sub__fft_array from the fft_array */
@@ -366,14 +368,14 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		}
 	}
 
-	if (verbose > -1) fprintf(stderr, "%d frequencies in clrfreqsearch band\n", j);
+	if (verbose > 0) fprintf(stderr, "  %d frequencies in clrfreqsearch band\n", j);
 
 	ncfs = j;	/* note that these should be the same, but perhaps should check */
 
 	/* this should be a really high level of verbosity */
-	if (verbose > 10) {
+	if (verbose > 5) {
 		for (i=0; i<ncfs; i++) {
-			fprintf(stderr, "%8.3g\n", sub_fft_array[i].freq);
+			fprintf(stderr, "  %8.3g\n", sub_fft_array[i].freq);
 		}
 	}
 	/* We now have an array of only the frequencies in the clrfreqsearch
@@ -396,7 +398,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 
 	if(blacklist!=NULL) {  
 		blacklist_count=*blacklist_count_pointer;  /* Set the counter to the unmodified blacklist count */
-		if (verbose>1) fprintf(stderr,"%d %d :: Filling backlist\n",arg->parameters->radar,arg->parameters->channel);	
+		if (verbose>1) fprintf(stderr,"  %d %d :: Filling backlist\n",arg->parameters->radar,arg->parameters->channel);	
 		/*
 		* First add all other control program's assigned frequencies to the black list   
 		*/
@@ -424,9 +426,9 @@ void receiver_assign_frequency(struct ControlProgram *arg){
        			thread_list=thread_list->prev;
      		}
 		if(verbose > 0 ) {
-			fprintf(stderr,"Current blacklist:\n");
+			fprintf(stderr,"  Current blacklist:\n");
 			for (k=0; k<blacklist_count; k++) {
-				fprintf(stderr," %8d %8d : %lu\n",blacklist[k].start,blacklist[k].end,(unsigned long) blacklist[k].program);
+				fprintf(stderr,"  %8d %8d : %lu\n",blacklist[k].start,blacklist[k].end,(unsigned long) blacklist[k].program);
 			}
 		}
 
@@ -473,7 +475,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		nfreq = j;	/* these are the number of allowed frequencies */
 
 		if (verbose > 1)
-			fprintf(stderr, "%d frequencies allowed\n", nfreq);
+			fprintf(stderr, "  %d frequencies allowed\n", nfreq);
 
 		/* now let's get an array that is the proper size and transfer
 		 * everything to that array */
@@ -532,20 +534,20 @@ void receiver_assign_frequency(struct ControlProgram *arg){
         if(nfreq > 0 ) {
 		/* Just here for logging purposes */
    		if (verbose>0) {	
-     			fprintf(stderr," Highest 5 freqs: \n");
+     			fprintf(stderr,"  Highest 5 freqs: \n");
      			for(i = nfreq-1; i > nfreq-6; i--){
     				if(i >= 0) { 
-          				fprintf(stderr,"%d: freq = %8.3lf, pwr = %8.3lf apwr = %8.3lf\n",i,sub_fft_array[i].freq,sub_fft_array[i].pwr,sub_fft_array[i].apwr);
+          				fprintf(stderr,"  %d: freq = %8.3lf, pwr = %8.3lf apwr = %8.3lf\n",i,sub_fft_array[i].freq,sub_fft_array[i].pwr,sub_fft_array[i].apwr);
 				} else {
-          				fprintf(stderr,"%d: Not enough valid frequencies in fft %d\n",i,nfreq);
+          				fprintf(stderr,"  %d: Not enough valid frequencies in fft %d\n",i,nfreq);
 				}
      			}
      			fprintf(stderr," Lowest 5 freqs: \n");
      			for(i = 0; i< 5;i++){
     				if(i < nfreq) { 
-          				fprintf(stderr,"%d: freq = %8.3lf, pwr = %8.3lf apwr = %8.3lf\n",i,sub_fft_array[i].freq,sub_fft_array[i].pwr,sub_fft_array[i].apwr);
+          				fprintf(stderr,"  %d: freq = %8.3lf, pwr = %8.3lf apwr = %8.3lf\n",i,sub_fft_array[i].freq,sub_fft_array[i].pwr,sub_fft_array[i].apwr);
 				} else {
-          				fprintf(stderr,"%d: Not enough valid frequencies in fft %d\n",i,nfreq);
+          				fprintf(stderr,"  %d: Not enough valid frequencies in fft %d\n",i,nfreq);
 				}
      			}
    		}	
@@ -556,7 +558,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
         	arg->state->current_assigned_freq=sub_fft_array[best_index].freq;
         	arg->state->current_assigned_noise=sub_fft_array[best_index].apwr*rx_bandwidth_khz;
 
-  		if(verbose > 0 ) fprintf(stderr,"%lf current assigned frequency: %d\n",sub_fft_array[best_index].freq, \
+  		if(verbose > 0 ) fprintf(stderr,"  %lf current assigned frequency: %d\n",sub_fft_array[best_index].freq, \
                                    arg->state->current_assigned_freq);
 
 		arg->state->tx_sideband=padded_tx_sideband_khz;
@@ -570,7 +572,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 	} else {
 		/* JDS QUESTION: Is this the best fallback when no valid frequency is available?
  		*  A simple single _default_ for all controlprograms is not valid in a multi channel configuration */ 
-   		if (verbose>-1) fprintf(stderr,"No valid frequencies Setting best available frequency to zero with very high noise\n");
+   		if (verbose>0) fprintf(stderr,"No valid frequencies Setting best available frequency to zero with very high noise\n");
         	arg->state->current_assigned_freq=0;
         	arg->state->current_assigned_noise=1E10;
 
@@ -589,7 +591,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
  */
 	if(sub_fft_array!=NULL) free(sub_fft_array);
 	sub_fft_array=NULL;
-        if (verbose>-1) fprintf(stderr,"Exiting assignment\n");
+        if (verbose>-0) fprintf(stderr,"Exiting assignment\n");
 	pthread_exit(NULL);
 }
 
