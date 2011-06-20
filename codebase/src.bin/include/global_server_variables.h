@@ -120,8 +120,10 @@ struct ControlProgram {
      struct CLRFreqPRM clrfreqsearch; 
      struct ControlPRM *parameters;
      struct RadarPRM *radarinfo;
-     uint32 *main;  // pointer to memory space holding the data samples
-     uint32 *back;  // pointer to memory space holding the data samples
+     uint32 *main_shm;  // pointer to shared memory space holding the data samples
+     uint32 *back_shm;  // pointer to shared memory space holding the data samples
+     uint32 *main_addr;  // pointer to malloc'd memory space holding the data samples
+     uint32 *back_addr;  // pointer to malloc'd memory space holding the data samples
 };
 
 struct ClrPwr {

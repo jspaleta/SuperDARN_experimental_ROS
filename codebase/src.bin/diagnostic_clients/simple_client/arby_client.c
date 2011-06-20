@@ -311,6 +311,7 @@ main( int argc, char *argv[])
       elapsed=(t3.tv_sec-t2.tv_sec)*1E6;
       elapsed+=(t3.tv_usec-t2.tv_usec);
       if(verbose>0) printf("  Wait Elapsed Microseconds: %ld\n",elapsed);
+
 /* Verify the Program Parameters by requesting values from ROS: 
 *  This is a needed step as the ROS may force parameters to different values than requested 
 *   if multiple operating programs are running. (This relates to priority parameter)

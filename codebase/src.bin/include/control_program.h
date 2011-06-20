@@ -35,11 +35,11 @@ struct tx_status {
 struct DataPRM {
   uint32 event_secs;
   uint32 event_nsecs;
-  int32 samples;
-  int32 shm_memory;
-  int32 status;
-  int32 frame_header;
   int32 bufnum;
+  int32 samples;
+  int32 use_shared_memory;
+  int32 shared_memory_offset;
+  int32 status;
 };
 
 struct RadarPRM {

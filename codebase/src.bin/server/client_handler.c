@@ -198,8 +198,10 @@ struct ControlProgram *control_init() {
        control_program->state->active=1;
        control_program->radarinfo=malloc(sizeof(struct RadarPRM));
        control_program->data=malloc(sizeof(struct DataPRM));
-       control_program->main=NULL;
-       control_program->back=NULL;
+       control_program->main_shm=NULL;
+       control_program->back_shm=NULL;
+       control_program->main_addr=NULL;
+       control_program->back_addr=NULL;
        strcpy(control_program->parameters->name,"Generic Control Program Name - 80");
        strcpy(control_program->parameters->description,"Generic  Control Program  Description - 120");
        control_program->parameters->radar=-1;
@@ -296,10 +298,14 @@ void controlprogram_exit(struct ControlProgram *control_program)
        free(control_program->parameters);
        control_program->parameters=NULL;
      }
-     if(control_program->main!=NULL) munmap(control_program->main,control_program->data->samples);
-     if(control_program->back!=NULL) munmap(control_program->back,control_program->data->samples);
-     control_program->main=NULL;
-     control_program->back=NULL;
+     if(control_program->main_shm!=NULL) munmap(control_program->main_shm,control_program->data->samples);
+     if(control_program->back_shm!=NULL) munmap(control_program->back_shm,control_program->data->samples);
+     control_program->main_shm=NULL;
+     control_program->back_shm=NULL;
+     if(control_program->main_addr!=NULL) free(control_program->main_addr);
+     if(control_program->back_addr!=NULL) free(control_program->back_addr);
+     control_program->main_addr=NULL;
+     control_program->back_addr=NULL;
      if(control_program->data!=NULL) {
        free(control_program->data);
        control_program->data=NULL;
@@ -565,23 +571,32 @@ void *control_handler(struct ControlProgram *control_program)
             }
             break;
           case GET_DATA:
+            control_program->data->status=-1;
             if ( (r < 0) || (c < 0)) {
-              control_program->data->status=-1;
               send_data(socket, control_program->data, sizeof(struct DataPRM));
               msg.status=-1;
               send_data(socket, &msg, sizeof(struct ROSMsg));
             } else {
               rc = pthread_create(&thread, NULL,(void *)&receiver_controlprogram_get_data,(void *) control_program);
               pthread_join(thread,NULL);
+            
 //JDS: TODO do some GPS timestamp checking here
+
               pthread_mutex_lock(&controlprogram_list_lock);
               control_program->data->event_secs=control_program->state->gpssecond;
               control_program->data->event_nsecs=control_program->state->gpsnsecond;
+              pthread_mutex_unlock(&controlprogram_list_lock);
+              printf("Sending the DataPRM\n");
               send_data(socket, control_program->data, sizeof(struct DataPRM));
               if(control_program->data->status>0) {
                 msg.status=control_program->data->status;
-                send_data(socket, control_program->main, sizeof(uint32)*control_program->data->samples);
-                send_data(socket, control_program->back, sizeof(uint32)*control_program->data->samples);
+                if(control_program->data->use_shared_memory) {
+                  send_data(socket, control_program->main_shm, sizeof(uint32)*control_program->data->samples);
+                  send_data(socket, control_program->back_shm, sizeof(uint32)*control_program->data->samples);
+                }  else {
+                  send_data(socket, control_program->main_addr, sizeof(uint32)*control_program->data->samples);
+                  send_data(socket, control_program->back_addr, sizeof(uint32)*control_program->data->samples);
+                }
                 send_data(socket, &bad_transmit_times.length, sizeof(bad_transmit_times.length));
                 send_data(socket, bad_transmit_times.start_usec, sizeof(uint32)*bad_transmit_times.length);
                 send_data(socket, bad_transmit_times.duration_usec, sizeof(uint32)*bad_transmit_times.length);
@@ -590,7 +605,6 @@ void *control_handler(struct ControlProgram *control_program)
                 if (verbose > -1 ) fprintf(stderr,"CLIENT:GET_DATA: Bad status %d\n",control_program->data->status);
               } 
               send_data(socket, &msg, sizeof(struct ROSMsg));
-              pthread_mutex_unlock(&controlprogram_list_lock);
             }
             break;
           case SET_PARAMETERS:

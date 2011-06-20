@@ -46,6 +46,8 @@ int main ( int argc, char **argv){
         int     maxclients=MAX_RADARS*MAX_CHANNELS;  //maximum number of clients which can be tracked
         struct  ControlPRM  clients[maxclients];	//parameter array for tracked clients
 	struct  ControlPRM  client;			//parameter structure for temp use		
+	struct  DataPRM	    data;
+        uint32  *main=NULL,*back=NULL;
         struct  TSGbuf *pulseseqs[MAX_RADARS][MAX_CHANNELS][MAX_SEQS]; //timing sequence table
         int seq_count[MAX_RADARS][MAX_CHANNELS];			//unpacked seq length
 	int	max_seq_count;				// maximum unpackage seq length	
@@ -66,7 +68,7 @@ int main ( int argc, char **argv){
         fd_set rfds,efds;	//TCP socket status
         struct timeval select_timeout;	// timeout for select function
 	// counter and temporary variables
-	int	i,j,r,c,dmabufnum;
+	int	data_count=0,i,j,r,c,dmabufnum;
         int32   index;
 	int 	temp;
 	int32 	temp32;
@@ -628,8 +630,8 @@ int main ( int argc, char **argv){
                                 rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 		                rval=recv_data(msgsock,&radar,sizeof(radar));
 		                rval=recv_data(msgsock,&channel,sizeof(channel));
+				data_status=1;
                         	send_data(msgsock,&data_status,sizeof(data_status)); 
-				
 			}
 	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
@@ -648,14 +650,27 @@ int main ( int argc, char **argv){
                                 rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 		                rval=recv_data(msgsock,&radar,sizeof(radar));
 		                rval=recv_data(msgsock,&channel,sizeof(channel));
-				temp32=1;
-                        	send_data(msgsock,&temp32,sizeof(int32)); 
-				temp32=0;
-                        	send_data(msgsock,&temp32,sizeof(int32)); 
-                        	send_data(msgsock,&temp32,sizeof(int32)); 
-                        	send_data(msgsock,&temp32,sizeof(int32)); 
-                        	send_data(msgsock,&temp32,sizeof(int32)); 
-                        	send_data(msgsock,&temp32,sizeof(int32)); 
+                                data.use_shared_memory=0;
+				data.shared_memory_offset=0;
+				data.bufnum=0;
+				data.samples=100;
+				data.status=1;
+		                rval=send_data(msgsock,&data,sizeof(struct DataPRM));
+                                if(data.use_shared_memory==0) {
+                                  if(main==NULL) {
+				    main=malloc(sizeof(uint32)*data.samples);	
+                                  }
+                                  if(back==NULL) {
+				    back=malloc(sizeof(uint32)*data.samples);	
+                                  }
+				  for(i=0;i<data.samples;i++) {
+				    main[i]=data_count*100+i;
+				    back[i]=-data_count*100+i;
+				  }
+				  data_count=(data_count+1) % 100 ;
+		                  rval=send_data(msgsock,main,sizeof(uint32)*data.samples);
+		                  rval=send_data(msgsock,back,sizeof(uint32)*data.samples);
+                                }
 			}
 	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));

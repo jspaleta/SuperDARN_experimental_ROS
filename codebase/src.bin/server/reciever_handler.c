@@ -711,8 +711,14 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
       collection_count++;
       if (error_flag==0) {
         arg->data->samples=arg->parameters->number_of_samples;
-        if(arg->main!=NULL) munmap(arg->main,sizeof(unsigned int)*arg->data->samples);
-        if(arg->back!=NULL) munmap(arg->back,sizeof(unsigned int)*arg->data->samples);
+        if(arg->main_shm!=NULL) munmap(arg->main_shm,sizeof(unsigned int)*arg->data->samples);
+        arg->main_shm=NULL;
+        if(arg->back_shm!=NULL) munmap(arg->back_shm,sizeof(unsigned int)*arg->data->samples);
+        arg->back_shm=NULL;
+        if(arg->main_addr!=NULL) free(arg->main_addr);
+        arg->main_addr=NULL;
+        if(arg->back_addr!=NULL) free(arg->back_addr);
+        arg->back_addr=NULL;
         s_msg.command_type=GET_DATA_STATUS;
         s_msg.status=1;
         send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
@@ -732,33 +738,41 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         arg->data->samples=0;
       }      
       if (arg->data->status>0 ) {
+        printf("GET_DATA start\n");
         s_msg.command_type=GET_DATA;
         s_msg.status=1;
+        printf("GET_DATA 1\n");
         send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
         recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
+        printf("GET_DATA 2\n");
         if(r_msg.status>0) {
+        printf("GET_DATA 3\n");
           send_data(recvsock, &r, sizeof(int32));
           send_data(recvsock, &c, sizeof(int32));
-          recv_data(recvsock,&arg->data->shm_memory,sizeof(int32));
-          recv_data(recvsock,&arg->data->frame_header,sizeof(int32));
-          recv_data(recvsock,&arg->data->bufnum,sizeof(int32));
-          recv_data(recvsock,&arg->data->samples,sizeof(int32));
+          recv_data(recvsock,arg->data,sizeof(struct DataPRM));
+          if(arg->data->use_shared_memory) {
+            printf("GET_DATA using shared memory\n");
+            sprintf(shm_device,"/receiver_main_%d_%d_%d",r,c,b);
+            shm_fd=shm_open(shm_device,O_RDONLY,S_IRUSR | S_IWUSR);
+            if (shm_fd == -1) fprintf(stderr,"shm_open error\n");              
+            arg->main_shm=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->shared_memory_offset);
+            close(shm_fd);
+            sprintf(shm_device,"/receiver_back_%d_%d_%d",r,c,b);
+            shm_fd=shm_open(shm_device,O_RDONLY,S_IRUSR | S_IWUSR);
+            arg->back_shm=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->shared_memory_offset);
+            close(shm_fd);
+          } else {
+            printf("GET_DATA not using shared memory\n");
+	    arg->main_addr=malloc(sizeof(uint32)*arg->data->samples);	
+	    arg->back_addr=malloc(sizeof(uint32)*arg->data->samples);	
+            recv_data(recvsock,arg->main_addr,sizeof(int32)*arg->data->samples);
+            recv_data(recvsock,arg->back_addr,sizeof(int32)*arg->data->samples);
+	  }
           recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
         }
       } 
 
       if (error_flag==0) {
-          if(arg->data->shm_memory) {
-            sprintf(shm_device,"/receiver_main_%d_%d_%d",r,c,b);
-            shm_fd=shm_open(shm_device,O_RDONLY,S_IRUSR | S_IWUSR);
-            if (shm_fd == -1) fprintf(stderr,"shm_open error\n");              
-            arg->main=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->frame_header);
-            close(shm_fd);
-            sprintf(shm_device,"/receiver_back_%d_%d_%d",r,c,b);
-            shm_fd=shm_open(shm_device,O_RDONLY,S_IRUSR | S_IWUSR);
-            arg->back=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->frame_header);
-            close(shm_fd);
-          } else {
 //#ifdef __QNX__
 //            arg->main =mmap( 0, sizeof(unsigned int)*arg->data->samples, 
 //                        PROT_READ|PROT_NOCACHE, MAP_PHYS, NOFD, 
@@ -768,21 +782,27 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
 //                        PROT_READ|PROT_NOCACHE, MAP_PHYS, NOFD, 
 //                        arg->back_address+sizeof(unsigned int)*arg->data->frame_header);
 //#else
-            arg->data->samples=0;
-            arg->main=NULL;
-            arg->back=NULL;
 //#endif
-          if((arg->main==NULL) || (arg->back==NULL)) {
+          if((arg->main_addr==NULL) && (arg->main_shm==NULL)) {
             error_flag=-1;
             arg->data->status=error_flag;
           }
+          if((arg->back_addr==NULL) && (arg->back_shm==NULL)) {
+            error_flag=-1;
+            arg->data->status=error_flag;
           }
       } else { //error condition
         error_count++;
         error_percent=(double)error_count/(double)collection_count*100.0;
         arg->data->samples=0;
-        arg->main=NULL;
-        arg->back=NULL;
+        if(arg->main_shm!=NULL) munmap(arg->main_shm,sizeof(unsigned int)*arg->data->samples);
+        arg->main_shm=NULL;
+        if(arg->back_shm!=NULL) munmap(arg->back_shm,sizeof(unsigned int)*arg->data->samples);
+        arg->back_shm=NULL;
+        if(arg->main_addr!=NULL) free(arg->main_addr);
+        arg->main_addr=NULL;
+        if(arg->back_addr!=NULL) free(arg->back_addr);
+        arg->back_addr=NULL;
         gettimeofday(&t1,NULL);
         fprintf(stderr,"RECV::GET_DATA: Bad Status: %d Time: %s",arg->data->status,ctime(&t1.tv_sec));
         fprintf(stderr,"  Collected: %ld  Errors: %ld  Percentage: %lf\n",collection_count,error_count,error_percent);
