@@ -738,20 +738,15 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         arg->data->samples=0;
       }      
       if (arg->data->status>0 ) {
-        printf("GET_DATA start\n");
         s_msg.command_type=GET_DATA;
         s_msg.status=1;
-        printf("GET_DATA 1\n");
         send_data(recvsock, &s_msg, sizeof(struct DriverMsg));
         recv_data(recvsock, &r_msg, sizeof(struct DriverMsg));
-        printf("GET_DATA 2\n");
         if(r_msg.status>0) {
-        printf("GET_DATA 3\n");
           send_data(recvsock, &r, sizeof(int32));
           send_data(recvsock, &c, sizeof(int32));
           recv_data(recvsock,arg->data,sizeof(struct DataPRM));
           if(arg->data->use_shared_memory) {
-            printf("GET_DATA using shared memory\n");
             sprintf(shm_device,"/receiver_main_%d_%d_%d",r,c,b);
             shm_fd=shm_open(shm_device,O_RDONLY,S_IRUSR | S_IWUSR);
             if (shm_fd == -1) fprintf(stderr,"shm_open error\n");              
@@ -762,7 +757,6 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
             arg->back_shm=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->shared_memory_offset);
             close(shm_fd);
           } else {
-            printf("GET_DATA not using shared memory\n");
 	    arg->main_addr=malloc(sizeof(uint32)*arg->data->samples);	
 	    arg->back_addr=malloc(sizeof(uint32)*arg->data->samples);	
             recv_data(recvsock,arg->main_addr,sizeof(int32)*arg->data->samples);
