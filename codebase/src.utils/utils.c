@@ -138,7 +138,7 @@ return str;
 }
 
 
-int driver_msg_int(struct DriverMsg *msg,char command, char *name,int status){
+int driver_msg_init(struct DriverMsg *msg,char command, char *name,int status){
   msg->command_type=command;
   strcpy(msg->command_name,name);
   msg->bytes=0;
