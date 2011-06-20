@@ -58,9 +58,10 @@
 struct DriverMsg {
      char command_type;
      char command_name[80];
-     int32 bytes_to_send;
-     int32 bytes_to_recv;
+     int32 bytes;
      int32 status; // 0 = inactive  negative = error  postive = good
+     uint64 buffer;
+     
 };
 
 typedef struct _fft_index{ 

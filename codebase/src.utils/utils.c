@@ -12,6 +12,9 @@
 #include "global_server_variables.h"
 
 //#define MSG_NOSIGNAL 0 
+
+
+
 int opentcpsock(char *hostip, int port){
 	//DECLARE VARIABLES FOR IP CONNECTIONS
 	int		sock,temp;
@@ -48,6 +51,9 @@ int opentcpsock(char *hostip, int port){
 
 	//protocol_info=getprotobyname("tcp");
 	//printf("protocol name = %s\n",protocol_info->p_name);
+        option = 1;
+        temp = setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option) );
+
 	option=TCP_NODELAY;
 	optionlen=4;
 	temp=setsockopt(sock,6,TCP_NODELAY,&option,optionlen);
@@ -130,3 +136,54 @@ for (p = str, q = p + n/2; p != q; ++p, --q)
 c = *p, *p = *q, *q = c;
 return str;
 }
+
+
+int driver_msg_int(struct DriverMsg *msg,char command, char *name,int status){
+  msg->command_type=command;
+  strcpy(msg->command_name,name);
+  msg->bytes=0;
+  if((void *)msg->buffer!=NULL) free((void *)msg->buffer);
+  msg->buffer=0;
+  msg->status=status;
+  return 0;
+};
+
+int driver_msg_clear(struct DriverMsg *msg){
+  msg->command_type=0;
+  strcpy(msg->command_name,"");
+  msg->bytes=0;
+  if((void *)msg->buffer!=NULL) free((void *)msg->buffer);
+  msg->buffer=0;
+  msg->status=0;
+  return 0;
+};
+
+int driver_msg_write(struct DriverMsg *msg,void *arg,unsigned int bytes){
+ msg->buffer=(uint64) realloc((void *)msg->buffer,msg->bytes+bytes);
+ memmove((void *)msg->buffer+msg->bytes,arg,bytes); 
+ msg->bytes+=bytes;
+ return 0; 
+};
+
+int driver_msg_read(struct DriverMsg *msg,void *arg,unsigned int bytes){
+  void *address;
+  address=(void *)msg->buffer+msg->bytes-bytes;
+  if(address>=(void *)msg->buffer) {
+  } else {
+    address=(void *)msg->buffer;
+    bytes=msg->bytes;
+  }
+  memmove(arg,address,bytes);
+  msg->bytes-=bytes;
+  return 0;
+};
+
+int driver_msg_send(int socket,struct DriverMsg *msg) {
+  return 0;
+}
+
+int driver_msg_recv(int socket,struct DriverMsg *msg) {
+  return 0;
+}
+
+
