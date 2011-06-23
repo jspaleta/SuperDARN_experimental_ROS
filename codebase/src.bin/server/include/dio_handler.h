@@ -15,4 +15,4 @@ void *DIO_pretrigger(void *arg);
 void *DIO_pre_clrfreq(struct ControlProgram *arg);
 void *DIO_post_clrfreq(void *arg);
 void *DIO_aux_command(dictionary **dict_p);
-
+void *DIO_aux_msg(struct DriverMsg *msg);

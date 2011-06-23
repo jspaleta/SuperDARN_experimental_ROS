@@ -414,6 +414,7 @@ int main()
   if (verbose>1) fprintf(stderr,"start dio RXFE settings thread\n");
   rc = pthread_create(&thread, NULL, &dio_site_settings,(void *)&site_settings);
   pthread_join(thread,NULL);
+
 /******************* Init transmitter status arrays ***********/
 //rc = pthread_create(&thread, NULL, DIO_transmitter_status, &tstatus);
 /******************* Unix Socket Connection ***********/

@@ -4,6 +4,23 @@
 #include "global_server_variables.h"
 #include "dio_handler.h"
 
+int process_aux_msg(struct DriverMsg incoming_msg,struct DriverMsg *outbound_msg) {
+        struct DriverMsg msg;
+	pthread_t thread;
+        
+        driver_msg_init(&msg);
+        printf("AUX: in: %s: %s\n",incoming_msg.driver,incoming_msg.command_name);
+        printf("AUX: msg: %s: %s\n",msg.driver,msg.command_name);
+	if (strcmp(incoming_msg.driver,"DIO")==0) {
+          memmove(&msg,&incoming_msg,sizeof(struct DriverMsg));
+          printf("AUX: %s: %s\n",msg.driver,msg.command_name);
+          pthread_create(&thread,NULL,(void *) &DIO_aux_msg,&msg);
+          pthread_join(thread,NULL);
+	}
+        memmove(outbound_msg,&msg,sizeof(struct DriverMsg));
+        return 0;
+    
+}
 int process_aux_commands(dictionary **dict_p,char * driver_type) {
         dictionary *aux=NULL; 
 	char *command=NULL;  // pointer into dict do not free or remap

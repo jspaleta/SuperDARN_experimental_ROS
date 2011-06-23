@@ -16,6 +16,8 @@ extern pthread_mutex_t dio_comm_lock;
 void *DIO_ready_controlprogram(struct ControlProgram *arg)
 {
   struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
   pthread_mutex_lock(&dio_comm_lock);
    if (arg!=NULL) {
      if (arg->state->pulseseqs[arg->parameters->current_pulseseq_index]!=NULL) {
@@ -36,6 +38,8 @@ void *DIO_ready_controlprogram(struct ControlProgram *arg)
 void *DIO_pretrigger(void *arg)
 {
   struct DriverMsg s_msg, r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
   pthread_mutex_lock(&dio_comm_lock);
 
    s_msg.command_type=PRETRIGGER;
@@ -46,6 +50,23 @@ void *DIO_pretrigger(void *arg)
    pthread_exit(NULL);
 };
 
+
+void *DIO_aux_msg(struct DriverMsg *msg_p)
+{
+  struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  pthread_mutex_lock(&dio_comm_lock);
+  memmove(&s_msg,msg_p,sizeof(struct DriverMsg));
+//  printf("sending DIO aux message %lu\n",(long unsigned) s_msg);
+  driver_msg_send(diosock, &s_msg);
+  driver_msg_recv(diosock, &r_msg);
+//  printf("Recv'd DIO aux message %lu\n",(long unsigned) r_msg);
+  memmove(msg_p,&r_msg,sizeof(struct DriverMsg));
+  pthread_mutex_unlock(&dio_comm_lock);
+  pthread_exit(NULL);
+};
+
 void *DIO_aux_command(dictionary **dict_p)
 {
   dictionary *aux_dict=NULL;
@@ -53,6 +74,8 @@ void *DIO_aux_command(dictionary **dict_p)
   char *dict_string=NULL;
   int32 bytes;
 
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
   pthread_mutex_lock(&dio_comm_lock);
   aux_dict=*dict_p;
 
@@ -84,6 +107,8 @@ void *DIO_aux_command(dictionary **dict_p)
 void *DIO_pre_clrfreq(struct ControlProgram *arg)
 {
   struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
   pthread_mutex_lock(&dio_comm_lock);
 
    if(arg!=NULL) {
@@ -105,6 +130,8 @@ void *DIO_pre_clrfreq(struct ControlProgram *arg)
 void *DIO_post_clrfreq(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
   pthread_mutex_lock(&dio_comm_lock);
 
    s_msg.command_type=POST_CLRFREQ;
@@ -119,7 +146,8 @@ void *dio_site_settings(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   struct SiteSettings *site_settings;
-
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
   site_settings=arg;
   pthread_mutex_lock(&dio_comm_lock);
   if (site_settings!=NULL) {

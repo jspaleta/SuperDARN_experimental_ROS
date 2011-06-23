@@ -10,6 +10,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>        /* For mode constants */
 #include <fcntl.h>           /* For O_* constants */
+#include <gsl/gsl_sf.h>           
 #include "utils.h"
 #include "global_server_variables.h"
 #include "iniparser.h"
@@ -89,6 +90,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 	struct tm* time_struct;
 	int32 temp;
 	float tempf;
+	double templf;
 
 	if(verbose > 0 ) {
 		fprintf(stderr, "Start Freq Assignment\n");
@@ -295,6 +297,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
     for (j=-padded_rx_sideband_khz; j<=padded_rx_sideband_khz; j++) {
       if( ((i+j) >= 0) && ((i+j) < arg->state->N) ) {
         fft_array[i].apwr += fft_array[i+j].pwr;
+        templf=gsl_sf_sinc(fft_array[i+j].freq);
         acount++;
       }
     }

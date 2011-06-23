@@ -324,7 +324,7 @@ void *control_handler(struct ControlProgram *control_program)
    unsigned int length=sizeof(int);
    int32 current_freq,radar=0,channel=0;
    struct timeval tv,current_time,last_report;
-   struct ROSMsg msg; 
+   struct DriverMsg msg,reply_msg; 
    struct ControlPRM control_parameters; 
    struct SiteSettings settings;
 //   struct TSGprm *tsgprm;
@@ -345,6 +345,8 @@ void *control_handler(struct ControlProgram *control_program)
    setbuf(stdout, 0);
    setbuf(stderr, 0);
    tid = pthread_self();
+   driver_msg_init(&msg);
+   driver_msg_init(&reply_msg);
 /* set the cancellation parameters --
    - Enable thread cancellation 
    - Defer the action of the cancellation 
@@ -357,7 +359,6 @@ void *control_handler(struct ControlProgram *control_program)
      }
    pthread_mutex_unlock(&controlprogram_list_lock);
    pthread_mutex_unlock(&exit_lock);
-
    gettimeofday(&last_report,NULL);
    while (1) {
       if(control_program==NULL) {
@@ -385,9 +386,7 @@ void *control_handler(struct ControlProgram *control_program)
         pthread_mutex_unlock(&controlprogram_list_lock);
  
        /* Read controlprogram msg */
-        msg.status=-300;
-        msg.type=0;
-        retval=recv_data(socket, &msg, sizeof(struct ROSMsg));
+        driver_msg_recv(socket,&msg);
         if ( retval <= 0 ) {
           fprintf(stderr,"Socket not responding\n");
           pthread_exit(NULL);
@@ -402,12 +401,12 @@ void *control_handler(struct ControlProgram *control_program)
           last_report=current_time;
         }
         pthread_mutex_lock(&controlprogram_list_lock);
-        if(msg.type!=0) {
+        if(msg.command_type!=0) {
           control_program->state->thread->last_seen=current_time;
         }
         pthread_mutex_unlock(&controlprogram_list_lock);
         /* Process controlprogram msg */
-        switch(msg.type) {
+        switch(msg.command_type) {
           case 0:
             fprintf(stderr,"Bad Message Sleeping 1 second\n");
             sleep(1);
@@ -419,27 +418,20 @@ void *control_handler(struct ControlProgram *control_program)
              /* Inform the ROS that this driver does not handle this command by sending 
               * msg back with msg.status=0.
               */
-            msg.status=1;
-            if(msg.status==1) {
-                send_data(socket, &msg, sizeof(struct ROSMsg));
-                if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-                recv_aux_dict(socket,&aux_dict,0);
-                //iniparser_dump_ini(aux_dict,stdout);
-                /* process aux command dictionary here */
-                process_aux_commands(&aux_dict,"DIO");
-                send_aux_dict(socket,aux_dict,1);
-            }
-            send_data(socket, &msg, sizeof(struct ROSMsg));
+                process_aux_msg(msg,&reply_msg);
+                driver_msg_dump_var_info(&reply_msg);
+                driver_msg_send(socket, &reply_msg);
+		driver_msg_free_buffer(&reply_msg);
             break;
 
           case PING:
             msg.status=1;
-            send_data(socket, &msg, sizeof(struct ROSMsg));
+            send_data(socket, &msg, sizeof(struct DriverMsg));
             break;
           case SET_INACTIVE:
             if ( (r < 0) || (c < 0)) {
               msg.status=-1;
-              send_data(socket, &msg, sizeof(struct ROSMsg));
+              send_data(socket, &msg, sizeof(struct DriverMsg));
             } else {
               pthread_mutex_lock(&controlprogram_list_lock);
               if(control_program->state->active!=0) {
@@ -450,13 +442,13 @@ void *control_handler(struct ControlProgram *control_program)
               }
               pthread_mutex_unlock(&controlprogram_list_lock);
               msg.status=1;
-              send_data(socket, &msg, sizeof(struct ROSMsg));
+              send_data(socket, &msg, sizeof(struct DriverMsg));
             }
             break;
           case SET_ACTIVE:
             if ( (r < 0) || (c < 0)) {
               msg.status=-1;
-              send_data(socket, &msg, sizeof(struct ROSMsg));
+              send_data(socket, &msg, sizeof(struct DriverMsg));
             } else {
               pthread_mutex_lock(&controlprogram_list_lock);
               if(control_program->state->active!=0) {
@@ -467,7 +459,7 @@ void *control_handler(struct ControlProgram *control_program)
               }
               pthread_mutex_unlock(&controlprogram_list_lock);
               msg.status=1;
-              send_data(socket, &msg, sizeof(struct ROSMsg));
+              send_data(socket, &msg, sizeof(struct DriverMsg));
             }
             break;
           case QUERY_INI_SETTING:
@@ -508,19 +500,19 @@ void *control_handler(struct ControlProgram *control_program)
                 send_data(socket, &data_length, sizeof(int32));
                 send_data(socket, temp_strp, data_length*sizeof(char));
             }
-            send_data(socket, &msg, sizeof(struct ROSMsg));
+            send_data(socket, &msg, sizeof(struct DriverMsg));
             break;
           case GET_SITE_SETTINGS:
             settings=site_settings;
             send_data(socket, &settings, sizeof(struct SiteSettings));
             msg.status=-1;
-            send_data(socket, &msg, sizeof(struct ROSMsg));
+            send_data(socket, &msg, sizeof(struct DriverMsg));
             break;
           case SET_SITE_IFMODE:
             settings=site_settings;
             recv_data(socket, &settings.ifmode, sizeof(settings.ifmode));
             msg.status=-1;
-            send_data(socket, &msg, sizeof(struct ROSMsg));
+            send_data(socket, &msg, sizeof(struct DriverMsg));
             break;
           case SET_RADAR_CHAN:
               msg.status=1;
@@ -535,47 +527,31 @@ void *control_handler(struct ControlProgram *control_program)
               }
               msg.status=status;
               pthread_mutex_unlock(&controlprogram_list_lock);
-              send_data(socket, &msg, sizeof(struct ROSMsg));
+              send_data(socket, &msg, sizeof(struct DriverMsg));
             break;
-/*
-          case LINK_RADAR_CHAN:
-            msg.status=1;
-            recv_data(socket, &r, sizeof(r)); //requested radar
-            recv_data(socket, &c, sizeof(c)); //requested channel
-            pthread_mutex_lock(&controlprogram_list_lock);
-            control_program->state->linked_program=find_registered_controlprogram_by_radar_channel(r,c);
-            control_program->state->linked=1;
-            if (control_program->state->linked_program!=NULL) {
-              status=1;
-            }
-            else {
-              status=0;
-            }
-            msg.status=status;
-            pthread_mutex_unlock(&controlprogram_list_lock);
-            send_data(socket, &msg, sizeof(struct ROSMsg));
-            break;
-*/
           case GET_PARAMETERS:
             if ( (r < 0) || (c < 0)) {
               send_data(socket, &control_parameters, sizeof(struct ControlPRM));
               msg.status=-1;
-              send_data(socket, &msg, sizeof(struct ROSMsg));
+              send_data(socket, &msg, sizeof(struct DriverMsg));
             } else {
               pthread_mutex_lock(&controlprogram_list_lock);
               msg.status=status;
               control_parameters=controlprogram_fill_parameters(control_program);
               pthread_mutex_unlock(&controlprogram_list_lock);
               send_data(socket, &control_parameters, sizeof(struct ControlPRM));
-              send_data(socket, &msg, sizeof(struct ROSMsg));
+              send_data(socket, &msg, sizeof(struct DriverMsg));
             }
             break;
           case GET_DATA:
+            msg.status=0;
+            send_data(socket, &msg, sizeof(struct DriverMsg));
+
+/*
             control_program->data->status=-1;
             if ( (r < 0) || (c < 0)) {
               send_data(socket, control_program->data, sizeof(struct DataPRM));
               msg.status=-1;
-              send_data(socket, &msg, sizeof(struct ROSMsg));
             } else {
               rc = pthread_create(&thread, NULL,(void *)&receiver_controlprogram_get_data,(void *) control_program);
               pthread_join(thread,NULL);
@@ -601,31 +577,35 @@ void *control_handler(struct ControlProgram *control_program)
                 send_data(socket, bad_transmit_times.start_usec, sizeof(uint32)*bad_transmit_times.length);
                 send_data(socket, bad_transmit_times.duration_usec, sizeof(uint32)*bad_transmit_times.length);
               } else {
-                msg.status=-1;
+                msg,status=-1;
                 if (verbose > -1 ) fprintf(stderr,"CLIENT:GET_DATA: Bad status %d\n",control_program->data->status);
               } 
-              send_data(socket, &msg, sizeof(struct ROSMsg));
+              send_data(socket, msg, sizeof(struct DriverMsg));
             }
+*/
             break;
           case SET_PARAMETERS:
             if ( (r < 0) || (c < 0)) {
               recv_data(socket, control_program->parameters, sizeof(struct ControlPRM));
               msg.status=-1;
-              send_data(socket, &msg, sizeof(struct ROSMsg));
+              send_data(socket, &msg, sizeof(struct DriverMsg));
             } else {
               msg.status=1;
               pthread_mutex_lock(&controlprogram_list_lock);
               recv_data(socket, control_program->parameters, sizeof(struct ControlPRM));
               if(control_program->parameters->rfreq<0) control_program->parameters->rfreq=control_program->parameters->tfreq;
-              send_data(socket, &msg, sizeof(struct ROSMsg));
+              send_data(socket, &msg, sizeof(struct DriverMsg));
               pthread_mutex_unlock(&controlprogram_list_lock);
             }
             break;
           case REGISTER_SEQ:
+            printf("here 1\n");
             msg.status=1;
+            printf("here 2\n");
             recv_data(socket,&tprm, sizeof(struct SeqPRM)); // requested pulseseq
             pthread_mutex_lock(&controlprogram_list_lock);
             control_program->state->pulseseqs[tprm.index]=malloc(sizeof(struct TSGbuf));
+            printf("here 4\n");
             control_program->parameters->current_pulseseq_index=tprm.index;
             control_program->state->pulseseqs[tprm.index]->len=tprm.len;
             control_program->state->pulseseqs[tprm.index]->step=tprm.step;
@@ -651,7 +631,8 @@ void *control_handler(struct ControlProgram *control_program)
               pthread_join(threads[1],NULL);
             }
             pthread_mutex_unlock(&controlprogram_list_lock);
-            send_data(socket, &msg, sizeof(struct ROSMsg));
+            send_data(socket, &msg, sizeof(struct DriverMsg));
+            printf("here 2\n");
             break;
           case SET_READY_FLAG:
             if ( (r < 0) || (c < 0)) {
@@ -683,7 +664,7 @@ void *control_handler(struct ControlProgram *control_program)
               pthread_mutex_unlock(&controlprogram_list_lock);
 */
             }
-            send_data(socket, &msg, sizeof(struct ROSMsg));
+            send_data(socket, &msg, sizeof(struct DriverMsg));
             break;
 
           case REQUEST_CLEAR_FREQ_SEARCH:
@@ -700,7 +681,7 @@ void *control_handler(struct ControlProgram *control_program)
               pthread_join(threads[0],NULL);
               msg.status=1;
             }
-            send_data(socket, &msg, sizeof(struct ROSMsg));
+            send_data(socket, &msg, sizeof(struct DriverMsg));
             pthread_mutex_unlock(&controlprogram_list_lock);
             break;
           case REQUEST_ASSIGNED_FREQ:
@@ -717,20 +698,22 @@ void *control_handler(struct ControlProgram *control_program)
             current_freq=control_program->state->current_assigned_freq; 
             send_data(socket, &current_freq, sizeof(int32));
             send_data(socket, &control_program->state->current_assigned_noise, sizeof(float));
-            send_data(socket, &msg, sizeof(struct ROSMsg));
+            send_data(socket, &msg, sizeof(struct DriverMsg));
             pthread_mutex_unlock(&controlprogram_list_lock);
             break;
 
           case QUIT:
             if (verbose > 0 ) fprintf(stderr,"Client QUIT\n");
             msg.status=0;
-            send_data(socket, &msg, sizeof(struct ROSMsg));
+            send_data(socket, &msg, sizeof(struct DriverMsg));
             pthread_exit(NULL);
             break;
           default:
             msg.status=1;
-            send_data(socket, &msg, sizeof(struct ROSMsg));
+            send_data(socket, &msg, sizeof(struct DriverMsg));
         }
+        driver_msg_free_buffer(&msg);
+        driver_msg_free_buffer(&reply_msg);
           /* FD_ISSET(0, &rfds) will be true. */
       } else { 
         if (verbose > 1 ) fprintf(stderr,"No data within select timeout\n");

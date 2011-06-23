@@ -51,19 +51,28 @@
 #define CLIENT 0
 #define VIEWER 1
 #define WORKER 2
-
 #define RECV_SAMPLE_HEADER 2 
 #define RECV_CLRFREQ_SAMPLES  2000
 
+#define MAX_MSG_STRING 80
 struct DriverMsg {
      char command_type;
-     char command_name[80];
+     char command_name[MAX_MSG_STRING];
+     char driver[MAX_MSG_STRING];
+     int32 num_vars;
      int32 bytes;
      int32 status; // 0 = inactive  negative = error  postive = good
+     int32 is_reply;
      uint64 buffer;
-     
+     uint64 vars;	     
 };
 
+struct msgvar {
+	char name[MAX_MSG_STRING];
+	char type[MAX_MSG_STRING];
+	uint32 offset;
+	uint32 bytes;
+};
 typedef struct _fft_index{ 
 // Struct to store and order the values of the fft preserving the index in the original array
 	double pwr;

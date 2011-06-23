@@ -47,7 +47,7 @@ int main ( int argc, char **argv){
         struct  ControlPRM  clients[maxclients];	//parameter array for tracked clients
 	struct  ControlPRM  client;			//parameter structure for temp use		
 	struct  DataPRM	    data;
-        uint32  *main=NULL,*back=NULL;
+        uint32  *main_data=NULL,*back_data=NULL;
         struct  TSGbuf *pulseseqs[MAX_RADARS][MAX_CHANNELS][MAX_SEQS]; //timing sequence table
         int seq_count[MAX_RADARS][MAX_CHANNELS];			//unpacked seq length
 	int	max_seq_count;				// maximum unpackage seq length	
@@ -77,6 +77,7 @@ int main ( int argc, char **argv){
 
 	// function specific message variables
         struct  DriverMsg msg;	//msg structure which indicates command status and other things
+	struct	DriverMsg r_msg;
         // argument parsing variables 
         int arg;		//command line option parsing
 	char driver_type[20]="";
@@ -199,7 +200,8 @@ int main ( int argc, char **argv){
         transmit_times.start_usec=malloc(sizeof(unsigned int)*MAX_PULSES);
         transmit_times.duration_usec=malloc(sizeof(unsigned int)*MAX_PULSES);
        
-
+        driver_msg_init(&msg);
+        driver_msg_init(&r_msg);
     // OPEN TCP SOCKET AND START ACCEPTING CONNECTIONS 
 	sock=tcpsocket(port_number);
 	listen(sock, 5);
@@ -242,7 +244,7 @@ int main ( int argc, char **argv){
                   if ( FD_ISSET(msgsock,&rfds) && rval>0 ) {
                     if (verbose>1) printf("Data is ready to be read\n");
 		    if (verbose > 1) printf("%d Recv Msg\n",msgsock);
-                    rval=recv_data(msgsock,&msg,sizeof(struct DriverMsg));
+                    driver_msg_recv(msgsock,&msg);
                     datacode=msg.command_type;
 		    if (verbose > 1) printf("\nmsg code is %c\n", datacode);
 		/* Process commands that have come in on the socket */	
@@ -516,68 +518,15 @@ int main ( int argc, char **argv){
 
                         msg.status=1;
                         if(msg.status==1) {
-                          rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-
-/*
-                          // Prepare to recv command dict and data buf 
-                          rval=recv_data(msgsock, &bytes, sizeof(int32));
-			  if (verbose > 1 ) printf("AUX_COMMAND: recv dict bytes %d\n",bytes);	
-			  if(command_dict_string!=NULL) {
-                            free(command_dict_string);
-			    command_dict_string=NULL;	
-                          }
-			  if(aux!=NULL) {
-			    iniparser_freedict(aux);	
-			    aux=NULL;	
-                          }
-             		  command_dict_string=malloc((bytes+10)*sizeof(char));
-		          rval=recv_data(msgsock,command_dict_string,bytes);
-			  aux=iniparser_load_from_string(aux,command_dict_string);
-                          // Prepare to recv arb. buf data buf 
-                          rval=recv_data(msgsock, &nsecs, sizeof(int32));
-                          for(i=0 ; i<nsecs;i++) {
-			    recv_data(msgsock,&bytes,sizeof(int32));
-			    recv_data(msgsock,secname_static,bytes);
-			    sprintf(entry,"%s:bytes",secname_static);
-			    bytes=iniparser_getint(aux,entry,0);
-			    if(temp_buf!=NULL) free(temp_buf);
-			    temp_buf=malloc(bytes);
-			    recv_data(msgsock,temp_buf,bytes);
-			    dictionary_setbuf(aux,secname_static,temp_buf,bytes);
-			    if(temp_buf!=NULL) free(temp_buf);
-			    temp_buf=NULL;
-			  }
-*/
-                          recv_aux_dict(msgsock,&aux,1); 
+                          //rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                          //recv_aux_dict(msgsock,&aux,1); 
 			  /* process aux command dictionary here */
-			  process_aux_commands(&aux,driver_type);
-                          send_aux_dict(msgsock,aux,1); 
-/*
-                          if(command_dict_string!=NULL) free(command_dict_string);
-                          command_dict_string=iniparser_to_string(aux);
-			  bytes=strlen(command_dict_string)+1;
-                          rval=send_data(msgsock, &bytes, sizeof(int32));
-		          rval=send_data(msgsock,command_dict_string,bytes);
-
-                          // Prepare to send return dict and section data buffers 
-                          nsecs=iniparser_getnsec(aux);
-			  if (verbose > 1 ) printf("AUX_COMMAND: nsecs %d\n",nsecs);	
-                          rval=send_data(msgsock, &nsecs, sizeof(int32));
-                          for(i=0 ; i<nsecs;i++) {
-                            secname_in_dict=iniparser_getsecname(aux,i);
-                            dict_data_buf=dictionary_getbuf(aux,secname_in_dict,&bufsize);
-			    bytes=strlen(secname_in_dict)+1;
-		            rval=send_data(msgsock,&bytes,sizeof(int32));
-		            rval=send_data(msgsock,secname_in_dict,bytes);
-                            printf("%d : %s : %d\n",bytes,secname_in_dict,bufsize);
-			    bytes=bufsize;
-		            rval=send_data(msgsock,dict_data_buf,bytes);
-			  }
-			  if(aux!=NULL) iniparser_freedict(aux);
-			  aux=NULL;	
-*/
+			  process_aux_msg(msg,&r_msg);
+			  //process_aux_commands(&aux,driver_type);
+                          //send_aux_dict(msgsock,aux,1); 
 			}
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+			driver_msg_dump_var_info(&r_msg);
+                        rval=driver_msg_send(msgsock, &r_msg);
 			break;
 /* Commands that should only be servced  by a single driver. 
  * Site ini file should be configured to instruct the ROS as to which driver
@@ -657,19 +606,19 @@ int main ( int argc, char **argv){
 				data.status=1;
 		                rval=send_data(msgsock,&data,sizeof(struct DataPRM));
                                 if(data.use_shared_memory==0) {
-                                  if(main==NULL) {
-				    main=malloc(sizeof(uint32)*data.samples);	
+                                  if(main_data==NULL) {
+				    main_data=malloc(sizeof(uint32)*data.samples);	
                                   }
-                                  if(back==NULL) {
-				    back=malloc(sizeof(uint32)*data.samples);	
+                                  if(back_data==NULL) {
+				    back_data=malloc(sizeof(uint32)*data.samples);	
                                   }
 				  for(i=0;i<data.samples;i++) {
-				    main[i]=data_count*100+i;
-				    back[i]=-data_count*100+i;
+				    main_data[i]=data_count*100+i;
+				    back_data[i]=-data_count*100+i;
 				  }
 				  data_count=(data_count+1) % 100 ;
-		                  rval=send_data(msgsock,main,sizeof(uint32)*data.samples);
-		                  rval=send_data(msgsock,back,sizeof(uint32)*data.samples);
+		                  rval=send_data(msgsock,main_data,sizeof(uint32)*data.samples);
+		                  rval=send_data(msgsock,back_data,sizeof(uint32)*data.samples);
                                 }
 			}
 	  		else msg.status=0;
@@ -744,6 +693,8 @@ int main ( int argc, char **argv){
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
 		    }
+                    driver_msg_free_buffer(&r_msg);
+                    driver_msg_free_buffer(&msg);
 		  }	
 		} 
 		if (verbose > 0 ) fprintf(stderr,"Closing socket\n");

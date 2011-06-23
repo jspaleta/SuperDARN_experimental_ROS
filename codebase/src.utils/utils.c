@@ -138,71 +138,103 @@ return str;
 }
 
 
-struct DriverMsg *msg=driver_msg_init(char command, char *name,int status){
-  struct msgvar *var=NULL, *prevvar=NULL,*nextvar=NULL;
-  msg->command_type=command;
-  strncpy(msg->command_name,name,100);
-  msg->bytes=0;
-  msg->num_vars=0;
-  msg->buffer=NULL;
-  msg->vars=NULL;
-  var=msg->vars;
-  while(msg->vars!=NULL) {
-    var=msg->vars;
-    
-    free((void *)var);
-  }
-  msg->status=status;
-  return 0;
-};
-
-int driver_msg_clear(struct DriverMsg *msg){
+int  driver_msg_init(struct DriverMsg *msg){
   msg->command_type=0;
-  strncpy(msg->command_name,"",100);
+  strncpy(msg->command_name,"",MAX_MSG_STRING);
+  strncpy(msg->driver,"",MAX_MSG_STRING);
+  msg->is_reply=0;
   msg->bytes=0;
-  if((void *)msg->buffer!=NULL) free((void *)msg->buffer);
-  if((struct msgvar *)msg->vars!=NULL) free((struct msgvar *)msg->vars);
-  msg->buffer=0;
-  msg->vars=0;
   msg->num_vars=0;
   msg->status=0;
+  msg->buffer=(uint64)NULL;
+  msg->vars=(uint64)NULL;
   return 0;
 };
 
-int driver_msg_add_var(struct DriverMsg *msg,void *arg,unsigned int bytes,char *var_name){
+int driver_msg_set_command(struct DriverMsg *msg,char type, char *name,char *driver){
+  msg->command_type=type;
+  strncpy(msg->command_name,name,MAX_MSG_STRING);
+  strncpy(msg->driver,driver,MAX_MSG_STRING);
+  return 1;
+}
+
+int driver_msg_free_buffer(struct DriverMsg *msg){
+  if(msg!=NULL) {
+    msg->command_type=0;
+    strncpy(msg->command_name,"",MAX_MSG_STRING);
+    strncpy(msg->driver,"",MAX_MSG_STRING);
+    msg->bytes=0;
+    if((void *)msg->buffer!=NULL) free((void *)msg->buffer);
+    if((struct msgvar *)msg->vars!=NULL) free((struct msgvar *)msg->vars);
+    msg->buffer=0;
+    msg->vars=0;
+    msg->num_vars=0;
+    msg->status=0;
+  }
+  return 0;
+};
+
+int driver_msg_add_var(struct DriverMsg *msg,void *arg,unsigned int bytes,char *var_name,char *type){
  struct msgvar var;
+ struct msgvar *vars;
+ int32 temp=0; 
  var.offset=msg->bytes;
  var.bytes=bytes;
  strncpy(var.name,var_name,100);
- msg->vars=(uint64) realloc((struct msgvar *)msg->vars,msg->num_vars*sizeof(struct msgvar));
- memmove((void *)msg->vars+msg->num_vars,var,sizeof(struct msgvar)); 
+ printf("Add: #vars: %d vars: %lu\n",msg->num_vars,msg->vars);  
+ printf("Add: buffer: %lu bytes: %d\n",msg->buffer,msg->bytes);  
+ msg->vars=(uint64) realloc((struct msgvar *)msg->vars,(msg->num_vars+1)*sizeof(struct msgvar));
+ vars=(struct msgvar*)msg->vars;
+ memmove(&vars[msg->num_vars],&var,sizeof(struct msgvar)); 
  msg->buffer=(uint64) realloc((void *)msg->buffer,msg->bytes+bytes);
  memmove((void *)msg->buffer+var.offset,arg,var.bytes); 
  msg->bytes+=bytes;
  msg->num_vars++;
+ printf("Add: #vars: %d vars: %lu\n",msg->num_vars,msg->vars);  
+ memmove(&temp,(void *)msg->buffer,sizeof(int32));
+ printf("Add: buffer: %lu bytes: %d :: %d\n",msg->buffer,msg->bytes, temp);  
+
  if(var.offset+var.bytes!=msg->bytes){
-   fprintf(stderr,"Error in driver_msg_add_var\n")
+   fprintf(stderr,"Error in driver_msg_add_var\n");
    return -1;
  }
 
  return 0; 
 };
 
+int driver_msg_dump_var_info(struct DriverMsg *msg){
+  struct msgvar *var;
+  struct msgvar *vars;
+  int var_index,bytes;
+  void *address;
+  vars=(struct msgvar *)msg->vars;
+  for(var_index=0;var_index<msg->num_vars;var_index++) {
+    printf("Var: %d ",var_index);
+    var=&vars[var_index];
+    printf("name: %s ",var->name);
+    printf("offset: %d ",var->offset);
+    printf("bytes: %d\n",var->bytes);
+  }
+  return 0;
+};
+
 int driver_msg_get_var_by_index(struct DriverMsg *msg,int var_index,void *buf){
-  struct msgvar var;
+  struct msgvar *var;
+  struct msgvar *vars;
   int bytes;
   void *address;
+  vars=(struct msgvar *)msg->vars;
   if(var_index >= msg->num_vars) {
-   fprintf(stderr,"Error in driver_msg_get_var_by_index\n")
+   fprintf(stderr,"Error in driver_msg_get_var_by_index\n");
    return -1;
   }
-  var=msg->vars[var_index]
+  var=&vars[var_index];
 
-  bytes=var.bytes;
-  address=(void *)msg->buffer+var.offset;
+  bytes=var->bytes;
+  address=(void *)msg->buffer+var->offset;
 
-  if((address<(void *)msg->buffer) || (address+bytes > msg->bytes)) {
-    fprintf(stderr,"Error in driver_msg_get_var_by_index\n")
+  if((address<(void *)msg->buffer) || (address+bytes > (void *)msg->buffer+msg->bytes)) {
+    fprintf(stderr,"Error in driver_msg_get_var_by_index\n");
     return -1;
     address=(void *)msg->buffer;
     bytes=msg->bytes;
@@ -212,36 +244,75 @@ int driver_msg_get_var_by_index(struct DriverMsg *msg,int var_index,void *buf){
 };
 
 int driver_msg_get_var_by_name(struct DriverMsg *msg,char *var_name,void *buf){
-  struct msgvar var;
+  struct msgvar *var;
+  struct msgvar *vars;
   int var_index,bytes;
   void *address;
+  vars=(struct msgvar *)msg->vars;
   for(var_index=0;var_index<msg->num_vars;var_index++) {
-    if(strcmp(msg->vars[var_index].name,var_name)==0) break;
+    if(strcmp(vars[var_index].name,var_name)==0) break;
   }
   if(var_index >= msg->num_vars) {
-   fprintf(stderr,"Error in driver_msg_get_var_by_index\n")
+   fprintf(stderr,"Error var %s not in msg\n",var_name);
    return -1;
   }
-  var=msg->vars[var_index]
-
-  bytes=var.bytes;
-  address=(void *)msg->buffer+var.offset;
-
-  if((address<(void *)msg->buffer) || (address+bytes > msg->bytes)) {
-    fprintf(stderr,"Error in driver_msg_get_var_by_index\n")
+  var=&vars[var_index];
+  bytes=var->bytes;
+  address=(void *)msg->buffer+var->offset;
+  if(  ((uint64)address<(uint64)msg->buffer) || (((uint64)address+(uint64)bytes) > ((uint64)msg->buffer+(uint64)msg->bytes))) {
+    fprintf(stderr,"Error in driver_msg_get_var_by_name\n");
     return -1;
-    address=(void *)msg->buffer;
-    bytes=msg->bytes;
   }
   memmove(buf,address,bytes);
   return 0;
 };
+
 int driver_msg_send(int socket,struct DriverMsg *msg) {
+  int retval,error=0;
+  retval=send_data(socket,msg,sizeof(struct DriverMsg));
+
+  if(retval!=sizeof(struct DriverMsg)) error++; 
+
+  retval=send_data(socket,(void *)msg->buffer,msg->bytes);
+  if(retval!=msg->bytes) error++; 
+
+  retval=send_data(socket,(void *)msg->vars,msg->num_vars*sizeof(struct msgvar));
+  if(retval!=msg->num_vars*sizeof(struct msgvar)) error++; 
+
+  if(error>0) {
+    printf("driver_msg_send Error\n");
+    return -1;
+  }
   return 0;
 }
 
 int driver_msg_recv(int socket,struct DriverMsg *msg) {
+  int error=0,retval;
+  driver_msg_init(msg);
+  retval=recv_data(socket,msg,sizeof(struct DriverMsg));
+  msg->buffer=(uint64)NULL;
+  msg->vars=(uint64)NULL;
+
+  if(retval!=sizeof(struct DriverMsg)) {
+    printf("msg_recv:  msg error : %d\n",retval);
+    error++;
+  }
+
+  msg->buffer=(uint64)malloc(msg->bytes);
+  retval=recv_data(socket,(void *)msg->buffer,msg->bytes);
+  if(retval!=msg->bytes) {
+    printf("msg_recv: buffer err: %d\n",retval);
+    error++;
+  }
+  msg->vars=(uint64)malloc(msg->num_vars*sizeof(struct msgvar));
+  retval=recv_data(socket,(void *)msg->vars,msg->num_vars*sizeof(struct msgvar));
+  if(retval!=msg->num_vars*sizeof(struct msgvar)) {
+    printf("msg_recv: var err: %d\n",retval);
+    error++;
+  }
+  if(error>0) return -1;
   return 0;
+
 }
 
 

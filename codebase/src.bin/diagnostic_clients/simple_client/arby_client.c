@@ -12,6 +12,7 @@
 #include <errno.h>
 #include "utils.h"
 #include "control_program.h"
+#include "global_server_variables.h"
 #include "tsg.h"
 #include "iniparser.h"
 int s;
@@ -21,13 +22,13 @@ int verbose=10;
 FILE *fp;
 void graceful_exit(int signum)
 {
-  struct ROSMsg msg;
-
+  struct DriverMsg msg;
+        driver_msg_set_command(&msg,QUIT,"quit","NONE");
         if (signum==13) errno=EPIPE;
         else {
-          msg.type=QUIT;
-          send_data(s, &msg, sizeof(struct ROSMsg));
-          recv_data(s, &msg, sizeof(struct ROSMsg));
+          msg.command_type=QUIT;
+          send_data(s, &msg, sizeof(struct DriverMsg));
+          recv_data(s, &msg, sizeof(struct DriverMsg));
           printf("Msg Status: %d\n",msg.status); 
         }
         fclose(fp);
@@ -41,12 +42,12 @@ main( int argc, char *argv[])
   int nrang,frang,rsep,smsep,txpl,mpinc,mppul,nbaud,samples;
   int *pcode=NULL;
   int status,index,i,freq,j=0;
-  int32 r,c;
+  int32 radar,channel;
   int flag,counter;
   short I,Q;
   char command;
   int32 num_transmitters;
-  struct ROSMsg smsg,rmsg;
+  struct DriverMsg *smsg=NULL,*rmsg=NULL;
   uint32 *main;
   uint32 *back;
   uint32 *agc;
@@ -73,12 +74,15 @@ main( int argc, char *argv[])
   char value[200];
   int32 bytes;
   char *dict_string=NULL;
-  int32 temp_data=44;
+  int32 temp=0,temp_data=44;
   char *secname_in_dict=NULL; 
   char secname_static[200]; 
   char entry[200]; 
   int32 nsecs;
-
+  smsg=malloc(sizeof(struct DriverMsg));
+  rmsg=malloc(sizeof(struct DriverMsg));
+  driver_msg_init(smsg);
+  driver_msg_init(rmsg);
 //Initialize structures
 
   for (i=0;i<MAX_TRANSMITTERS;i++) {
@@ -152,15 +156,14 @@ main( int argc, char *argv[])
  * send and receive the Radar request structure.
  */
  if(verbose>1) printf("Sending the Register Chan Command %c\n",SET_RADAR_CHAN);
-  smsg.type=SET_RADAR_CHAN;
-    send_data(s, &smsg, sizeof(struct ROSMsg)); //Send the Command Message
-    r=1;  //Ask for radar 1  
-    c=1;  //Ask for channel 1
-    send_data(s, &r, sizeof(int32)); //Send the radar request
-    send_data(s, &c, sizeof(int32)); //Send the channel request
-    recv_data(s, &rmsg, sizeof(struct ROSMsg)); //resv the handshake back
-    if(verbose>1) printf("Radar Chan Transfer Status: %d\n",rmsg.status); 
-
+  smsg->command_type=SET_RADAR_CHAN;
+    send_data(s, smsg, sizeof(struct DriverMsg)); //Send the Command Message
+    radar=1;  //Ask for radar 1  
+    channel=1;  //Ask for channel 1
+    send_data(s, &radar, sizeof(int32)); //Send the radar request
+    send_data(s, &channel, sizeof(int32)); //Send the channel request
+    recv_data(s, rmsg, sizeof(struct DriverMsg)); //resv the handshake back
+    if(verbose>1) printf("Radar Chan Transfer Status: %d\n",rmsg->status); 
 /*
  * Create Pulse Sequence mimic SiteTimeSeq function in site library.
  * Re-create TSGMake using modified TSGBuf structure
@@ -171,24 +174,24 @@ main( int argc, char *argv[])
  if (pulseseq!=NULL) {
    if(verbose>1) printf("Pulseseq len: %d\n",pulseseq->len);
    if(verbose>1) printf("Sending the Register Seq Command %d\n",REGISTER_SEQ);
-   smsg.type=REGISTER_SEQ;
-     send_data(s, &smsg, sizeof(struct ROSMsg));
+   smsg->command_type=REGISTER_SEQ;
+     send_data(s, smsg, sizeof(struct DriverMsg));
      send_data(s, pulseseq, sizeof(struct SeqPRM));
      send_data(s, pulseseq->rep, sizeof(unsigned char)*pulseseq->len);
      send_data(s, pulseseq->code, sizeof(unsigned char)*pulseseq->len);
-     recv_data(s, &rmsg, sizeof(struct ROSMsg));
-     if(verbose>1) printf("PulseSeq Transfer Status: %d\n",rmsg.status); 
+     recv_data(s, rmsg, sizeof(struct DriverMsg));
+     if(verbose>1) printf("PulseSeq Transfer Status: %d\n",rmsg->status); 
  }
 /*
  * Request a default ControlPRM parameter structure to work with 
  */
 
  if(verbose>1) printf("Get Default Parameters %d\n",GET_PARAMETERS);
-    smsg.type=GET_PARAMETERS;
-      send_data(s, &smsg, sizeof(struct ROSMsg));
+    smsg->command_type=GET_PARAMETERS;
+      send_data(s, smsg, sizeof(struct DriverMsg));
       recv_data(s, &parameters, sizeof(struct ControlPRM));
-      recv_data(s, &rmsg, sizeof(struct ROSMsg));
-      if(verbose>1) printf("Get Parameters Command Status: %d\n",rmsg.status); 
+      recv_data(s, rmsg, sizeof(struct DriverMsg));
+      if(verbose>1) printf("Get Parameters Command Status: %d\n",rmsg->status); 
  while(1) {
 /* Rotate beam direction*/
    bmnum=(bmnum +1) % 16;
@@ -201,25 +204,25 @@ main( int argc, char *argv[])
   clrfreq_parameters.rbeam=bmnum;  
   clrfreq_parameters.filter_bandwidth=250;  
 
-  smsg.type=REQUEST_CLEAR_FREQ_SEARCH;
-  send_data(s, &smsg, sizeof(struct ROSMsg));
+  smsg->command_type=REQUEST_CLEAR_FREQ_SEARCH;
+  send_data(s, smsg, sizeof(struct DriverMsg));
   send_data(s, &clrfreq_parameters, sizeof(struct CLRFreqPRM));
-  recv_data(s, &rmsg, sizeof(struct ROSMsg));
+  recv_data(s, rmsg, sizeof(struct DriverMsg));
 
 
-  smsg.type=REQUEST_ASSIGNED_FREQ;
-  send_data(s, &smsg, sizeof(struct ROSMsg));
+  smsg->command_type=REQUEST_ASSIGNED_FREQ;
+  send_data(s, smsg, sizeof(struct DriverMsg));
   recv_data(s,&tfreq, sizeof(int32)); 
   recv_data(s,&noise, sizeof(float));  
-  recv_data(s,&rmsg, sizeof(struct ROSMsg)); 
+  recv_data(s,rmsg, sizeof(struct DriverMsg)); 
 
    if(verbose>1) printf("Data Acquisition Loop\n");
    gettimeofday(&t0,NULL);
    if(verbose>1) printf("Sending the Keepalive Command\n");
-    smsg.type=PING; 
-      send_data(s, &smsg, sizeof(struct ROSMsg));
-      recv_data(s, &rmsg, sizeof(struct ROSMsg));
-      if(verbose>1) printf("Msg Status: %d\n",rmsg.status); 
+    smsg->command_type=PING; 
+      send_data(s, smsg, sizeof(struct DriverMsg));
+      recv_data(s, rmsg, sizeof(struct DriverMsg));
+      if(verbose>1) printf("Msg Status: %d\n",rmsg->status); 
 
 /*
  * Set-up the operational program hardware parameters 
@@ -246,24 +249,24 @@ main( int argc, char *argv[])
      printf("  current transmit beam: %d\n",parameters.tbeam);
      printf("  current pulse index: %d\n",parameters.current_pulseseq_index);
    }
-    smsg.type=SET_PARAMETERS;
-      send_data(s, &smsg, sizeof(struct ROSMsg));
+    smsg->command_type=SET_PARAMETERS;
+      send_data(s, smsg, sizeof(struct DriverMsg));
       send_data(s, &parameters, sizeof(struct ControlPRM));
-      recv_data(s, &rmsg, sizeof(struct ROSMsg));
+      recv_data(s, rmsg, sizeof(struct DriverMsg));
 
    if(verbose>1) printf("Sending the Set Ready Command %d\n",SET_READY_FLAG);
-    smsg.type=SET_READY_FLAG;
-      send_data(s, &smsg, sizeof(struct ROSMsg));
+    smsg->command_type=SET_READY_FLAG;
+      send_data(s, smsg, sizeof(struct DriverMsg));
       if(verbose>1) printf("wait for return message\n");
-      recv_data(s, &rmsg, sizeof(struct ROSMsg));
+      recv_data(s, rmsg, sizeof(struct DriverMsg));
    gettimeofday(&t2,NULL);
    elapsed=(t2.tv_sec-t0.tv_sec)*1E6;
    elapsed+=(t2.tv_usec-t0.tv_usec);
    if(verbose>0) printf("  Ready Elapsed Microseconds: %ld\n",elapsed);
 
    if(verbose>1) printf("Sending the get data Command %d\n",GET_DATA);
-    smsg.type=GET_DATA;
-      send_data(s, &smsg, sizeof(struct ROSMsg));
+    smsg->command_type=GET_DATA;
+      send_data(s, smsg, sizeof(struct DriverMsg));
       if(main!=NULL) {
         free(main);
         main=NULL;
@@ -273,6 +276,8 @@ main( int argc, char *argv[])
         back=NULL;
       }
       if(verbose>1) printf("wait for data structure\n");
+      recv_data(s, rmsg, sizeof(struct DriverMsg));
+/*
       recv_data(s, &dprm, sizeof(struct DataPRM));
       if(verbose>1) printf("  samples: %d\n",dprm.samples);
       if(verbose>1) printf("  status: %d\n",dprm.status);
@@ -294,7 +299,7 @@ main( int argc, char *argv[])
         //recv_data(s, &num_transmitters, sizeof(int32));
         //recv_data(s, txstatus.AGC, sizeof(int32)*num_transmitters);
         //recv_data(s, txstatus.LOWPWR, sizeof(int32)*num_transmitters);
-        recv_data(s, &rmsg, sizeof(struct ROSMsg));
+        recv_data(s, rmsg, sizeof(struct DriverMsg));
         if (verbose > 1) printf("Main Data Peek\n");
         fprintf(fp,":::Iteration::: %d\n",j);
         for (i=0;i<dprm.samples;i++) {
@@ -305,8 +310,9 @@ main( int argc, char *argv[])
         }
         j++;
       } else {
-        recv_data(s, &rmsg, sizeof(struct ROSMsg));
+        recv_data(s, rmsg, sizeof(struct DriverMsg));
       } 
+*/
       gettimeofday(&t3,NULL);
       elapsed=(t3.tv_sec-t2.tv_sec)*1E6;
       elapsed+=(t3.tv_usec-t2.tv_usec);
@@ -316,86 +322,51 @@ main( int argc, char *argv[])
 *  This is a needed step as the ROS may force parameters to different values than requested 
 *   if multiple operating programs are running. (This relates to priority parameter)
 */
-    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-    aux_dict=NULL;
+//    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+//    aux_dict=NULL;
+//
+//    aux_dict=dictionary_new(0);
+//    iniparser_set(aux_dict,"aux","NAME",NULL);
+//    iniparser_set(aux_dict,"aux:command","GET_TX_STATUS",NULL);
+//    iniparser_set(aux_dict,"dio",NULL,NULL);
+//    sprintf(value,"%d",r);
+//    iniparser_set(aux_dict,"dio:radar",value,NULL);
+//    sprintf(value,"%d",sizeof(int32));
+//    nsecs=iniparser_getnsec(aux_dict);
+//    for(i=0 ; i<nsecs;i++) {
+//      secname_in_dict=iniparser_getsecname(aux_dict,i);
+//      dict_buf=iniparser_getbuf(aux_dict,secname_in_dict,&bufsize);
+//      printf("%s: %d\n",secname_in_dict,bufsize);
+//    }
 
-    aux_dict=dictionary_new(0);
-    iniparser_set(aux_dict,"aux","NAME",NULL);
-    iniparser_set(aux_dict,"aux:command","GET_TX_STATUS",NULL);
-    iniparser_set(aux_dict,"dio",NULL,NULL);
-    sprintf(value,"%d",r);
-    iniparser_set(aux_dict,"dio:radar",value,NULL);
-    sprintf(value,"%d",sizeof(int32));
-    nsecs=iniparser_getnsec(aux_dict);
-    for(i=0 ; i<nsecs;i++) {
-      secname_in_dict=iniparser_getsecname(aux_dict,i);
-      dict_buf=iniparser_getbuf(aux_dict,secname_in_dict,&bufsize);
-      printf("%s: %d\n",secname_in_dict,bufsize);
-    }
-
-    smsg.type=AUX_COMMAND;
-    smsg.status=1;
-    send_data(s, &smsg, sizeof(struct ROSMsg));
-    recv_data(s, &rmsg, sizeof(struct ROSMsg));
-    if(rmsg.status==1) {
-      printf("AUX Command is valid\n");
-/*
-      dict_string=iniparser_to_string(aux_dict);
-      bytes=strlen(dict_string)+1;
-      send_data(s, &bytes, sizeof(int32));
-      send_data(s, dict_string, bytes*sizeof(char));
-      // Prepare to send arb. data buf 
-      nsecs=iniparser_getnsec(aux_dict);
-      send_data(s, &nsecs, sizeof(int32));
-      for(i=0 ; i<nsecs;i++) {
-        secname_in_dict=iniparser_getsecname(aux_dict,i);
-        dict_buf=iniparser_getbuf(aux_dict,secname_in_dict,&bufsize);
-        bytes=strlen(secname_in_dict)+1;
-        send_data(s,&bytes,sizeof(int32));
-        send_data(s,secname_in_dict,bytes);
-        bytes=bufsize;
-        send_data(s,dict_buf,bytes);
-      }
-*/
-        printf("Send AUX dict %p\n",aux_dict);
-	send_aux_dict(s,aux_dict,1);
-        if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-        aux_dict=NULL;
-	recv_aux_dict(s,&aux_dict,1);
-        printf("AUX dict sent %p\n",aux_dict);
-/*
-      recv_data(s, &bytes, sizeof(int32));
-      if(dict_string!=NULL) free(dict_string);
-      dict_string=malloc(sizeof(char)*(bytes+10));
-      recv_data(s, dict_string, bytes*sizeof(char));
-      if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-      aux_dict=NULL;
-      aux_dict=iniparser_load_from_string(NULL,dict_string);
-      if(dict_string!=NULL) free(dict_string);
-      dict_string=NULL;
-      // Prepare to recv arb. buf data buf and place it into dict
-      nsecs=0;
-      recv_data(s,&nsecs,sizeof(int32));
-      printf("DIO AUX Command nsecs %d\n",nsecs);
-      for(i=0;i<nsecs;i++) {
-        recv_data(s,&bytes,sizeof(int32));
-        recv_data(s,secname_static,bytes);
-        sprintf(entry,"%s:bytes",secname_static);
-        bytes=iniparser_getint(aux_dict,entry,0);
-        if(temp_buf!=NULL) free(temp_buf);
-        temp_buf=malloc(bytes);
-        recv_data(s,temp_buf,bytes);
-        iniparser_setbuf(aux_dict,secname_static,temp_buf,bytes);
-        if(temp_buf!=NULL) free(temp_buf);
-        temp_buf=NULL;
-      }
-*/
-      recv_data(s, &rmsg, sizeof(struct ROSMsg));
-    }
-    dict_buf=iniparser_getbuf(aux_dict,"dio",&bufsize);
-    printf("Data Bufsize %d tx_status size: %d\n",bufsize,sizeof(struct tx_status));
-    printf("TX Status for radar %d\n",r);
-    memmove(&txstatus,dict_buf,bufsize);
+    driver_msg_set_command(smsg,AUX_COMMAND,"GET_TX_STATUS","DIO");
+    //smsg->command_type=AUX_COMMAND;
+    smsg->status=1;
+    printf("AUX  STATUS Radar %d\n",radar);
+    driver_msg_add_var(smsg,&radar,sizeof(int32),"radar","int32");
+    temp=0;
+    driver_msg_get_var_by_name(smsg,"radar",&temp);
+    printf("AUX  STATUS Send %d\n",temp);
+    driver_msg_send(s, smsg);
+    driver_msg_free_buffer(smsg);
+    driver_msg_recv(s, rmsg);
+    driver_msg_dump_var_info(rmsg); 
+    driver_msg_get_var_by_name(rmsg,"txstatus",&txstatus); 
+    printf("AUX  STATUS DONE\n");
+//    if(rmsg.status==1) {
+//      printf("AUX Command is valid\n");
+//        printf("Send AUX dict %p\n",aux_dict);
+//	send_aux_dict(s,aux_dict,1);
+//        if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+//        aux_dict=NULL;
+//	recv_aux_dict(s,&aux_dict,1);
+//        printf("AUX dict sent %p\n",aux_dict);
+//      recv_data(s, &rmsg, sizeof(struct DriverMsg));
+//    }
+//    dict_buf=iniparser_getbuf(aux_dict,"dio",&bufsize);
+//    printf("Data Bufsize %d tx_status size: %d\n",bufsize,sizeof(struct tx_status));
+//    printf("TX Status for radar %d\n",r);
+//    memmove(&txstatus,dict_buf,bufsize);
     for (i=0;i<MAX_TRANSMITTERS;i++) {
       printf("%d : %d %d %d\n",i,
         txstatus.LOWPWR[i],
@@ -403,15 +374,15 @@ main( int argc, char *argv[])
         txstatus.status[i]);
     }
 
-    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-    aux_dict=NULL;
+//    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
+//    aux_dict=NULL;
 
 
    if(verbose>1) printf("Send Get Parameters Command %d\n",GET_PARAMETERS);
-    smsg.type=GET_PARAMETERS;
-      send_data(s, &smsg, sizeof(struct ROSMsg));
+    smsg->command_type=GET_PARAMETERS;
+      send_data(s, smsg, sizeof(struct DriverMsg));
       recv_data(s, &parameters, sizeof(struct ControlPRM));
-      recv_data(s, &rmsg, sizeof(struct ROSMsg));
+      recv_data(s, rmsg, sizeof(struct DriverMsg));
    if(verbose>1) {
      printf("  radar: %d\n",parameters.radar);
      printf("  channel: %d\n",parameters.channel);
