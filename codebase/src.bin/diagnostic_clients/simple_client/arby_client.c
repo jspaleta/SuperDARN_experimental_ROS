@@ -226,17 +226,24 @@ main( int argc, char *argv[])
   clrfreq_parameters.rbeam=bmnum;  
   clrfreq_parameters.filter_bandwidth=250;  
 
-  smsg->command_type=REQUEST_CLEAR_FREQ_SEARCH;
-  send_data(s, smsg, sizeof(struct DriverMsg));
-  send_data(s, &clrfreq_parameters, sizeof(struct CLRFreqPRM));
-  recv_data(s, rmsg, sizeof(struct DriverMsg));
+   driver_msg_init(smsg);
+   driver_msg_init(rmsg);
+   driver_msg_set_command(smsg,REQUEST_CLEAR_FREQ_SEARCH,"request_clear_freq_search","NONE");
+   driver_msg_add_var(smsg,&clrfreq_parameters,sizeof(struct CLRFreqPRM),"clrfreq_parameters","CLRFreqPRM");
+   driver_msg_send(s, smsg);
+   driver_msg_recv(s, rmsg);
+   driver_msg_free_buffer(smsg);
+   driver_msg_free_buffer(rmsg);
 
-
-  smsg->command_type=REQUEST_ASSIGNED_FREQ;
-  send_data(s, smsg, sizeof(struct DriverMsg));
-  recv_data(s,&tfreq, sizeof(int32)); 
-  recv_data(s,&noise, sizeof(float));  
-  recv_data(s,rmsg, sizeof(struct DriverMsg)); 
+   driver_msg_init(smsg);
+   driver_msg_init(rmsg);
+   driver_msg_set_command(smsg,REQUEST_ASSIGNED_FREQ,"request_assigned_freq","NONE");
+   driver_msg_send(s, smsg);
+   driver_msg_recv(s, rmsg);
+   driver_msg_get_var_by_name(rmsg,"assigned_freq_khz",&tfreq);
+   driver_msg_get_var_by_name(rmsg,"assigned_noise_pwr",&noise);
+   driver_msg_free_buffer(smsg);
+   driver_msg_free_buffer(rmsg);
 
    if(verbose>1) printf("Data Acquisition Loop\n");
    gettimeofday(&t0,NULL);

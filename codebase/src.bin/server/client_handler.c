@@ -653,7 +653,7 @@ void *control_handler(struct ControlProgram *control_program)
 
           case REQUEST_CLEAR_FREQ_SEARCH:
             pthread_mutex_lock(&controlprogram_list_lock);
-            recv_data(socket,&control_program->clrfreqsearch, sizeof(struct CLRFreqPRM)); // requested search parameters
+	    driver_msg_get_var_by_name(&smsg,"clrfreq_parameters",&control_program->clrfreqsearch);
             if ( (r < 0) || (c < 0)) {
               rmsg.status=-1;
             } else {
@@ -665,8 +665,8 @@ void *control_handler(struct ControlProgram *control_program)
               pthread_join(threads[0],NULL);
               rmsg.status=1;
             }
-            driver_msg_send(socket, &rmsg);
             pthread_mutex_unlock(&controlprogram_list_lock);
+            driver_msg_send(socket, &rmsg);
             break;
           case REQUEST_ASSIGNED_FREQ:
             pthread_mutex_lock(&controlprogram_list_lock);
@@ -680,10 +680,10 @@ void *control_handler(struct ControlProgram *control_program)
               rmsg.status=1;
             }
             current_freq=control_program->state->current_assigned_freq; 
-            send_data(socket, &current_freq, sizeof(int32));
-            send_data(socket, &control_program->state->current_assigned_noise, sizeof(float));
-            driver_msg_send(socket, &rmsg);
+	    driver_msg_add_var(&rmsg,&current_freq,sizeof(int32),"assigned_freq_khz","int32");
+	    driver_msg_add_var(&rmsg,&control_program->state->current_assigned_noise,sizeof(float),"assigned_noise_pwr","int32");
             pthread_mutex_unlock(&controlprogram_list_lock);
+            driver_msg_send(socket, &rmsg);
             break;
 
           case QUIT:
