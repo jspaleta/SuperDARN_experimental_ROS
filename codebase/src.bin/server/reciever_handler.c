@@ -407,7 +407,9 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		thread_list=controlprogram_threads;
      		while (thread_list!=NULL) {
        			controlprogram=thread_list->data;
-			if(controlprogram!=arg) {                   
+			if(controlprogram!=NULL) {                   
+			  if(controlprogram!=arg) {                   
+			    if(controlprogram->state!=NULL) {                   
        				if(controlprogram->state->active!=0) {
            				if (blacklist_count < (numclients*2)) {  
            					/* place controlprogram's assigned frequency on the blacklist */
@@ -424,7 +426,9 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 					}
          			//} 
 				}
-       			}
+                            }
+       			  }
+			}
        			thread_list=thread_list->prev;
      		}
 		if(verbose > 0 ) {
@@ -694,8 +698,6 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
   unsigned long wait_elapsed;
   double error_percent=0;
   int error_flag;
-  driver_msg_init(&s_msg);
-  driver_msg_init(&r_msg);
 
   error_flag=0;
 
@@ -717,7 +719,6 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
           usleep(1);
         }
       } 
-      pthread_mutex_lock(&recv_comm_lock);
       r=arg->parameters->radar-1;
       c=arg->parameters->channel-1;
       b=arg->data->bufnum;
@@ -732,27 +733,36 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         arg->main_addr=NULL;
         if(arg->back_addr!=NULL) free(arg->back_addr);
         arg->back_addr=NULL;
+/*
+        driver_msg_init(&s_msg);
+        driver_msg_init(&r_msg);
         driver_msg_set_command(&s_msg,GET_DATA_STATUS,"get_data_status","NONE");
 	driver_msg_add_var(&s_msg,&arg->parameters->radar,sizeof(int32),"radar","int32");
 	driver_msg_add_var(&s_msg,&arg->parameters->channel,sizeof(int32),"channel","int32");
 	driver_msg_add_var(&s_msg,&arg->data->bufnum,sizeof(int32),"bufnum","int32");
+        pthread_mutex_lock(&recv_comm_lock);
   	driver_msg_send(recvsock, &s_msg);
 	driver_msg_recv(recvsock, &r_msg);
+        pthread_mutex_unlock(&recv_comm_lock);
 	driver_msg_get_var_by_name(&r_msg,"data_status",&arg->data->status);
         driver_msg_free_buffer(&s_msg);
         driver_msg_free_buffer(&r_msg);
+*/
       } else {
         arg->data->status=error_flag;
         arg->data->samples=0;
       }      
       if (arg->data->status>0 ) {
+/*
         driver_msg_init(&s_msg);
         driver_msg_init(&r_msg);
         driver_msg_set_command(&s_msg,GET_DATA,"get_data","NONE");
 	driver_msg_add_var(&s_msg,&arg->parameters->radar,sizeof(int32),"radar","int32");
 	driver_msg_add_var(&s_msg,&arg->parameters->channel,sizeof(int32),"channel","int32");
+        pthread_mutex_lock(&recv_comm_lock);
   	driver_msg_send(recvsock, &s_msg);
 	driver_msg_recv(recvsock, &r_msg);
+        pthread_mutex_unlock(&recv_comm_lock);
 	driver_msg_get_var_by_name(&r_msg,"data_prm",arg->data);
         if(r_msg.status>0) {
           if(arg->data->use_shared_memory) {
@@ -774,6 +784,7 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         }
         driver_msg_free_buffer(&s_msg);
         driver_msg_free_buffer(&r_msg);
+*/
       } 
 
       if (error_flag==0) {
@@ -812,8 +823,6 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         fprintf(stderr,"  Collected: %ld  Errors: %ld  Percentage: %lf\n",collection_count,error_count,error_percent);
         fflush(stderr);
       }
-
-      pthread_mutex_unlock(&recv_comm_lock);
     }
   }
   pthread_exit(NULL);
@@ -830,12 +839,14 @@ void *receiver_clrfreq(struct ControlProgram *arg)
   r=arg->parameters->radar-1;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,RECV_CLRFREQ,"recv_clrfreq","NONE");
-  pthread_mutex_lock(&recv_comm_lock);
+  driver_msg_set_command(&s_msg,CLRFREQ,"clrfreq","NONE");
   driver_msg_add_var(&s_msg,&arg->clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","struct CLRFreqRPM");
   driver_msg_add_var(&s_msg,&arg->parameters,sizeof(struct ControlPRM),"parameters","struct CLRFreqRPM");
+  pthread_mutex_lock(&recv_comm_lock);
   driver_msg_send(recvsock, &s_msg);
   driver_msg_recv(recvsock, &r_msg);
+  pthread_mutex_unlock(&recv_comm_lock);
+
   if(r_msg.status>0) {
     driver_msg_get_var_by_name(&r_msg,"clrfreqsearch",&arg->clrfreqsearch);
     if(verbose > 1 ) fprintf(stderr,"  final search parameters\n");  
@@ -852,8 +863,13 @@ void *receiver_clrfreq(struct ControlProgram *arg)
     if(pwr!=NULL) free(pwr); 
     pwr=NULL;
     arg->state->N=0;
+    arg->clrfreqsearch.start=0;
+    arg->clrfreqsearch.end=0;
     pwr = (double*) malloc(sizeof(double) * arg->state->N);
   }
+  driver_msg_free_buffer(&s_msg);
+  driver_msg_free_buffer(&r_msg);
+
   centre=(arg->clrfreqsearch.end+arg->clrfreqsearch.start)/2;
   bandwidth=arg->state->N;
   start=centre-arg->state->N/2;
@@ -881,7 +897,6 @@ void *receiver_clrfreq(struct ControlProgram *arg)
   }
   if (pwr!=NULL) free(pwr);
   pwr=NULL;
-  pthread_mutex_unlock(&recv_comm_lock);
   pthread_exit(NULL);
 
 }

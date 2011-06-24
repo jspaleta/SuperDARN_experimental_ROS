@@ -641,8 +641,8 @@ int main ( int argc, char **argv){
 			* For those driver the default case can be used and the ROS will deal with it accordingly.
  			*/  
 			if (verbose > -10) printf("Driver: BAD CODE: %c : %d\n",datacode,(unsigned int)datacode);
-                        msg.status=-1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                        r_msg.status=-1;
+                        rval=driver_msg_send(msgsock, &r_msg);
 			break;
 		    }
                     driver_msg_free_buffer(&r_msg);

@@ -121,6 +121,7 @@ void *coordination_handler(struct ControlProgram *control_program)
           rc = pthread_create(&threads[0], NULL, (void *) &timing_trigger, (void *)&trigger_type);
           pthread_join(threads[0],NULL);
           trigger_state=3;//post-trigger
+
           driver_msg_init(&s_msg);
           driver_msg_init(&r_msg);
           driver_msg_set_command(&s_msg,GET_EVENT_TIME,"get_event_time","GPS");
@@ -131,6 +132,7 @@ void *coordination_handler(struct ControlProgram *control_program)
           driver_msg_get_var_by_name(&r_msg,"gps_nsecond",&gpsnsecond);
           driver_msg_free_buffer(&r_msg);
           driver_msg_free_buffer(&s_msg);
+
           i=0;
           if(control_program->state->active==1) { 
             control_program->state->gpssecond=gpssecond;

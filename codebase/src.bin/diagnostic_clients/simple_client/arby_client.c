@@ -245,6 +245,7 @@ main( int argc, char *argv[])
    driver_msg_free_buffer(smsg);
    driver_msg_free_buffer(rmsg);
 
+
    if(verbose>1) printf("Data Acquisition Loop\n");
    gettimeofday(&t0,NULL);
    if(verbose>1) printf("Sending the Keepalive Command\n");
@@ -364,25 +365,8 @@ main( int argc, char *argv[])
 *  This is a needed step as the ROS may force parameters to different values than requested 
 *   if multiple operating programs are running. (This relates to priority parameter)
 */
-//    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-//    aux_dict=NULL;
-//
-//    aux_dict=dictionary_new(0);
-//    iniparser_set(aux_dict,"aux","NAME",NULL);
-//    iniparser_set(aux_dict,"aux:command","GET_TX_STATUS",NULL);
-//    iniparser_set(aux_dict,"dio",NULL,NULL);
-//    sprintf(value,"%d",r);
-//    iniparser_set(aux_dict,"dio:radar",value,NULL);
-//    sprintf(value,"%d",sizeof(int32));
-//    nsecs=iniparser_getnsec(aux_dict);
-//    for(i=0 ; i<nsecs;i++) {
-//      secname_in_dict=iniparser_getsecname(aux_dict,i);
-//      dict_buf=iniparser_getbuf(aux_dict,secname_in_dict,&bufsize);
-//      printf("%s: %d\n",secname_in_dict,bufsize);
-//    }
 
     driver_msg_set_command(smsg,AUX_COMMAND,"GET_TX_STATUS","DIO");
-    //smsg->command_type=AUX_COMMAND;
     smsg->status=1;
     printf("AUX  STATUS Radar %d\n",radar);
     driver_msg_add_var(smsg,&radar,sizeof(int32),"radar","int32");
@@ -402,9 +386,6 @@ main( int argc, char *argv[])
         txstatus.AGC[i],
         txstatus.status[i]);
     }
-
-//    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-//    aux_dict=NULL;
 
  if(verbose>1) printf("Get Parameters %d\n",GET_PARAMETERS);
    driver_msg_init(smsg);

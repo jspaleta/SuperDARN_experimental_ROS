@@ -160,7 +160,7 @@ struct BlackList {
 #define GET_DATA_STATUS 'D'
 #define PRE_CLRFREQ 'c'
 #define POST_CLRFREQ 'C'
-#define RECV_CLRFREQ 'F'
+#define CLRFREQ 'F'
 //#define FULL_CLRFREQ '-'
 
 
