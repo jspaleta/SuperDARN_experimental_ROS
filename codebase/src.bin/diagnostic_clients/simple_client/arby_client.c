@@ -22,14 +22,17 @@ int verbose=10;
 FILE *fp;
 void graceful_exit(int signum)
 {
-  struct DriverMsg msg;
-        driver_msg_set_command(&msg,QUIT,"quit","NONE");
+  struct DriverMsg smsg,rmsg;
         if (signum==13) errno=EPIPE;
         else {
-          msg.command_type=QUIT;
-          send_data(s, &msg, sizeof(struct DriverMsg));
-          recv_data(s, &msg, sizeof(struct DriverMsg));
-          printf("Msg Status: %d\n",msg.status); 
+          driver_msg_init(&smsg);
+          driver_msg_init(&rmsg);
+          driver_msg_set_command(&smsg,QUIT,"quit","NONE");
+          driver_msg_send(s, &smsg);
+          driver_msg_recv(s, &rmsg);
+          driver_msg_free_buffer(&smsg);
+          driver_msg_free_buffer(&rmsg);
+          printf("Msg Status: %d\n",rmsg.status); 
         }
         fclose(fp);
         perror( "Stopping the control program process");
@@ -57,6 +60,7 @@ main( int argc, char *argv[])
   struct tx_status txstatus;
   struct TRTimes bad_transmit_times;
   struct CLRFreqPRM clrfreq_parameters;
+  struct SeqPRM tprm;
   struct TSGbuf *pulseseq=NULL;
   struct TSGprm prm;
   struct sockaddr_un sa;
@@ -156,31 +160,45 @@ main( int argc, char *argv[])
  * send and receive the Radar request structure.
  */
  if(verbose>1) printf("Sending the Register Chan Command %c\n",SET_RADAR_CHAN);
-  smsg->command_type=SET_RADAR_CHAN;
-    send_data(s, smsg, sizeof(struct DriverMsg)); //Send the Command Message
-    radar=1;  //Ask for radar 1  
-    channel=1;  //Ask for channel 1
-    send_data(s, &radar, sizeof(int32)); //Send the radar request
-    send_data(s, &channel, sizeof(int32)); //Send the channel request
-    recv_data(s, rmsg, sizeof(struct DriverMsg)); //resv the handshake back
-    if(verbose>1) printf("Radar Chan Transfer Status: %d\n",rmsg->status); 
+   driver_msg_init(smsg);
+   driver_msg_init(rmsg);
+   driver_msg_set_command(smsg,SET_RADAR_CHAN,"set_radar_chan","NONE");
+   radar=1;  //Ask for radar 1  
+   channel=1;  //Ask for channel 1
+   driver_msg_add_var(smsg,&radar,sizeof(int32),"radar","int32");
+   driver_msg_add_var(smsg,&channel,sizeof(int32),"channel","int32");
+   driver_msg_send(s, smsg); //Send the Command Message
+   driver_msg_recv(s, rmsg); //resv the handshake back
+   if(verbose>1) printf("Radar Chan Transfer Status: %d\n",rmsg->status); 
+   driver_msg_free_buffer(smsg);
+   driver_msg_free_buffer(rmsg);
 /*
  * Create Pulse Sequence mimic SiteTimeSeq function in site library.
  * Re-create TSGMake using modified TSGBuf structure
  * Look at whether TSGAdd TSGCheck DIOVerifyID are needed
  */
+
  if(verbose>1) printf("Entering MakeTimeSeq\n");
  pulseseq=TSGMake(&prm,index,&flag);
  if (pulseseq!=NULL) {
    if(verbose>1) printf("Pulseseq len: %d\n",pulseseq->len);
    if(verbose>1) printf("Sending the Register Seq Command %d\n",REGISTER_SEQ);
-   smsg->command_type=REGISTER_SEQ;
-     send_data(s, smsg, sizeof(struct DriverMsg));
-     send_data(s, pulseseq, sizeof(struct SeqPRM));
-     send_data(s, pulseseq->rep, sizeof(unsigned char)*pulseseq->len);
-     send_data(s, pulseseq->code, sizeof(unsigned char)*pulseseq->len);
-     recv_data(s, rmsg, sizeof(struct DriverMsg));
+   driver_msg_init(smsg);
+   driver_msg_init(rmsg);
+   driver_msg_set_command(smsg,REGISTER_SEQ,"register_seq","NONE");
+   tprm.len=pulseseq->len;
+   tprm.index=pulseseq->index;
+   tprm.step=pulseseq->step;
+   tprm.samples=0;
+   tprm.smdelay=0;
+   driver_msg_add_var(smsg,&tprm,sizeof(struct SeqPRM),"tprm","SeqPRM");
+   driver_msg_add_var(smsg,pulseseq->rep,sizeof(unsigned char)*pulseseq->len,"rep","unsigned char array");
+   driver_msg_add_var(smsg,pulseseq->code,sizeof(unsigned char)*pulseseq->len,"code","unsigned char array");
+   driver_msg_send(s, smsg);
+   driver_msg_recv(s, rmsg);
      if(verbose>1) printf("PulseSeq Transfer Status: %d\n",rmsg->status); 
+   driver_msg_free_buffer(smsg);
+   driver_msg_free_buffer(rmsg);
  }
 /*
  * Request a default ControlPRM parameter structure to work with 
@@ -352,6 +370,7 @@ main( int argc, char *argv[])
     driver_msg_recv(s, rmsg);
     driver_msg_dump_var_info(rmsg); 
     driver_msg_get_var_by_name(rmsg,"txstatus",&txstatus); 
+    driver_msg_free_buffer(rmsg);
     printf("AUX  STATUS DONE\n");
 //    if(rmsg.status==1) {
 //      printf("AUX Command is valid\n");
