@@ -400,9 +400,9 @@ int main ( int argc, char **argv){
  			* the timing card.
  			*/  
 			if (verbose > 1 ) printf("Driver: Send Master Trigger\n");	
-          		if(strcmp(driver_type,"TIMING")==0) msg.status=1;
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+          		if(strcmp(driver_type,"TIMING")==0) r_msg.status=1;
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
                         break;
 
                       case EXTERNAL_TRIGGER:
@@ -412,9 +412,9 @@ int main ( int argc, char **argv){
  			*   on signals from the timing card.
  			*/  
                         if (verbose > 1 ) printf("Driver: Setup for external trigger\n");
-          		if(strcmp(driver_type,"TIMING")==0) msg.status=1;
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+          		if(strcmp(driver_type,"TIMING")==0) r_msg.status=1;
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
                         break;
 		      case WAIT:
 			/* WAIT: After a trigger or external trigger command has been issued. The ROS 
@@ -423,8 +423,8 @@ int main ( int argc, char **argv){
  			*/  
 			if (verbose > 1 ) printf("Driver: Wait\n");	
 			/* Driver would put the logic necessary to block waiting for a sequence operation to complete*/
-                        msg.status=1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                        r_msg.status=1;
+                        rval=driver_msg_send(msgsock, &r_msg);
 			break;
 		      case POSTTRIGGER:
 			/* POSTTRIGGER: After a trigger or external trigger event, the ROS server may 
@@ -432,8 +432,7 @@ int main ( int argc, char **argv){
  			* internal driver state.
  			*/  
                         if (verbose > 1)  printf("Driver: Post-trigger Setup\n");
-                        msg.status=1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                        r_msg.status=1;
                         numclients=0;
                         for (r=0;r<MAX_RADARS;r++){
                           for (c=0;c<MAX_CHANNELS;c++){
@@ -441,6 +440,7 @@ int main ( int argc, char **argv){
                           }
                         }
                         if (verbose > 1)  printf("Driver: Ending Post-trigger Setup\n");
+                        rval=driver_msg_send(msgsock, &r_msg);
                         break;
 		      case SITE_SETTINGS:
 			/* SITE_SETTINGS: The ROS may issue this command to a driver. 
@@ -498,12 +498,8 @@ int main ( int argc, char **argv){
 
                         msg.status=1;
                         if(msg.status==1) {
-                          //rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-                          //recv_aux_dict(msgsock,&aux,1); 
 			  /* process aux command dictionary here */
 			  process_aux_msg(msg,&r_msg);
-			  //process_aux_commands(&aux,driver_type);
-                          //send_aux_dict(msgsock,aux,1); 
 			}
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
@@ -523,23 +519,18 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"TIMING")==0) msg.status=1;
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+          		if(strcmp(driver_type,"TIMING")==0) r_msg.status=1;
+	  		else r_msg.status=0;
 
-			if(msg.status==1) {
+			if(r_msg.status==1) {
 			        if (verbose > 1 ) printf("Driver: tr_length %d\n",transmit_times.length);	
-				// If Timing Driver 
-                        	send_data(msgsock, &transmit_times.length, sizeof(transmit_times.length));
+				driver_msg_add_var(&r_msg,&transmit_times.length,sizeof(int32),"num_tr_windows","int32");
 				if(transmit_times.length > 0) {
-                        	  send_data(msgsock, transmit_times.start_usec, 
-                                    sizeof(unsigned int)*transmit_times.length);
-                        	  send_data(msgsock, transmit_times.duration_usec, 
-                                    sizeof(unsigned int)*transmit_times.length);
+				  driver_msg_add_var(&r_msg,transmit_times.start_usec,sizeof(uint32)*transmit_times.length,"tr_windows_start_usec","array");
+				  driver_msg_add_var(&r_msg,transmit_times.duration_usec,sizeof(uint32)*transmit_times.length,"tr_windows_duration_usec","array");
 				}
-				msg.status=1;
-                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			}
+                        rval=driver_msg_send(msgsock, &r_msg);
 			break;
 		      case GET_DATA_STATUS:
 			/* GET_DATA_STATUS: After a trigger or external trigger command has been issued. The ROS 
