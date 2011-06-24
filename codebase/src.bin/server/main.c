@@ -60,7 +60,7 @@ int *ready_state_pointer,*ready_count_pointer;
 struct SiteSettings site_settings;
 struct TRTimes bad_transmit_times;
 int32 gpsrate=REFRESHRATE;
-int verbose=1;
+int verbose=2;
 int die_on_socket_failure=0;
 int clear_frequency_request;
 struct BlackList *blacklist=NULL;

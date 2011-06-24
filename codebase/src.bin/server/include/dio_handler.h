@@ -13,6 +13,6 @@ void *DIO_pretrigger(void *arg);
 //void dio_default_config(struct dio_hdw *hdw);
 //int load_config(FILE *fp,struct dio_hdw *hdw);
 void *DIO_pre_clrfreq(struct ControlProgram *arg);
-void *DIO_post_clrfreq(void *arg);
+void *DIO_post_clrfreq(struct ControlProgram *arg);
 void *DIO_aux_command(dictionary **dict_p);
 void *DIO_aux_msg(struct DriverMsg *msg);

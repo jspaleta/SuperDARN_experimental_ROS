@@ -16,121 +16,119 @@ void dds_exit(void *arg)
 */
 }
 
-void *dds_register_seq(void *arg)
+void *dds_register_seq(struct ControlProgram *control_program)
 {
   struct DriverMsg s_msg,r_msg;
-  struct ControlProgram *control_program;
   int32 index;
-
-  control_program=arg;
-  pthread_mutex_lock(&dds_comm_lock);
-
-  s_msg.command_type=REGISTER_SEQ;
-  s_msg.status=1;
-  send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
-  recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
-  if(r_msg.status==1) { 
-    send_data(ddssock, control_program->parameters, sizeof(struct ControlPRM));
-    index=control_program->parameters->current_pulseseq_index;
-    send_data(ddssock, &index, sizeof(index)); //requested index
-    send_data(ddssock,control_program->state->pulseseqs[index], sizeof(struct TSGbuf)); // requested pulseseq
-//    send_data(ddssock,control_program->state->pulseseqs[index]->prm, sizeof(struct TSGprm)); // requested pulseseq
-
-    send_data(ddssock,control_program->state->pulseseqs[index]->rep, 
-    sizeof(unsigned char)*control_program->state->pulseseqs[index]->len); // requested pulseseq
-    send_data(ddssock,control_program->state->pulseseqs[index]->code, 
-    sizeof(unsigned char)*control_program->state->pulseseqs[index]->len); // requested pulseseq
-    recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  driver_msg_set_command(&s_msg,REGISTER_SEQ,"register_seq","DDS");
+  if (control_program!=NULL) {
+    if (control_program->parameters!=NULL) {
+      if (control_program->state!=NULL) {
+        driver_msg_add_var(&s_msg,control_program->parameters,sizeof(struct ControlPRM),"parameters","ControlPRM");
+        driver_msg_add_var(&s_msg,&index,sizeof(index),"index","int32");
+        driver_msg_add_var(&s_msg,control_program->state->pulseseqs[index],sizeof(struct TSGbuf),"pulseseq","struct TDGBuf");
+        driver_msg_add_var(&s_msg,control_program->state->pulseseqs[index]->rep,sizeof(unsigned char)*control_program->state->pulseseqs[index]->len,"rep","array");
+        driver_msg_add_var(&s_msg,control_program->state->pulseseqs[index]->code,sizeof(unsigned char)*control_program->state->pulseseqs[index]->len,"code","array");
+      }
+    }
   }
+  pthread_mutex_lock(&dds_comm_lock);
+  driver_msg_send(ddssock, &s_msg);
+  driver_msg_recv(ddssock, &r_msg);
   pthread_mutex_unlock(&dds_comm_lock);
+  driver_msg_free_buffer(&s_msg);
+  driver_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
+
 }
 
 void *dds_site_settings(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   struct SiteSettings *site_settings;
-
   site_settings=arg;
-  pthread_mutex_lock(&dds_comm_lock);
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  driver_msg_set_command(&s_msg,SITE_SETTINGS,"site_settings","NONE");
   if (site_settings!=NULL) {
-    s_msg.command_type=SITE_SETTINGS;
-    s_msg.status=1;
-    send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
-    recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
-    if(r_msg.status==1) {
-      send_data(ddssock, &site_settings->ifmode, sizeof(site_settings->ifmode));
-      send_data(ddssock, &site_settings->rf_settings, sizeof(struct RXFESettings));
-      send_data(ddssock, &site_settings->if_settings, sizeof(struct RXFESettings));
-      recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
-    }
+    driver_msg_add_var(&s_msg,&site_settings->ifmode,sizeof(int32),"ifmode","int32");
+    driver_msg_add_var(&s_msg,&site_settings->rf_settings,sizeof(struct RXFESettings),"rf_rxfe_settings","RFXESetting");
+    driver_msg_add_var(&s_msg,&site_settings->if_settings,sizeof(struct RXFESettings),"if_rxfe_settings","RXFESetting");
   }
+  pthread_mutex_lock(&dds_comm_lock);
+  driver_msg_send(ddssock, &s_msg);
+  driver_msg_recv(ddssock, &r_msg);
   pthread_mutex_unlock(&dds_comm_lock);
+  driver_msg_free_buffer(&s_msg);
+  driver_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
 }
 
-void *dds_ready_controlprogram(void *arg)
+void *dds_ready_controlprogram(struct ControlProgram *control_program)
 {
   struct DriverMsg s_msg,r_msg;
-  struct ControlProgram *control_program;
-  control_program=arg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  driver_msg_set_command(&s_msg,CtrlProg_READY,"ctrlprog_ready","NONE");
   pthread_mutex_lock(&dds_comm_lock);
-   if (control_program!=NULL) {
+  if (control_program!=NULL) {
      if (control_program->state->pulseseqs[control_program->parameters->current_pulseseq_index]!=NULL) {
-       s_msg.command_type=CtrlProg_READY;
-       s_msg.status=1;
-       send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
-       recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
-       if(r_msg.status==1) {
-         send_data(ddssock, control_program->parameters, sizeof(struct ControlPRM));
-         recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
-       }
+       driver_msg_add_var(&s_msg,control_program->parameters,sizeof(struct ControlPRM),"parameters","ControlPRM");
+       driver_msg_send(ddssock, &s_msg);
+       driver_msg_recv(ddssock, &r_msg);
      } 
-   }
-   pthread_mutex_unlock(&dds_comm_lock);
-   pthread_exit(NULL);
-}
-
-void *dds_end_controlprogram(void *arg)
-{
-  struct DriverMsg s_msg,r_msg;
-  struct ControlProgram *control_program;
-  control_program=arg;
-  pthread_mutex_lock(&dds_comm_lock);
-  s_msg.command_type=CtrlProg_END;
-  s_msg.status=1;
-  send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
-  recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
-  if(r_msg.status==1) {
-         send_data(ddssock, control_program->parameters, sizeof(struct ControlPRM));
-         recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
   }
   pthread_mutex_unlock(&dds_comm_lock);
+  driver_msg_free_buffer(&s_msg);
+  driver_msg_free_buffer(&r_msg);
+  pthread_exit(NULL);
+}
+
+void *dds_end_controlprogram(struct ControlProgram *control_program)
+{
+  struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  pthread_mutex_lock(&dds_comm_lock);
+  driver_msg_set_command(&s_msg,CtrlProg_END,"ctrlprog_end","NONE");
+  driver_msg_add_var(&s_msg,control_program->parameters,sizeof(struct ControlPRM),"parameters","ControlPRM");
+  driver_msg_send(ddssock, &s_msg);
+  driver_msg_recv(ddssock, &r_msg);
+  pthread_mutex_unlock(&dds_comm_lock);
+  driver_msg_free_buffer(&s_msg);
+  driver_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
 }
 
 void *dds_pretrigger(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  driver_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
   pthread_mutex_lock(&dds_comm_lock);
-  s_msg.command_type=PRETRIGGER;
-  s_msg.status=1;
-  send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
-  recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
+  driver_msg_send(ddssock, &s_msg);
+  driver_msg_recv(ddssock, &r_msg);
   pthread_mutex_unlock(&dds_comm_lock);
+  driver_msg_free_buffer(&s_msg);
+  driver_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
-
 }
 
 void *dds_posttrigger(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  driver_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
   pthread_mutex_lock(&dds_comm_lock);
-  s_msg.command_type=POSTTRIGGER;
-  s_msg.status=1;
-  send_data(ddssock, &s_msg, sizeof(struct DriverMsg));
-  recv_data(ddssock, &r_msg, sizeof(struct DriverMsg));
+  driver_msg_send(ddssock, &s_msg);
+  driver_msg_recv(ddssock, &r_msg);
   pthread_mutex_unlock(&dds_comm_lock);
+  driver_msg_free_buffer(&s_msg);
+  driver_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
 }
 

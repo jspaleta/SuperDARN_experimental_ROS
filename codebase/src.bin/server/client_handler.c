@@ -657,7 +657,7 @@ void *control_handler(struct ControlProgram *control_program)
               pthread_join(threads[0],NULL);
               rc = pthread_create(&threads[0], NULL, (void *) &receiver_clrfreq,control_program);
               pthread_join(threads[0],NULL);
-              rc = pthread_create(&threads[0], NULL, (void *) &DIO_post_clrfreq,NULL);
+              rc = pthread_create(&threads[0], NULL, (void *) &DIO_post_clrfreq,control_program);
               pthread_join(threads[0],NULL);
               rmsg.status=1;
             }

@@ -260,40 +260,33 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does handle this command, and its okay to send the
  			* sequence data by sending msg back with msg.status=1.
  			*/
-		        msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-			if(msg.status==1) {
-			/* Now recv the expected data as per the documented API for this command */
-                          rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
-                          r=client.radar-1; 
-                          c=client.channel-1; 
-		          rval=recv_data(msgsock,&index,sizeof(index));
-		          if (verbose > 1) printf("Driver: Requested sequence index: %d\n",index);	
+		        r_msg.status=0;
+			rval=driver_msg_get_var_by_name(&msg,"parameters",&client);
+			rval=driver_msg_get_var_by_name(&msg,"index",&index);
+                        r=client.radar-1; 
+                        c=client.channel-1; 
+		        if (verbose > 1) printf("Driver: Requested sequence index: %d\n",index);	
 			/*Prepare the memory pointers*/
-                          if (pulseseqs[r][c][index]!=NULL) {
+                        if (pulseseqs[r][c][index]!=NULL) {
                             if (pulseseqs[r][c][index]->rep!=NULL)  free(pulseseqs[r][c][index]->rep);
                             if (pulseseqs[r][c][index]->code!=NULL) free(pulseseqs[r][c][index]->code);
                             free(pulseseqs[r][c][index]);
-                          }
+                        }
 
 			  /* Fill memory pointers */
-                          pulseseqs[r][c][index]=malloc(sizeof(struct TSGbuf));
-                          rval=recv_data(msgsock,pulseseqs[r][c][index], 
-			    sizeof(struct TSGbuf)); // requested pulseseq
-                          pulseseqs[r][c][index]->rep=
+                        pulseseqs[r][c][index]=malloc(sizeof(struct TSGbuf));
+			rval=driver_msg_get_var_by_name(&msg,"pulseseq",pulseseqs[r][c][index]);
+                        pulseseqs[r][c][index]->rep=
                             malloc(sizeof(unsigned char)*pulseseqs[r][c][index]->len);
-                          pulseseqs[r][c][index]->code=
+                        pulseseqs[r][c][index]->code=
                             malloc(sizeof(unsigned char)*pulseseqs[r][c][index]->len);
-                          rval=recv_data(msgsock,pulseseqs[r][c][index]->rep, 
-                            sizeof(unsigned char)*pulseseqs[r][c][index]->len);
-                          rval=recv_data(msgsock,pulseseqs[r][c][index]->code, 
-                            sizeof(unsigned char)*pulseseqs[r][c][index]->len);
+			rval=driver_msg_get_var_by_name(&msg,"rep",pulseseqs[r][c][index]->rep);
+			rval=driver_msg_get_var_by_name(&msg,"code",pulseseqs[r][c][index]->code);
 			/* Inform the ROS that this driver recv all data without error
  			* by sending msg back with msg.status=1.
  			*/
-		          msg.status=1;
-                          rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-                        }
+		        r_msg.status=1;
+                        rval=driver_msg_send(msgsock, &r_msg);
 			/* Reset the local sequence state */
                         old_seq_id=-10;
                         new_seq_id=-1;
@@ -304,16 +297,11 @@ int main ( int argc, char **argv){
  			* the ROS server informs each driver so drivers can reset internal state variables.
  			*/  
 		        if (verbose > 0) printf("\nDriver: client is done\n");	
+			rval=driver_msg_get_var_by_name(&msg,"parameters",&client);
 			/* Inform the ROS that this driver does handle this command, and its okay to send the
  			* associated data by sending msg back with msg.status=1.
  			*/
-                        msg.status=1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-			if(msg.status==1) {
-		          rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
-			/* Reset the seq counters */
-			}
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                        rval=driver_msg_send(msgsock, &r_msg);
                         old_seq_id=-10;
                         new_seq_id=-1;
                         break;
@@ -327,32 +315,28 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does handle this command, and its okay to send the
  			* associated data by sending msg back with msg.status=1.
  			*/
-                        msg.status=1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-			if(msg.status==1) {
-		          rval=recv_data(msgsock,&client,sizeof(struct ControlPRM));
-			  if (verbose > 1) printf("Radar: %d, Channel: %d Beamnum: %d Status %d\n",
+			rval=driver_msg_get_var_by_name(&msg,"parameters",&client);
+			r_msg.status=1;
+                        rval=driver_msg_send(msgsock, &r_msg);
+			if (verbose > 1) printf("Radar: %d, Channel: %d Beamnum: %d Status %d\n",
 			    client.radar,client.channel,client.tbeam,msg.status);	
-                          r=client.radar-1; 
-                          c=client.channel-1; 
-                          if ((ready_index[r][c]>=0) && (ready_index[r][c] <maxclients) ) {
+                        r=client.radar-1; 
+                        c=client.channel-1; 
+                        if ((ready_index[r][c]>=0) && (ready_index[r][c] <maxclients) ) {
                             clients[ready_index[r][c]]=client;
-                          } else {
+                        } else {
                             clients[numclients]=client;
                             ready_index[r][c]=numclients;
                             numclients=(numclients+1);
-                          }
-                          index=client.current_pulseseq_index; 
+                        }
+                        index=client.current_pulseseq_index; 
 
-                          if (numclients >= maxclients) msg.status=-2;
-                          numclients=numclients % maxclients;
+                        if (numclients >= maxclients) msg.status=-2;
+                        numclients=numclients % maxclients;
 
 			/* Inform the ROS that this driver recv all data without error
  			* by sending msg back with msg.status=1.
  			*/
-			  msg.status=1;
-                          rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-			}
                         break; 
 
 		      case PRETRIGGER:
@@ -363,8 +347,8 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does handle this command, and its okay to send the
  			* associated data by sending msg back with msg.status=1.
  			*/
-                        msg.status=1;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                        r_msg.status=1;
+                        rval=driver_msg_send(msgsock, &r_msg);
 			/* Calculate sequence index */
                           new_seq_id=-1;
 	                  for( i=0; i<numclients; i++) {
@@ -467,15 +451,12 @@ int main ( int argc, char **argv){
  			* msg back with msg.status=0.
  			*/
           		if(strcmp(driver_type,"DIO")==0) {
-				msg.status=1;
-                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-				recv_data(msgsock, &site_settings.ifmode, sizeof(site_settings.ifmode));
-				recv_data(msgsock, &site_settings.rf_settings, sizeof(site_settings.rf_settings));
-				recv_data(msgsock, &site_settings.if_settings, sizeof(site_settings.if_settings));
-
+				rval=driver_msg_get_var_by_name(&msg,"ifmode",&site_settings.ifmode);
+				rval=driver_msg_get_var_by_name(&msg,"rf_rxfe_settings",&site_settings.rf_settings);
+				rval=driver_msg_get_var_by_name(&msg,"if_rxfe_settings",&site_settings.if_settings);
 			}
 	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+                        rval=driver_msg_send(msgsock, &r_msg);
 			break;
 		      case PRE_CLRFREQ:
 			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
@@ -486,12 +467,11 @@ int main ( int argc, char **argv){
  			* msg back with msg.status=0.
  			*/
           		if(strcmp(driver_type,"DIO")==0) {
-				msg.status=1;
-                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-				recv_data(msgsock, &client, sizeof(struct ControlPRM));
+				r_msg.status=1;
+				rval=driver_msg_get_var_by_name(&msg,"parameters",&client);
 			}
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
 			break;
 		      case POST_CLRFREQ:
 			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
@@ -502,10 +482,10 @@ int main ( int argc, char **argv){
  			* msg back with msg.status=0.
  			*/
           		if(strcmp(driver_type,"DIO")==0) {
-				msg.status=1;
+				r_msg.status=1;
 			}
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
 			break;
 		      case AUX_COMMAND:
 			/* AUX_COMMAND: Site hardware specific commands which are not critical for operation, but
@@ -525,7 +505,6 @@ int main ( int argc, char **argv){
 			  //process_aux_commands(&aux,driver_type);
                           //send_aux_dict(msgsock,aux,1); 
 			}
-			driver_msg_dump_var_info(&r_msg);
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
 /* Commands that should only be servced  by a single driver. 
