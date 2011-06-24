@@ -625,7 +625,7 @@ void *control_handler(struct ControlProgram *control_program)
               pthread_mutex_lock(&controlprogram_list_lock);
               if (control_program->state->active!=0) control_program->state->active=1;
               pthread_mutex_unlock(&controlprogram_list_lock);
-/*
+               
               i=0;
               rc = pthread_create(&threads[i], NULL,(void *) &timing_wait, NULL);
               pthread_join(threads[0],NULL);
@@ -645,7 +645,6 @@ void *control_handler(struct ControlProgram *control_program)
               rc = pthread_create(&thread, NULL, (void *)&coordination_handler,(void *) control_program);
               pthread_join(thread,NULL);
               pthread_mutex_unlock(&controlprogram_list_lock);
-*/
             }
             driver_msg_send(socket, &rmsg);
             break;

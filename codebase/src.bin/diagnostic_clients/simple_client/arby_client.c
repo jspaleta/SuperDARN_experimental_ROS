@@ -289,10 +289,13 @@ main( int argc, char *argv[])
 
 
    if(verbose>1) printf("Sending the Set Ready Command %d\n",SET_READY_FLAG);
-    smsg->command_type=SET_READY_FLAG;
-      send_data(s, smsg, sizeof(struct DriverMsg));
-      if(verbose>1) printf("wait for return message\n");
-      recv_data(s, rmsg, sizeof(struct DriverMsg));
+   driver_msg_init(smsg);
+   driver_msg_init(rmsg);
+   driver_msg_set_command(smsg,SET_READY_FLAG,"set_ready","ALL");
+   driver_msg_send(s, smsg);
+   driver_msg_recv(s, rmsg);
+   driver_msg_free_buffer(smsg);
+   driver_msg_free_buffer(rmsg);
    gettimeofday(&t2,NULL);
    elapsed=(t2.tv_sec-t0.tv_sec)*1E6;
    elapsed+=(t2.tv_usec-t0.tv_usec);
