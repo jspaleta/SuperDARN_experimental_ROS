@@ -278,10 +278,15 @@ main( int argc, char *argv[])
      printf("  current transmit beam: %d\n",parameters.tbeam);
      printf("  current pulse index: %d\n",parameters.current_pulseseq_index);
    }
-    smsg->command_type=SET_PARAMETERS;
-      send_data(s, smsg, sizeof(struct DriverMsg));
-      send_data(s, &parameters, sizeof(struct ControlPRM));
-      recv_data(s, rmsg, sizeof(struct DriverMsg));
+   driver_msg_init(smsg);
+   driver_msg_init(rmsg);
+   driver_msg_set_command(smsg,SET_PARAMETERS,"set_parameters","NONE");
+   driver_msg_add_var(smsg,&parameters,sizeof(struct CLRFreqPRM),"parameters","ControlPRM");
+   driver_msg_send(s, smsg);
+   driver_msg_recv(s, rmsg);
+   driver_msg_free_buffer(smsg);
+   driver_msg_free_buffer(rmsg);
+
 
    if(verbose>1) printf("Sending the Set Ready Command %d\n",SET_READY_FLAG);
     smsg->command_type=SET_READY_FLAG;

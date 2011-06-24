@@ -578,12 +578,11 @@ void *control_handler(struct ControlProgram *control_program)
             break;
           case SET_PARAMETERS:
             if ( (r < 0) || (c < 0)) {
-              recv_data(socket, control_program->parameters, sizeof(struct ControlPRM));
               rmsg.status=-1;
             } else {
               rmsg.status=1;
               pthread_mutex_lock(&controlprogram_list_lock);
-              recv_data(socket, control_program->parameters, sizeof(struct ControlPRM));
+	      driver_msg_get_var_by_name(&smsg,"parameters",control_program->parameters);
               if(control_program->parameters->rfreq<0) control_program->parameters->rfreq=control_program->parameters->tfreq;
               pthread_mutex_unlock(&controlprogram_list_lock);
             }
