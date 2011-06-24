@@ -623,15 +623,14 @@ int main ( int argc, char **argv){
  			* msg back with msg.status=0.
  			*/
           		if(strcmp(driver_type,"GPS")==0) {
-				msg.status=1;
-                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+				r_msg.status=1;
 			        if (verbose > 1 ) printf("GET_EVENT_TIME: %d\n",msg.status);	
-           			send_data(msgsock,&gps_event, sizeof(int32));
-           			send_data(msgsock,&gpssecond, sizeof(int32));
-            			send_data(msgsock,&gpsnsecond, sizeof(int32));
+				driver_msg_add_var(&r_msg,&gps_event,sizeof(int32),"gps_event","int32");
+				driver_msg_add_var(&r_msg,&gpssecond,sizeof(int32),"gps_second","int32");
+				driver_msg_add_var(&r_msg,&gpsnsecond,sizeof(int32),"gps_nsecond","int32");
 			}
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
 			break;
 		      case GPS_SET_TRIGGER_RATE:
 			/* The ROS may issue this command to a driver. 
@@ -643,13 +642,12 @@ int main ( int argc, char **argv){
  			* msg back with msg.status=0.
  			*/
           		if(strcmp(driver_type,"GPS")==0) {
-				msg.status=1;
-                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+				r_msg.status=1;
 			        if (verbose > 1 ) printf("GPS_SET_TRIGGER_RATE: %d\n",msg.status);	
-           			recv_data(msgsock,&gpsrate, sizeof(int32));
+                                driver_msg_get_var_by_name(&r_msg,"gpsrate",&gpsrate);
 			}
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
 			break;
 
 /* Required default case for unserviced commands */

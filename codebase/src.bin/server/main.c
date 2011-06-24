@@ -384,15 +384,14 @@ int main()
       graceful_socket_cleanup(1);
   } else {
     if (verbose>0) fprintf(stderr,"GPS Socket %d\n",gpssock);
-    s_msg.command_type=GPS_SET_TRIGGER_RATE;
-    strcpy(s_msg.command_name,"GPS_SET_TRIGGER_RATE");
-    s_msg.status=1;
-    send_data(gpssock, &s_msg, sizeof(struct DriverMsg));
-    recv_data(gpssock, &r_msg, sizeof(struct DriverMsg));
-    if(r_msg.status==1) {
-      send_data(gpssock, &gpsrate, sizeof(gpsrate));
-      recv_data(gpssock, &r_msg, sizeof(struct DriverMsg));
-    }
+    driver_msg_init(&s_msg);
+    driver_msg_init(&r_msg);
+    driver_msg_set_command(&s_msg,GPS_SET_TRIGGER_RATE,"gps_set_trigger_rate","GPS");
+    driver_msg_add_var(&s_msg,&gpsrate,sizeof(int32),"gpsrate","int32");
+    driver_msg_send(gpssock, &s_msg);
+    driver_msg_recv(gpssock, &r_msg);
+    driver_msg_free_buffer(&s_msg);
+    driver_msg_free_buffer(&r_msg);
   }
   if (verbose>1) fprintf(stderr,"Done with Sockets\n");
 /*
