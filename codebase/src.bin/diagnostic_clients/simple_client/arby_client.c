@@ -45,14 +45,14 @@ main( int argc, char *argv[])
   int nrang,frang,rsep,smsep,txpl,mpinc,mppul,nbaud,samples;
   int *pcode=NULL;
   int status,index,i,freq,j=0;
-  int32 radar,channel;
+  int32 bufnum,radar,channel;
   int flag,counter;
   short I,Q;
   char command;
   int32 num_transmitters;
   struct DriverMsg *smsg=NULL,*rmsg=NULL;
-  uint32 *main;
-  uint32 *back;
+  uint32 *main_data;
+  uint32 *back_data;
   uint32 *agc;
   uint32 *lopwr;
   struct DataPRM dprm;
@@ -95,8 +95,8 @@ main( int argc, char *argv[])
         txstatus.status[i]=0;
   }
   fp=fopen("/tmp/gc314_test_data.txt", "w+");
-  main=NULL;
-  back=NULL;
+  main_data=NULL;
+  back_data=NULL;
   agc=NULL;
   lopwr=NULL;
   bad_transmit_times.start_usec=NULL;
@@ -296,60 +296,61 @@ main( int argc, char *argv[])
    driver_msg_recv(s, rmsg);
    driver_msg_free_buffer(smsg);
    driver_msg_free_buffer(rmsg);
+
    gettimeofday(&t2,NULL);
    elapsed=(t2.tv_sec-t0.tv_sec)*1E6;
    elapsed+=(t2.tv_usec-t0.tv_usec);
    if(verbose>0) printf("  Ready Elapsed Microseconds: %ld\n",elapsed);
 
    if(verbose>1) printf("Sending the get data Command %d\n",GET_DATA);
-    smsg->command_type=GET_DATA;
-      send_data(s, smsg, sizeof(struct DriverMsg));
-      if(main!=NULL) {
-        free(main);
-        main=NULL;
-      } 
-      if(back!=NULL) { 
-        free(back);
-        back=NULL;
-      }
-      if(verbose>1) printf("wait for data structure\n");
-      recv_data(s, rmsg, sizeof(struct DriverMsg));
-/*
-      recv_data(s, &dprm, sizeof(struct DataPRM));
-      if(verbose>1) printf("  samples: %d\n",dprm.samples);
-      if(verbose>1) printf("  status: %d\n",dprm.status);
-      if(dprm.status>=0) {
-        main=malloc(sizeof(uint32)*dprm.samples);
-        back=malloc(sizeof(uint32)*dprm.samples);
-        recv_data(s, main, sizeof(uint32)*dprm.samples);
-        recv_data(s, back, sizeof(uint32)*dprm.samples);
+   driver_msg_init(smsg);
+   driver_msg_init(rmsg);
+   driver_msg_set_command(smsg,GET_DATA,"GET_DATA","ALL");
+   bufnum=0;
+   driver_msg_add_var(smsg,&bufnum,sizeof(int32),"data_buffer_number","int32");
+   driver_msg_send(s, smsg);
+
+   if(main_data!=NULL) {
+        free(main_data);
+        main_data=NULL;
+   } 
+   if(back_data!=NULL) { 
+        free(back_data);
+        back_data=NULL;
+   }
+   if(verbose>1) printf("wait for data structure\n");
+   driver_msg_recv(s, rmsg);
+
+   driver_msg_get_var_by_name(rmsg,"dprm",&dprm);
+   if(verbose>1) printf("  samples: %d\n",dprm.samples);
+   if(verbose>1) printf("  status: %d\n",dprm.status);
+   if(dprm.status>=0) {
+        main_data=malloc(sizeof(uint32)*dprm.samples);
+        back_data=malloc(sizeof(uint32)*dprm.samples);
+        driver_msg_get_var_by_name(rmsg,"main_data",main_data);
+        driver_msg_get_var_by_name(rmsg,"back_data",back_data);
         if(bad_transmit_times.start_usec!=NULL) free(bad_transmit_times.start_usec);
         if(bad_transmit_times.duration_usec!=NULL) free(bad_transmit_times.duration_usec);
-        recv_data(s, &bad_transmit_times.length, sizeof(bad_transmit_times.length));
+        driver_msg_get_var_by_name(rmsg,"num_tr_windows",&bad_transmit_times.length);
         if(verbose>1) printf("Number of Bad TR regions: %d\n",bad_transmit_times.length);
         bad_transmit_times.start_usec=malloc(sizeof(uint32)*bad_transmit_times.length);
         bad_transmit_times.duration_usec=malloc(sizeof(uint32)*bad_transmit_times.length);
-        recv_data(s, bad_transmit_times.start_usec, sizeof(uint32)*bad_transmit_times.length);
-        recv_data(s, bad_transmit_times.duration_usec, sizeof(uint32)*bad_transmit_times.length);
+        driver_msg_get_var_by_name(rmsg,"tr_window_start_usec",bad_transmit_times.start_usec);
+        driver_msg_get_var_by_name(rmsg,"tr_window_duration_usec",bad_transmit_times.duration_usec);
         for (i=0;i<bad_transmit_times.length;i++) if(verbose>1) printf("  Start:  %d (usec) Duration:  %d (usec)\n",
                                                      bad_transmit_times.start_usec[i],bad_transmit_times.duration_usec[i]);
-        //recv_data(s, &num_transmitters, sizeof(int32));
-        //recv_data(s, txstatus.AGC, sizeof(int32)*num_transmitters);
-        //recv_data(s, txstatus.LOWPWR, sizeof(int32)*num_transmitters);
-        recv_data(s, rmsg, sizeof(struct DriverMsg));
         if (verbose > 1) printf("Main Data Peek\n");
         fprintf(fp,":::Iteration::: %d\n",j);
         for (i=0;i<dprm.samples;i++) {
-          I=(main[i] & 0xffff0000) >> 16;
-          Q=main[i] & 0x0000ffff;
+          I=(main_data[i] & 0xffff0000) >> 16;
+          Q=main_data[i] & 0x0000ffff;
           if (verbose > 1) printf("        Data index: %d I: %d Q: %d \n",i,I,Q);
           fprintf(fp,"%d, %d , %d\n",i,I,Q);
         }
         j++;
-      } else {
-        recv_data(s, rmsg, sizeof(struct DriverMsg));
-      } 
-*/
+   }
+   driver_msg_free_buffer(smsg);
+   driver_msg_free_buffer(rmsg);
       gettimeofday(&t3,NULL);
       elapsed=(t3.tv_sec-t2.tv_sec)*1E6;
       elapsed+=(t3.tv_usec-t2.tv_usec);

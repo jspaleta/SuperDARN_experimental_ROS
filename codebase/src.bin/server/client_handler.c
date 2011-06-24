@@ -537,13 +537,12 @@ void *control_handler(struct ControlProgram *control_program)
             break;
           case GET_DATA:
             rmsg.status=0;
-            driver_msg_send(socket, &rmsg);
 
-/*
+
             control_program->data->status=-1;
             if ( (r < 0) || (c < 0)) {
-              send_data(socket, control_program->data, sizeof(struct DataPRM));
-              msg.status=-1;
+	      driver_msg_add_var(&rmsg,control_program->data,sizeof(struct DataPRM),"dprm","struct DataPRM");
+              rmsg.status=-1;
             } else {
               rc = pthread_create(&thread, NULL,(void *)&receiver_controlprogram_get_data,(void *) control_program);
               pthread_join(thread,NULL);
@@ -555,26 +554,25 @@ void *control_handler(struct ControlProgram *control_program)
               control_program->data->event_nsecs=control_program->state->gpsnsecond;
               pthread_mutex_unlock(&controlprogram_list_lock);
               printf("Sending the DataPRM\n");
-              send_data(socket, control_program->data, sizeof(struct DataPRM));
+	      driver_msg_add_var(&rmsg,control_program->data,sizeof(struct DataPRM),"dprm","struct DataPRM");
               if(control_program->data->status>0) {
-                msg.status=control_program->data->status;
+                rmsg.status=control_program->data->status;
                 if(control_program->data->use_shared_memory) {
-                  send_data(socket, control_program->main_shm, sizeof(uint32)*control_program->data->samples);
-                  send_data(socket, control_program->back_shm, sizeof(uint32)*control_program->data->samples);
+	          driver_msg_add_var(&rmsg,control_program->main_shm,sizeof(uint32)*control_program->data->samples,"main_data","uint32 array");
+	          driver_msg_add_var(&rmsg,control_program->back_shm,sizeof(uint32)*control_program->data->samples,"back_data","uint32 array");
                 }  else {
-                  send_data(socket, control_program->main_addr, sizeof(uint32)*control_program->data->samples);
-                  send_data(socket, control_program->back_addr, sizeof(uint32)*control_program->data->samples);
+	          driver_msg_add_var(&rmsg,control_program->main_addr,sizeof(uint32)*control_program->data->samples,"main_data","uint32 array");
+	          driver_msg_add_var(&rmsg,control_program->back_addr,sizeof(uint32)*control_program->data->samples,"back_data","uint32 array");
                 }
-                send_data(socket, &bad_transmit_times.length, sizeof(bad_transmit_times.length));
-                send_data(socket, bad_transmit_times.start_usec, sizeof(uint32)*bad_transmit_times.length);
-                send_data(socket, bad_transmit_times.duration_usec, sizeof(uint32)*bad_transmit_times.length);
+	        driver_msg_add_var(&rmsg,&bad_transmit_times.length,sizeof(bad_transmit_times.length),"num_tr_windows","int32");
+	        driver_msg_add_var(&rmsg,bad_transmit_times.start_usec,sizeof(uint32)*sizeof(bad_transmit_times.length),"tr_windows_start_usec","uint32 array");
+	        driver_msg_add_var(&rmsg,bad_transmit_times.duration_usec,sizeof(uint32)*sizeof(bad_transmit_times.length),"tr_windows_duration_usec","uint32 array");
               } else {
-                msg,status=-1;
+                rmsg,status=-1;
                 if (verbose > -1 ) fprintf(stderr,"CLIENT:GET_DATA: Bad status %d\n",control_program->data->status);
               } 
-              send_data(socket, msg, sizeof(struct DriverMsg));
             }
-*/
+            driver_msg_send(socket, &rmsg);
             break;
           case SET_PARAMETERS:
             if ( (r < 0) || (c < 0)) {
