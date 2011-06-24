@@ -205,11 +205,15 @@ main( int argc, char *argv[])
  */
 
  if(verbose>1) printf("Get Default Parameters %d\n",GET_PARAMETERS);
-    smsg->command_type=GET_PARAMETERS;
-      send_data(s, smsg, sizeof(struct DriverMsg));
-      recv_data(s, &parameters, sizeof(struct ControlPRM));
-      recv_data(s, rmsg, sizeof(struct DriverMsg));
+   driver_msg_init(smsg);
+   driver_msg_init(rmsg);
+   driver_msg_set_command(smsg,GET_PARAMETERS,"get_parameters","NONE");
+   driver_msg_send(s, smsg);
+   driver_msg_recv(s, rmsg);
+   driver_msg_get_var_by_name(rmsg,"parameters",&parameters);
       if(verbose>1) printf("Get Parameters Command Status: %d\n",rmsg->status); 
+   driver_msg_free_buffer(smsg);
+   driver_msg_free_buffer(rmsg);
  while(1) {
 /* Rotate beam direction*/
    bmnum=(bmnum +1) % 16;
@@ -396,12 +400,16 @@ main( int argc, char *argv[])
 //    if(aux_dict!=NULL) iniparser_freedict(aux_dict);
 //    aux_dict=NULL;
 
-
-   if(verbose>1) printf("Send Get Parameters Command %d\n",GET_PARAMETERS);
-    smsg->command_type=GET_PARAMETERS;
-      send_data(s, smsg, sizeof(struct DriverMsg));
-      recv_data(s, &parameters, sizeof(struct ControlPRM));
-      recv_data(s, rmsg, sizeof(struct DriverMsg));
+ if(verbose>1) printf("Get Parameters %d\n",GET_PARAMETERS);
+   driver_msg_init(smsg);
+   driver_msg_init(rmsg);
+   driver_msg_set_command(smsg,GET_PARAMETERS,"get_parameters","NONE");
+   driver_msg_send(s, smsg);
+   driver_msg_recv(s, rmsg);
+   driver_msg_get_var_by_name(rmsg,"parameters",&parameters);
+      if(verbose>1) printf("Get Parameters Command Status: %d\n",rmsg->status); 
+   driver_msg_free_buffer(smsg);
+   driver_msg_free_buffer(rmsg);
    if(verbose>1) {
      printf("  radar: %d\n",parameters.radar);
      printf("  channel: %d\n",parameters.channel);

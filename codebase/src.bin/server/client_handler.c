@@ -528,17 +528,12 @@ void *control_handler(struct ControlProgram *control_program)
               driver_msg_send(socket, &rmsg);
             break;
           case GET_PARAMETERS:
-            if ( (r < 0) || (c < 0)) {
-              send_data(socket, &control_parameters, sizeof(struct ControlPRM));
-              rmsg.status=-1;
-            } else {
-              pthread_mutex_lock(&controlprogram_list_lock);
               rmsg.status=status;
+              pthread_mutex_lock(&controlprogram_list_lock);
               control_parameters=controlprogram_fill_parameters(control_program);
               pthread_mutex_unlock(&controlprogram_list_lock);
-              send_data(socket, &control_parameters, sizeof(struct ControlPRM));
-            }
-            driver_msg_send(socket, &rmsg);
+	      driver_msg_add_var(&rmsg,&control_parameters,sizeof(struct ControlPRM),"parameters","struct ControlPRM");
+              driver_msg_send(socket, &rmsg);
             break;
           case GET_DATA:
             rmsg.status=0;

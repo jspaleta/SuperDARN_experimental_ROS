@@ -181,8 +181,6 @@ int driver_msg_add_var(struct DriverMsg *msg,void *arg,unsigned int bytes,char *
  var.offset=msg->bytes;
  var.bytes=bytes;
  strncpy(var.name,var_name,100);
- printf("Add: #vars: %d vars: %lu\n",msg->num_vars,msg->vars);  
- printf("Add: buffer: %lu bytes: %d\n",msg->buffer,msg->bytes);  
  msg->vars=(uint64) realloc((struct msgvar *)msg->vars,(msg->num_vars+1)*sizeof(struct msgvar));
  vars=(struct msgvar*)msg->vars;
  memmove(&vars[msg->num_vars],&var,sizeof(struct msgvar)); 
@@ -190,9 +188,7 @@ int driver_msg_add_var(struct DriverMsg *msg,void *arg,unsigned int bytes,char *
  memmove((void *)msg->buffer+var.offset,arg,var.bytes); 
  msg->bytes+=bytes;
  msg->num_vars++;
- printf("Add: #vars: %d vars: %lu\n",msg->num_vars,msg->vars);  
  memmove(&temp,(void *)msg->buffer,sizeof(int32));
- printf("Add: buffer: %lu bytes: %d :: %d\n",msg->buffer,msg->bytes, temp);  
 
  if(var.offset+var.bytes!=msg->bytes){
    fprintf(stderr,"Error in driver_msg_add_var\n");
