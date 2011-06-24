@@ -462,55 +462,46 @@ void *control_handler(struct ControlProgram *control_program)
             driver_msg_send(socket, &rmsg);
             break;
           case QUERY_INI_SETTING:
-            recv_data(socket, &data_length, sizeof(int32));
-            recv_data(socket, &entry_name, data_length*sizeof(char));
-            recv_data(socket, &entry_type, sizeof(char));
+	    driver_msg_get_var_by_name(&smsg,"entry_name",&entry_name);
+	    driver_msg_get_var_by_name(&smsg,"entry_type",&entry_type);
             entry_exists=iniparser_find_entry(Site_INI,entry_name);
             rmsg.status=entry_exists;
             switch(entry_type) {
               case 'i':
                 return_type='i';
                 temp_int32=iniparser_getint(Site_INI,entry_name,-1);
-                send_data(socket, &return_type, sizeof(char));
-                data_length=1;
-                send_data(socket, &data_length, sizeof(int32));
-                send_data(socket, &temp_int32, data_length*sizeof(int32));
+	        driver_msg_add_var(&rmsg,&return_type,sizeof(char),"return_type","char");
+	        driver_msg_add_var(&rmsg,&temp_int32,sizeof(int32),"return_val","int32");
                 break;
               case 'b':
                 return_type='b';
                 temp_int32=iniparser_getboolean(Site_INI,entry_name,-1);
-                send_data(socket, &return_type, sizeof(char));
-                data_length=1;
-                send_data(socket, &data_length, sizeof(int32));
-                send_data(socket, &temp_int32, data_length*sizeof(int32));
+	        driver_msg_add_var(&rmsg,&return_type,sizeof(char),"return_type","boolean");
+	        driver_msg_add_var(&rmsg,&temp_int32,sizeof(int32),"return_val","int32");
                 break;
               case 's':
                 return_type='s';
                 temp_strp=iniparser_getstring(Site_INI,entry_name,NULL);
-                send_data(socket, &return_type, sizeof(char));
+	        driver_msg_add_var(&rmsg,&return_type,sizeof(char),"return_type","boolean");
                 data_length=strlen(temp_strp)+1;
-                send_data(socket, &data_length, sizeof(int32));
-                send_data(socket, temp_strp, data_length*sizeof(char));
+	        driver_msg_add_var(&rmsg,temp_strp,data_length*sizeof(char),"return_val","string");
                 break;
               default:
                 return_type=' ';
                 send_data(socket, &return_type, sizeof(char));
-                data_length=0;
-                send_data(socket, &data_length, sizeof(int32));
-                send_data(socket, temp_strp, data_length*sizeof(char));
+	        driver_msg_add_var(&rmsg,&return_type,sizeof(char),"return_type","none");
             }
             driver_msg_send(socket, &rmsg);
             break;
           case GET_SITE_SETTINGS:
             settings=site_settings;
-            send_data(socket, &settings, sizeof(struct SiteSettings));
+	    driver_msg_add_var(&rmsg,&settings,sizeof(struct SiteSettings),"site_settings","struct SiteSettings");
             rmsg.status=-1;
             driver_msg_send(socket, &rmsg);
             break;
           case SET_SITE_IFMODE:
             settings=site_settings;
-            recv_data(socket, &settings.ifmode, sizeof(settings.ifmode));
-            rmsg.status=-1;
+	    driver_msg_get_var_by_name(&smsg,&settings.ifmode);
             driver_msg_send(socket, &rmsg);
             break;
           case SET_RADAR_CHAN:

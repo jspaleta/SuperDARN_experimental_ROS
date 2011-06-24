@@ -248,10 +248,14 @@ main( int argc, char *argv[])
    if(verbose>1) printf("Data Acquisition Loop\n");
    gettimeofday(&t0,NULL);
    if(verbose>1) printf("Sending the Keepalive Command\n");
-    smsg->command_type=PING; 
-      send_data(s, smsg, sizeof(struct DriverMsg));
-      recv_data(s, rmsg, sizeof(struct DriverMsg));
-      if(verbose>1) printf("Msg Status: %d\n",rmsg->status); 
+   driver_msg_init(smsg);
+   driver_msg_init(rmsg);
+   driver_msg_set_command(smsg,PING,"ping","NONE");
+   driver_msg_send(s, smsg);
+   driver_msg_recv(s, rmsg);
+   driver_msg_free_buffer(smsg);
+   driver_msg_free_buffer(rmsg);
+   if(verbose>1) printf("Msg Status: %d\n",rmsg->status); 
 
 /*
  * Set-up the operational program hardware parameters 
@@ -392,20 +396,6 @@ main( int argc, char *argv[])
     driver_msg_get_var_by_name(rmsg,"txstatus",&txstatus); 
     driver_msg_free_buffer(rmsg);
     printf("AUX  STATUS DONE\n");
-//    if(rmsg.status==1) {
-//      printf("AUX Command is valid\n");
-//        printf("Send AUX dict %p\n",aux_dict);
-//	send_aux_dict(s,aux_dict,1);
-//        if(aux_dict!=NULL) iniparser_freedict(aux_dict);
-//        aux_dict=NULL;
-//	recv_aux_dict(s,&aux_dict,1);
-//        printf("AUX dict sent %p\n",aux_dict);
-//      recv_data(s, &rmsg, sizeof(struct DriverMsg));
-//    }
-//    dict_buf=iniparser_getbuf(aux_dict,"dio",&bufsize);
-//    printf("Data Bufsize %d tx_status size: %d\n",bufsize,sizeof(struct tx_status));
-//    printf("TX Status for radar %d\n",r);
-//    memmove(&txstatus,dict_buf,bufsize);
     for (i=0;i<MAX_TRANSMITTERS;i++) {
       printf("%d : %d %d %d\n",i,
         txstatus.LOWPWR[i],

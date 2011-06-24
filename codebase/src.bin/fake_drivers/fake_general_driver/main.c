@@ -58,7 +58,7 @@ int main ( int argc, char **argv){
         int new_seq_id=-1;				//  and unpacking needs to be done again
         struct TRTimes transmit_times;		// actual TR windows used
         int     numclients=0;				// number of active clients
-	int32	radar=0,channel=0,data_status=0;
+	int32	bufnum=0,radar=0,channel=0,data_status=0;
 	struct SiteSettings site_settings;	
 	int32 gps_event,gpssecond,gpsnsecond,gpsrate;
  
@@ -545,15 +545,16 @@ int main ( int argc, char **argv){
  			*/
 			data_status=1;
           		if(strcmp(driver_type,"RECV")==0) {
-				msg.status=1;
-                                rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-		                rval=recv_data(msgsock,&radar,sizeof(radar));
-		                rval=recv_data(msgsock,&channel,sizeof(channel));
+				r_msg.status=1;
+				driver_msg_get_var_by_name(&msg,"radar",&radar);
+				driver_msg_get_var_by_name(&msg,"channel",&channel);
+				driver_msg_get_var_by_name(&msg,"bufnum",&bufnum);
 				data_status=1;
+				driver_msg_add_var(&r_msg,&data_status,sizeof(int32),"data_status","int32");
                         	send_data(msgsock,&data_status,sizeof(data_status)); 
 			}
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
 			break;
 		      case GET_DATA:
 			/* GET_DATA: After a trigger or external trigger command has been issued. The ROS 
@@ -565,16 +566,15 @@ int main ( int argc, char **argv){
  			* msg back with msg.status=0.
  			*/
           		if(strcmp(driver_type,"RECV")==0) {
-				msg.status=1;
-                                rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-		                rval=recv_data(msgsock,&radar,sizeof(radar));
-		                rval=recv_data(msgsock,&channel,sizeof(channel));
+				r_msg.status=1;
+				driver_msg_get_var_by_name(&msg,"radar",&radar);
+				driver_msg_get_var_by_name(&msg,"channel",&channel);
                                 data.use_shared_memory=0;
 				data.shared_memory_offset=0;
 				data.bufnum=0;
 				data.samples=100;
 				data.status=1;
-		                rval=send_data(msgsock,&data,sizeof(struct DataPRM));
+				driver_msg_add_var(&r_msg,&data,sizeof(struct DataPRM),"dataprm","struct DataPRM");
                                 if(data.use_shared_memory==0) {
                                   if(main_data==NULL) {
 				    main_data=malloc(sizeof(uint32)*data.samples);	
@@ -587,6 +587,8 @@ int main ( int argc, char **argv){
 				    back_data[i]=-data_count*100+i;
 				  }
 				  data_count=(data_count+1) % 100 ;
+				  driver_msg_add_var(&r_msg,main_data,sizeof(uint32)*data.samples,"main_data","array");
+				  driver_msg_add_var(&r_msg,back_data,sizeof(uint32)*data.samples,"back_data","array");
 		                  rval=send_data(msgsock,main_data,sizeof(uint32)*data.samples);
 		                  rval=send_data(msgsock,back_data,sizeof(uint32)*data.samples);
                                 }
@@ -594,25 +596,7 @@ int main ( int argc, char **argv){
 	  		else msg.status=0;
                         rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
 			break;
-//		      case GET_TX_STATUS:
-//			/* GET_TX_STATUS: The ROS may issue this command to a driver. 
-//			*  Only one driver should respond to this command 
-//			*  This should be turned into an AUX command 
-// 			*/  
-//			if (verbose > 1 ) printf("Driver: GET_TX_STATUS\n");	
-//			/* Inform the ROS that this driver does not handle this command by sending 
-// 			* msg back with msg.status=0.
-// 			*/
-//          		if(strcmp(driver_type,"DIO")==0) {
-//				msg.status=1;
-//                        	rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-//				recv_data(msgsock, &radar, sizeof(radar));
-//    				send_data(msgsock, &txstatus[radar-1], sizeof(struct tx_status));
-//
-//			}
-//	  		else msg.status=0;
-//                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
-//			break;
+
 		      case GET_EVENT_TIME:
 			/* GET_EVENT_TIME: The ROS may issue this command to a driver. 
 			*  Only one driver should respond to this command 
