@@ -386,7 +386,7 @@ int main()
     if (verbose>0) fprintf(stderr,"GPS Socket %d\n",gpssock);
     driver_msg_init(&s_msg);
     driver_msg_init(&r_msg);
-    driver_msg_set_command(&s_msg,GPS_SET_TRIGGER_RATE,"gps_set_trigger_rate","GPS");
+    driver_msg_set_command(&s_msg,AUX_COMMAND,"GPS_SET_TRIGGER_RATE","GPS");
     driver_msg_add_var(&s_msg,&gpsrate,sizeof(int32),"gpsrate","int32");
     driver_msg_send(gpssock, &s_msg);
     driver_msg_recv(gpssock, &r_msg);

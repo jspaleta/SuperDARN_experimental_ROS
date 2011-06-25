@@ -499,7 +499,7 @@ int main ( int argc, char **argv){
                         msg.status=1;
                         if(msg.status==1) {
 			  /* process aux command dictionary here */
-			  process_aux_msg(msg,&r_msg);
+			  process_aux_msg(msg,&r_msg,verbose);
 			}
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
@@ -606,23 +606,6 @@ int main ( int argc, char **argv){
 				driver_msg_add_var(&r_msg,&gps_event,sizeof(int32),"gps_event","int32");
 				driver_msg_add_var(&r_msg,&gpssecond,sizeof(int32),"gps_second","int32");
 				driver_msg_add_var(&r_msg,&gpsnsecond,sizeof(int32),"gps_nsecond","int32");
-			}
-	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
-			break;
-		      case GPS_SET_TRIGGER_RATE:
-			/* The ROS may issue this command to a driver. 
-			*  Only one driver should respond to this command
-			*  This should be turned into an AUX command 
- 			*/  
-			if (verbose > 1 ) printf("Driver: GPS_SET_TRIGGER_RATE\n");	
-			/* Inform the ROS that this driver does not handle this command by sending 
- 			* msg back with msg.status=0.
- 			*/
-          		if(strcmp(driver_type,"GPS")==0) {
-				r_msg.status=1;
-			        if (verbose > 1 ) printf("GPS_SET_TRIGGER_RATE: %d\n",msg.status);	
-                                driver_msg_get_var_by_name(&r_msg,"gpsrate",&gpsrate);
 			}
 	  		else r_msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);

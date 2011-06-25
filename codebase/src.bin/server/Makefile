@@ -8,7 +8,7 @@ linux_libs=-lm -lpthread -lrt
 qnx_libs=-lsocket
 INCLUDES=-I"../include/" -I"include/" -I"../../src.utils/tsg/include" -I"../../src.lib/iniparser3.0b/src/"
 SOURCES=main.c _process_aux_commands.c client_handler.c timeout_handler.c status_handler.c \
-settings_handler.c dio_handler.c timing_handler.c coordination_handler.c \
+settings_handler.c gps_handler.c dio_handler.c timing_handler.c coordination_handler.c \
 dummy_handler.c reciever_handler.c dds_handler.c \
 ../../src.utils/utils.c ../../src.utils/tsg/maketsg.c \
 ../../src.utils/_tcpsocket.c ../../src.utils/aux_command.c

@@ -4,10 +4,11 @@
 #include "global_server_variables.h"
 
 
-int process_aux_msg(struct DriverMsg in_msg,struct DriverMsg *out_msg_p) {
+int process_aux_msg(struct DriverMsg in_msg,struct DriverMsg *out_msg_p,int verbose) {
         int retval;
 	int i,r,radar=0;	
         int bytes;
+        int32 gpsrate;
         struct tx_status txstatus[MAX_RADARS];
         struct DriverMsg return_msg;
 	driver_msg_init(&return_msg);
@@ -35,6 +36,14 @@ int process_aux_msg(struct DriverMsg in_msg,struct DriverMsg *out_msg_p) {
                     }
                   }
 	}
+	if (strcmp(in_msg.driver,"GPS")==0) {
+		if(strcmp(in_msg.command_name,"GPS_SET_TRIGGER_RATE")==0) {
+                        return_msg.status=1;
+		        retval=driver_msg_get_var_by_name(&in_msg,"gpsrate",&gpsrate);
+			if (verbose > 1 ) printf("AUX: GPS: GPS_SET_TRIGGER_RATE %d\n",gpsrate);
+		}
+	}
+
         memmove(out_msg_p,&return_msg,sizeof(struct DriverMsg));
         return 0;
 }
