@@ -547,19 +547,23 @@ void *control_handler(struct ControlProgram *control_program)
               printf("Sending the DataPRM\n");
 	      driver_msg_add_var(&rmsg,control_program->data,sizeof(struct DataPRM),"dprm","struct DataPRM");
               if(control_program->data->status>0) {
+                printf("Good Status\n");
                 rmsg.status=control_program->data->status;
                 if(control_program->data->use_shared_memory) {
 	          driver_msg_add_var(&rmsg,control_program->main_shm,sizeof(uint32)*control_program->data->samples,"main_data","uint32 array");
 	          driver_msg_add_var(&rmsg,control_program->back_shm,sizeof(uint32)*control_program->data->samples,"back_data","uint32 array");
                 }  else {
+                printf("Not using shm\n");
 	          driver_msg_add_var(&rmsg,control_program->main_addr,sizeof(uint32)*control_program->data->samples,"main_data","uint32 array");
 	          driver_msg_add_var(&rmsg,control_program->back_addr,sizeof(uint32)*control_program->data->samples,"back_data","uint32 array");
                 }
+                printf("Adding the bad tr windows: %d\n",bad_transmit_times.length);
 	        driver_msg_add_var(&rmsg,&bad_transmit_times.length,sizeof(bad_transmit_times.length),"num_tr_windows","int32");
-	        driver_msg_add_var(&rmsg,bad_transmit_times.start_usec,sizeof(uint32)*sizeof(bad_transmit_times.length),"tr_windows_start_usec","uint32 array");
-	        driver_msg_add_var(&rmsg,bad_transmit_times.duration_usec,sizeof(uint32)*sizeof(bad_transmit_times.length),"tr_windows_duration_usec","uint32 array");
+	        driver_msg_add_var(&rmsg,bad_transmit_times.start_usec,sizeof(uint32)*bad_transmit_times.length,"tr_windows_start_usec","uint32 array");
+	        driver_msg_add_var(&rmsg,bad_transmit_times.duration_usec,sizeof(uint32)*bad_transmit_times.length,"tr_windows_duration_usec","uint32 array");
+                printf("Done with bad tr windows\n");
               } else {
-                rmsg,status=-1;
+                rmsg.status=-1;
                 if (verbose > -1 ) fprintf(stderr,"CLIENT:GET_DATA: Bad status %d\n",control_program->data->status);
               } 
             }

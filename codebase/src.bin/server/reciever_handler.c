@@ -733,7 +733,8 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         arg->main_addr=NULL;
         if(arg->back_addr!=NULL) free(arg->back_addr);
         arg->back_addr=NULL;
-/*
+        arg->data->status=-1;
+        printf("Sending GET_DATA_STATUS to RECV\n"); 
         driver_msg_init(&s_msg);
         driver_msg_init(&r_msg);
         driver_msg_set_command(&s_msg,GET_DATA_STATUS,"get_data_status","NONE");
@@ -747,13 +748,14 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
 	driver_msg_get_var_by_name(&r_msg,"data_status",&arg->data->status);
         driver_msg_free_buffer(&s_msg);
         driver_msg_free_buffer(&r_msg);
-*/
+        printf("GET_DATA_STATUS: %d\n",arg->data->status); 
+
       } else {
         arg->data->status=error_flag;
         arg->data->samples=0;
       }      
       if (arg->data->status>0 ) {
-/*
+        printf("Sending GET_DATA to RECV\n"); 
         driver_msg_init(&s_msg);
         driver_msg_init(&r_msg);
         driver_msg_set_command(&s_msg,GET_DATA,"get_data","NONE");
@@ -763,7 +765,8 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
   	driver_msg_send(recvsock, &s_msg);
 	driver_msg_recv(recvsock, &r_msg);
         pthread_mutex_unlock(&recv_comm_lock);
-	driver_msg_get_var_by_name(&r_msg,"data_prm",arg->data);
+	driver_msg_get_var_by_name(&r_msg,"dataprm",arg->data);
+        printf("Data Samples: %d\n",arg->data->samples);
         if(r_msg.status>0) {
           if(arg->data->use_shared_memory) {
             sprintf(shm_device,"/receiver_main_%d_%d_%d",r,c,b);
@@ -776,15 +779,18 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
             arg->back_shm=mmap(0,sizeof(unsigned int)*arg->data->samples,PROT_READ,MAP_SHARED,shm_fd,sizeof(unsigned int)*arg->data->shared_memory_offset);
             close(shm_fd);
           } else {
+            printf("Not using shared memory\n");
 	    arg->main_addr=malloc(sizeof(uint32)*arg->data->samples);	
 	    arg->back_addr=malloc(sizeof(uint32)*arg->data->samples);	
-	    driver_msg_get_var_by_name(&r_msg,"main_addr",arg->main_addr);
-	    driver_msg_get_var_by_name(&r_msg,"back_addr",arg->back_addr);
+            printf("Reading data arrays\n");
+	    driver_msg_get_var_by_name(&r_msg,"main_data",arg->main_addr);
+	    driver_msg_get_var_by_name(&r_msg,"back_data",arg->back_addr);
+            printf("Done Reading data arrays\n");
 	  }
         }
         driver_msg_free_buffer(&s_msg);
         driver_msg_free_buffer(&r_msg);
-*/
+
       } 
 
       if (error_flag==0) {

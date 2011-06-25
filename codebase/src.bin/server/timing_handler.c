@@ -108,9 +108,14 @@ void *timing_pretrigger(void *arg)
       driver_msg_get_var_by_name(&r_msg,"tr_windows_start_usec",&bad_transmit_times.length);
       driver_msg_get_var_by_name(&r_msg,"tr_windows_duration_usec",&bad_transmit_times.length);
     } else {
+      bad_transmit_times.length=0;	
       bad_transmit_times.start_usec=NULL;
       bad_transmit_times.duration_usec=NULL;
     }
+  } else {
+      bad_transmit_times.length=0;	
+      bad_transmit_times.start_usec=NULL;
+      bad_transmit_times.duration_usec=NULL;
   }
   driver_msg_free_buffer(&s_msg);
   driver_msg_free_buffer(&r_msg);

@@ -7,7 +7,7 @@ common_libs=-lrt -lm -liniparser
 linux_libs=
 qnx_libs=-lsocket
 INCLUDES=-I"../../include/" -I"include/" -I"../../../src.utils/tsg/include" -I"../../../src.lib/iniparser3.0b/src/"  
-SOURCES=main.c _process_aux_commands.c _decodestate.c _open_ini_file.c \
+SOURCES=main.c _process_aux_commands.c _decodestate.c _open_ini_file.c collect_data.c \
 ../../../src.utils/_tcpsocket.c \
 ../../../src.utils/utils.c \
 ../../../src.utils/aux_command.c 

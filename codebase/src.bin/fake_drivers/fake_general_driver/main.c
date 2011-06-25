@@ -68,7 +68,7 @@ int main ( int argc, char **argv){
         fd_set rfds,efds;	//TCP socket status
         struct timeval select_timeout;	// timeout for select function
 	// counter and temporary variables
-	int	data_count=0,i,j,r,c,dmabufnum;
+	int	i,j,r,c,dmabufnum;
         int32   index;
 	int 	temp;
 	int32 	temp32;
@@ -551,7 +551,6 @@ int main ( int argc, char **argv){
 				driver_msg_get_var_by_name(&msg,"bufnum",&bufnum);
 				data_status=1;
 				driver_msg_add_var(&r_msg,&data_status,sizeof(int32),"data_status","int32");
-                        	send_data(msgsock,&data_status,sizeof(data_status)); 
 			}
 	  		else r_msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
@@ -582,19 +581,14 @@ int main ( int argc, char **argv){
                                   if(back_data==NULL) {
 				    back_data=malloc(sizeof(uint32)*data.samples);	
                                   }
-				  for(i=0;i<data.samples;i++) {
-				    main_data[i]=data_count*100+i;
-				    back_data[i]=-data_count*100+i;
-				  }
-				  data_count=(data_count+1) % 100 ;
+                                  collect_data(main_data,&data);   
+                                  collect_data(back_data,&data);   
 				  driver_msg_add_var(&r_msg,main_data,sizeof(uint32)*data.samples,"main_data","array");
 				  driver_msg_add_var(&r_msg,back_data,sizeof(uint32)*data.samples,"back_data","array");
-		                  rval=send_data(msgsock,main_data,sizeof(uint32)*data.samples);
-		                  rval=send_data(msgsock,back_data,sizeof(uint32)*data.samples);
                                 }
 			}
-	  		else msg.status=0;
-                        rval=send_data(msgsock, &msg, sizeof(struct DriverMsg));
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
 			break;
 
 		      case GET_EVENT_TIME:
