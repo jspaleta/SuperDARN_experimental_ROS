@@ -19,18 +19,8 @@
 
 int verbose=0;
 int sock,msgsock;
-dictionary *Site_INI=NULL;
-dictionary *aux=NULL;
-char *command_dict_string=NULL;
-char *data_string=NULL;
-char *secname_in_dict=NULL;
-char secname_static[200];
-char entry[200];
-int32 nsecs,bytes,data_bytes;
-void *buf=NULL; // This is malloced and needs to be freed
-void *temp_buf=NULL; // This is malloced and needs to be freed
-void *dict_data_buf=NULL; // This is a pointer into a dict.. do not free or realloc 
-unsigned int bufsize;
+
+
 void graceful_cleanup(int signum){
   close(msgsock);
   close(sock);
@@ -43,24 +33,34 @@ void graceful_cleanup(int signum){
 
 int main ( int argc, char **argv){
     // DECLARE AND INITIALIZE ANY NECESSARY VARIABLES
+	/* Commonly needed variables */
+	int32	bufnum=0,radar=0,channel=0,data_status=0;
+	struct SiteSettings site_settings;	
+        dictionary *Site_INI=NULL;
         int     maxclients=MAX_RADARS*MAX_CHANNELS;  //maximum number of clients which can be tracked
         struct  ControlPRM  clients[maxclients];	//parameter array for tracked clients
 	struct  ControlPRM  client;			//parameter structure for temp use		
-	struct  DataPRM	    data;
+
+	/* GET_DATA related variables */
+        struct  DataPRM	    data;
         uint32  *main_data=NULL,*back_data=NULL;
+	/* REGISTER_SEQ related variables */
         struct  TSGbuf *pulseseqs[MAX_RADARS][MAX_CHANNELS][MAX_SEQS]; //timing sequence table
         int seq_count[MAX_RADARS][MAX_CHANNELS];			//unpacked seq length
 	int	max_seq_count;				// maximum unpackage seq length	
 	unsigned int	*seq_buf[MAX_RADARS][MAX_CHANNELS];		//unpacked sequence table
 	unsigned int	*master_buf;			// master buffer for all sequences
+
+	/* READY related variables */
         int ready_index[MAX_RADARS][MAX_CHANNELS];	//table to indicate if client is ready for trigger
         int old_seq_id=-10;				// old and new seq_id used to know if seqs have changed 
         int new_seq_id=-1;				//  and unpacking needs to be done again
+        int numclients=0;				// number of active clients
+
+	/* TRTimes related variables */
         struct TRTimes transmit_times;		// actual TR windows used
-        int     numclients=0;				// number of active clients
-	int32	bufnum=0,radar=0,channel=0,data_status=0;
-	struct SiteSettings site_settings;	
-	int32 gps_event,gpssecond,gpsnsecond,gpsrate;
+	/* GPS AUX variables */
+	int32 gps_event,gpssecond,gpsnsecond;
  
 	// socket and message passing variables
 	char	datacode;	//command character
@@ -68,7 +68,7 @@ int main ( int argc, char **argv){
         fd_set rfds,efds;	//TCP socket status
         struct timeval select_timeout;	// timeout for select function
 	// counter and temporary variables
-	int	i,j,r,c,dmabufnum;
+	int	i,j,r,c;
         int32   index;
 	int 	temp;
 	int32 	temp32;
@@ -163,8 +163,9 @@ int main ( int argc, char **argv){
 
 	Site_INI=NULL;
 	/* Pull the site ini file */ 
-	temp=_open_ini_file();
-
+	temp=_open_ini_file(&Site_INI);
+        _dump_ini_section(Site_INI,"site");
+        _dump_ini_section(Site_INI,driver_type);
         if(temp < 0 ) {
                 fprintf(stderr,"Error opening Site ini file, exiting driver\n");
                 exit(temp);
@@ -183,13 +184,6 @@ int main ( int argc, char **argv){
             seq_buf[r][c]=malloc(4*MAX_TIME_SEQ_LEN);
            
           } 
-/*
-          for (i=0;i<MAX_TRANSMITTERS;i++) {
-		txstatus[r].LOWPWR[i]=100*(r+1)+i;
-		txstatus[r].AGC[i]=1000*(r+1)+i;
-		txstatus[r].status[i]=10000*(r+1)+i;
-          } 
-*/
         }
 
 	/* These are only potentially needed for drivers that unpack 
@@ -231,7 +225,7 @@ int main ( int argc, char **argv){
                     break;
                   }
                   if (rval == -1) perror("select()");
-                  rval=recv(msgsock, &dmabufnum, sizeof(int), MSG_PEEK); 
+                  rval=recv(msgsock, &temp, sizeof(int), MSG_PEEK); 
                   if (verbose>1) printf("%d PEEK Recv Msg %d\n",msgsock,rval);
 		  if (rval==0) {
                     if (verbose > 1) printf("Remote Msgsock %d client disconnected ...closing\n",msgsock);

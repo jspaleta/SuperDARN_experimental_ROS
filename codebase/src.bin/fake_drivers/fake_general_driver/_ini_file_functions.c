@@ -23,3 +23,6 @@ int _open_ini_file(dictionary **arg) {
      return 0;
 }
 
+int _dump_ini_section(dictionary *ini,char *driver_section_name) {
+
+}
