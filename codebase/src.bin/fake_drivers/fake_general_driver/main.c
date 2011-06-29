@@ -590,6 +590,53 @@ int main ( int argc, char **argv){
 	  		else r_msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
+		      case GET_TRIGGER_OFFSET:
+			/* GET_TRIGGER_OFFSET: Hardware like digital receivers and dds use internal digital filter logic as part of their operation. 
+			*  These digital filters have time delays which should be accounted for in the timing of when the cards are triggered relative to the
+			*  master trigger.
+			*  This function allows for the ROS to request the offset values
+			*  Currently The receiver and dds drivers are the only driver that should respond to this command.
+ 			*/  
+			if (verbose > 1 ) printf("Driver: GET_TRIGGER_OFFSET\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"RECV")==0) {
+			        temp32=70;   //positive 70 microsecond offset relative to t0 
+				r_msg.status=1;
+				driver_msg_get_var_by_name(&msg,"radar",&radar);
+				driver_msg_get_var_by_name(&msg,"channel",&channel);
+				driver_msg_add_var(&r_msg,&data_status,sizeof(int32),"rx_trigger_offset_usec","int32");
+			}
+          		if(strcmp(driver_type,"DDS")==0) {
+			        temp32=-50;   //negative 50 microsecond offset relative to t0 
+				r_msg.status=1;
+				driver_msg_get_var_by_name(&msg,"radar",&radar);
+				driver_msg_get_var_by_name(&msg,"channel",&channel);
+				driver_msg_add_var(&r_msg,&data_status,sizeof(int32),"dds_trigger_offset_usec","int32");
+			}
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
+			break;
+		      case SET_TRIGGER_OFFSET:
+			/* SET_TRIGGER_OFFSET: Hardware like digital receivers and dds use internal digital filter logic as part of their operation. 
+			*  These digital filters have time delays which should be accounted for in the timing of when the cards are triggered relative to the
+			*  master trigger.
+			*  This function allows for the ROS to send trigger offset values to the timing card.
+			*  Currently The timing driver is the only driver that should respond to this command.
+ 			*/  
+			if (verbose > 1 ) printf("Driver: SET_TRIGGER_OFFSET\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"TIMING")==0) {
+				temp32=0;
+				driver_msg_get_var_by_name(&msg,"rx_trigger_offset_usec",&temp32);
+				temp32=0;
+				driver_msg_get_var_by_name(&msg,"dds_trigger_offset_usec",&temp32);
+			}
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
 
 		      case GET_EVENT_TIME:
 			/* GET_EVENT_TIME: The ROS may issue this command to a driver. 
@@ -611,7 +658,7 @@ int main ( int argc, char **argv){
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
 
-/* Required default case for unserviced commands */
+			/* Required default case for unserviced commands */
 		      default:
 			/* NOOPs: ROS commands that are not understood by the driver should send a msg.status=0  
 			* Some drivers will not need to process all of the named commands listed above. 

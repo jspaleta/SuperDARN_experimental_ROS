@@ -158,6 +158,8 @@ struct BlackList {
 #define POSTTRIGGER '5'
 #define GET_DATA 'd'
 #define GET_DATA_STATUS 'D'
+#define GET_TRIGGER_OFFSET 't'
+#define SET_TRIGGER_OFFSET 'T'
 #define PRE_CLRFREQ 'c'
 #define POST_CLRFREQ 'C'
 #define CLRFREQ 'F'
