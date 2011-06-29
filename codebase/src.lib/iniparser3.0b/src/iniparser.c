@@ -172,6 +172,55 @@ char * iniparser_getsecname(dictionary * d, int n)
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Dump a dictionary to an opened file pointer.
+  @param    d   Dictionary.
+  @param    s   Secname to  dump.
+  @param    f   Opened file pointer to dump to.
+  @return   void
+
+  This function prints out the contents of a dictionary, one element by
+  line, onto the provided file pointer. It is OK to specify @c stderr
+  or @c stdout as output files. This function is meant for debugging
+  purposes mostly.
+ */
+/*--------------------------------------------------------------------------*/
+void iniparser_dump_secname(dictionary * d, const char *s, FILE * f)
+{
+    int     i, found_section=0;
+    char    *lc_section;
+    lc_section = strlwc(s);
+
+    if (d==NULL || f==NULL) return ;
+    for (i=0 ; i<d->size ; i++) {
+        if (d->key[i]==NULL)
+            continue ;
+       	  if (d->val[i]==NULL) {
+            if (strcmp(d->key[i], lc_section)==0) {
+		found_section=1;
+		break;
+	    }
+          }
+    }	
+
+    if(!found_section) return;
+
+    for (i=0 ; i<d->size ; i++) {
+        if (d->key[i]==NULL)
+            continue ;
+          if (strstr(d->key[i], lc_section)!=NULL) {
+            if (strchr(d->key[i], ':')!=NULL) {
+        	if (d->val[i]!=NULL) {
+        	    fprintf(f, "[%s]=[%s]\n", d->key[i], d->val[i]);
+        	} else {
+        	    fprintf(f, "[%s]=UNDEF\n", d->key[i]);
+        	}
+	    }
+          }
+    }
+    return ;
+}
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    Dump a dictionary to an opened file pointer.
   @param    d   Dictionary to dump.
   @param    f   Opened file pointer to dump to.
   @return   void

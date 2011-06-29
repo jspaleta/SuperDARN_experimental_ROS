@@ -164,8 +164,13 @@ int main ( int argc, char **argv){
 	Site_INI=NULL;
 	/* Pull the site ini file */ 
 	temp=_open_ini_file(&Site_INI);
-        _dump_ini_section(Site_INI,"site");
-        _dump_ini_section(Site_INI,driver_type);
+        fprintf(stdout,"Site wide settings:\n");
+        _dump_ini_section(stdout,Site_INI,"site");
+        fprintf(stdout,"Frequency assignment settings:\n");
+        _dump_ini_section(stdout,Site_INI,"frequency_assignment");
+        fprintf(stdout,"%s Driver settings:\n",driver_type);
+        _dump_ini_section(stdout,Site_INI,driver_type);
+
         if(temp < 0 ) {
                 fprintf(stderr,"Error opening Site ini file, exiting driver\n");
                 exit(temp);
