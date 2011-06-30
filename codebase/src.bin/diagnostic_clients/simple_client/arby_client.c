@@ -11,8 +11,9 @@
 #include <sys/un.h>
 #include <errno.h>
 #include "utils.h"
+#include "rosmsg.h"
 #include "control_program.h"
-#include "global_server_variables.h"  //should not be needed
+//#include "global_server_variables.h"  //should not be needed
 #include "tsg.h"
 #include "iniparser.h"
 int s;
@@ -22,7 +23,7 @@ int verbose=10;
 FILE *fp;
 void graceful_exit(int signum)
 {
-  struct DriverMsg smsg,rmsg;
+  struct ROSMsg smsg,rmsg;
         if (signum==13) errno=EPIPE;
         else {
           driver_msg_init(&smsg);
@@ -50,7 +51,7 @@ main( int argc, char *argv[])
   short I,Q;
   char command;
   int32 num_transmitters;
-  struct DriverMsg *smsg=NULL,*rmsg=NULL;
+  struct ROSMsg *smsg=NULL,*rmsg=NULL;
   uint32 *main_data;
   uint32 *back_data;
   uint32 *agc;
@@ -83,8 +84,8 @@ main( int argc, char *argv[])
   char secname_static[200]; 
   char entry[200]; 
   int32 nsecs;
-  smsg=malloc(sizeof(struct DriverMsg));
-  rmsg=malloc(sizeof(struct DriverMsg));
+  smsg=malloc(sizeof(struct ROSMsg));
+  rmsg=malloc(sizeof(struct ROSMsg));
   driver_msg_init(smsg);
   driver_msg_init(rmsg);
 //Initialize structures
