@@ -652,7 +652,12 @@ void *receiver_ready_controlprogram(struct ControlProgram *control_program)
   pthread_mutex_unlock(&recv_comm_lock);
   driver_msg_free_buffer(&s_msg);
   driver_msg_free_buffer(&r_msg);
+  pthread_exit(NULL);
+};
 
+void *receiver_get_trigger_offset(struct ControlProgram *control_program)
+{
+ struct DriverMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,GET_TRIGGER_OFFSET,"get_trigger_offset","NONE");
@@ -668,11 +673,8 @@ void *receiver_ready_controlprogram(struct ControlProgram *control_program)
   }
   driver_msg_free_buffer(&s_msg);
   driver_msg_free_buffer(&r_msg);
-
   pthread_mutex_unlock(&recv_comm_lock);
   pthread_exit(NULL);
-
-
 };
 
 void *receiver_pretrigger(void *arg)

@@ -38,8 +38,8 @@ void *coordination_handler(struct ControlProgram *control_program)
      control_program->state->processing=0;
    } else {
    }
-   printf("Coord: Trigger State: %d\n",trigger_state); 
-/*Calculate Ready State*/
+
+   /*Calculate global Ready State*/
    if(trigger_state<1) { 
      thread_list=controlprogram_threads;
      while(thread_list!=NULL){
@@ -114,7 +114,7 @@ void *coordination_handler(struct ControlProgram *control_program)
           }
 
 	  //TODO: Get calculated trigger offsets
-/*
+
           thread_list=controlprogram_threads;
           while(thread_list!=NULL){
             cprog=thread_list->data;
@@ -135,7 +135,7 @@ void *coordination_handler(struct ControlProgram *control_program)
             }
             thread_list=thread_list->prev;
           }
-*/
+
           //TODO: Use priority channel to force offsets
 
 	  //Set calculated trigger offsets

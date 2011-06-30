@@ -66,6 +66,27 @@ void *dds_site_settings(void *arg)
   pthread_exit(NULL);
 }
 
+void *dds_get_trigger_offset(struct ControlProgram *control_program)
+{
+  struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  driver_msg_set_command(&s_msg,GET_TRIGGER_OFFSET,"get_trigger_offset","NONE");
+  pthread_mutex_lock(&dds_comm_lock);
+  if (control_program!=NULL) {
+     if (control_program->state->pulseseqs[control_program->parameters->current_pulseseq_index]!=NULL) {
+       driver_msg_add_var(&s_msg,&control_program->parameters->radar,sizeof(int32),"radar","int32");
+       driver_msg_add_var(&s_msg,&control_program->parameters->channel,sizeof(int32),"channel","int32");
+       driver_msg_send(ddssock, &s_msg);
+       driver_msg_recv(ddssock, &r_msg);
+     } 
+  }
+  pthread_mutex_unlock(&dds_comm_lock);
+  driver_msg_get_var_by_name(&r_msg,"dds_trigger_offset_usec",&control_program->state->dds_trigger_offset_usec);
+  driver_msg_free_buffer(&s_msg);
+  driver_msg_free_buffer(&r_msg);
+  pthread_exit(NULL);
+}
 void *dds_ready_controlprogram(struct ControlProgram *control_program)
 {
   struct DriverMsg s_msg,r_msg;
