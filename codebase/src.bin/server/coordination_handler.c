@@ -25,9 +25,9 @@ void *coordination_handler(struct ControlProgram *control_program)
    struct Thread_List_Item *thread_list;
    int32 gps_event,gpssecond,gpsnsecond;
    struct ROSMsg s_msg,r_msg;
-   struct ControlProgram *cprog;
+   struct ControlProgram *cprog,*priority_cprog[MAX_RADARS+1];
    int ready_state,trigger_state,ready_count;
-
+   int radar_priority=1;
    pthread_mutex_lock(&coord_lock); //lock the global structures
 
    ready_state=*ready_state_pointer;
@@ -82,11 +82,27 @@ void *coordination_handler(struct ControlProgram *control_program)
           break;
         case 2:
         //printf("Coord: All control programs ready\n"); 
-        /*all control programs ready for trigger*/
+          /*all control programs ready for trigger*/
 
-          //TODO: Find the highest priority control_program that is ready
-          
-          //TODO: Fill parameters of other controlprograms based on the priority channel
+          /* Find the highest priority radar channel for each radar 
+ 	   * radar=0 means site wide for all radars at the site
+ 	   */ 
+          thread_list=controlprogram_threads;
+          for(i=0;i<MAX_RADARS+1;i++) {
+            priority_cprog[i]=_find_priority_cp(i,thread_list); 
+          } 
+          /*TODO: Fill parameters of non_priority controlprograms based on the 
+           * priority policy using the settings from the priority cp 
+           */
+          if(radar_priority==1) {
+            //If the policy is to enforce priority by radar
+            for(i=1;i<MAX_RADARS+1;i++) {
+              _enforce_priority(i,priority_cprog[i],thread_list); 
+            } 
+          } else {
+            //If the policy is to enforce priority by site 
+              _enforce_priority(0,priority_cprog[0],thread_list); 
+          }
 
 	  //Inform the drivers that all the active controlprograms are ready
           thread_list=controlprogram_threads;

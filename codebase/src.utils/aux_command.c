@@ -1,6 +1,7 @@
 #include "rtypes.h"
 #include "iniparser.h"
 #include "dictionary.h"
+/*
 int send_aux_dict(int s,dictionary *aux_dict, int verbose ) { 
     char *secname_in_dict=NULL; // pointer into dict do not free or realloc
     void *dict_buf=NULL; // pointer into dict do not free or realloc
@@ -36,7 +37,8 @@ int send_aux_dict(int s,dictionary *aux_dict, int verbose ) {
     if ( verbose > 2 ) printf("AUX Send: Done\n");
     return 0;
 }
-
+*/
+/*
 int recv_aux_dict(int s,dictionary **dict_p,int verbose) { 
     dictionary *aux_dict=NULL;
     char *dict_string=NULL; // pointer into dict do not free or realloc
@@ -82,3 +84,4 @@ int recv_aux_dict(int s,dictionary **dict_p,int verbose) {
     if ( verbose > 2 ) fprintf(stderr,"AUX Recv: Done %lu %lu\n",(unsigned long) aux_dict,(unsigned long) *dict_p);
     return 0;
 }
+*/
