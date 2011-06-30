@@ -101,7 +101,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		fprintf(stderr, "  ASSIGN FREQ: %d %d\n",
 					arg->parameters->radar-1,arg->parameters->channel-1);
 		fprintf(stderr, "  FFT FREQ: %d %d\n",
-					arg->clrfreqsearch.start,arg->clrfreqsearch.end);
+					arg->clrfreqsearch.freq_start_khz,arg->clrfreqsearch.freq_end_khz);
 		fprintf(stderr, "  Start Freq: %lf\n",
 					arg->state->fft_array[0].freq);
 	}
@@ -186,11 +186,11 @@ void receiver_assign_frequency(struct ControlProgram *arg){
          	write(f_fft, &tempf, sizeof(float));
 
          	// CLRFreqPRM
-         	temp=arg->clrfreqsearch.start;
+         	temp=arg->clrfreqsearch.freq_start_khz;
          	write(f_fft, &temp, sizeof(int32));
-         	temp=arg->clrfreqsearch.end;
+         	temp=arg->clrfreqsearch.freq_end_khz;
          	write(f_fft, &temp, sizeof(int32));
-         	tempf=arg->clrfreqsearch.filter_bandwidth;
+         	tempf=arg->clrfreqsearch.rx_bandwidth_khz;
          	write(f_fft, &tempf, sizeof(float));
   	}         
 
@@ -229,7 +229,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
    *       2.) smoothing separate from the sideband use for blacklisting an
    *           assigned frequency window
    */ 
-  rx_bandwidth_khz=arg->parameters->baseband_samplerate/1000.0;
+  rx_bandwidth_khz=arg->clrfreqsearch.rx_bandwidth_khz;
   /* padded_tx_sideband defined but unused currently */
   padded_tx_sideband_khz = MAX(2*ceil(rx_bandwidth_khz),0);
   /* TODO: optimize padded_rx_sideband  to account for over sampling and wide-band modes*/
@@ -288,7 +288,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
   /* Take a running average of power using 2*padded_rx_bandwith+1 number of points.*/
 
   /* SGS: Note here that padded_rx_sideband is specified in kHz above and
-   * and the loop over the filter_bandwidth assumes that frequencies
+   * and the loop over the rx_sideband assumes that frequencies
    * in the FFT array are separated by 1 kHz exactly. */
   for (i=0; i<arg->state->N; i++){	/* run through all FFT samples */
     fft_array[i].apwr = 0;
@@ -347,15 +347,15 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 	 * number of kHz and that the spacing between frequencies is 1 kHz.
 	 * perhaps this a bad assumption to make... */
 
-	ncfs = arg->clrfreqsearch.end - arg->clrfreqsearch.start;
+	ncfs = arg->clrfreqsearch.freq_end_khz - arg->clrfreqsearch.freq_start_khz;
 	sub_fft_array = (t_fft_index *)malloc(sizeof(t_fft_index)*ncfs);
 
 	j = 0;
 	/* loop over all FFT frequencies and copy only those in the clrfreqsearch
 	 * band to the sub array */
 	for (i=0; i<arg->state->N; i++) {
-		if ( (fft_array[i].freq <= arg->clrfreqsearch.end) &&
-				(fft_array[i].freq >= arg->clrfreqsearch.start) ) {
+		if ( (fft_array[i].freq <= arg->clrfreqsearch.freq_end_khz) &&
+				(fft_array[i].freq >= arg->clrfreqsearch.freq_start_khz) ) {
 			if (j >= ncfs) {	/* this should never happend, but good to check... */
 				if (verbose > 0) fprintf(stderr, "Too many frequencies in clrfreqsearch band: %d\n", j);
 				j = ncfs - 1;	/* make sure there is no overstepping array bounds */
@@ -562,10 +562,10 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		*/
   		best_index=0; 
         	arg->state->current_assigned_freq=sub_fft_array[best_index].freq;
-        	arg->state->current_assigned_noise=sub_fft_array[best_index].apwr*rx_bandwidth_khz;
+        	arg->state->current_assigned_noise=sub_fft_array[best_index].apwr*arg->clrfreqsearch.rx_bandwidth_khz;
 
-  		if(verbose > 0 ) fprintf(stderr,"  %lf current assigned frequency: %d\n",sub_fft_array[best_index].freq, \
-                                   arg->state->current_assigned_freq);
+  		if(verbose > 0 ) fprintf(stderr,"  current assigned frequency: %d\n", arg->state->current_assigned_freq);
+  		if(verbose > 0 ) fprintf(stderr,"  current assigned noise: %lf\n", arg->state->current_assigned_noise);
 
 		arg->state->tx_sideband=padded_tx_sideband_khz;
 		arg->state->rx_sideband=padded_rx_sideband_khz;
@@ -834,7 +834,59 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
   pthread_exit(NULL);
 };
 
-void *receiver_clrfreq(struct ControlProgram *arg)
+void *receiver_ready_clrsearch(struct ControlProgram *control_program)
+{
+ struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  driver_msg_set_command(&s_msg,CLRSEARCH_READY,"clrsearch_ready","NONE");
+  pthread_mutex_lock(&recv_comm_lock);
+  if (control_program!=NULL) {
+       driver_msg_add_var(&s_msg,&control_program->clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","CLRFreqPRM");
+       driver_msg_send(recvsock, &s_msg);
+       driver_msg_recv(recvsock, &r_msg);
+  }
+  pthread_mutex_unlock(&recv_comm_lock);
+  driver_msg_free_buffer(&s_msg);
+  driver_msg_free_buffer(&r_msg);
+  pthread_exit(NULL);
+};
+
+void *receiver_pre_clrsearch(struct ControlProgram *control_program)
+{
+ struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  driver_msg_set_command(&s_msg,PRE_CLRSEARCH,"pre_clrsearch","NONE");
+  pthread_mutex_lock(&recv_comm_lock);
+  if (control_program!=NULL) {
+       driver_msg_send(recvsock, &s_msg);
+       driver_msg_recv(recvsock, &r_msg);
+  }
+  pthread_mutex_unlock(&recv_comm_lock);
+  driver_msg_free_buffer(&s_msg);
+  driver_msg_free_buffer(&r_msg);
+  pthread_exit(NULL);
+};
+
+void *receiver_post_clrsearch(struct ControlProgram *control_program)
+{
+ struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  driver_msg_set_command(&s_msg,POST_CLRSEARCH,"post_clrsearch","NONE");
+  pthread_mutex_lock(&recv_comm_lock);
+  if (control_program!=NULL) {
+       driver_msg_send(recvsock, &s_msg);
+       driver_msg_recv(recvsock, &r_msg);
+  }
+  pthread_mutex_unlock(&recv_comm_lock);
+  driver_msg_free_buffer(&s_msg);
+  driver_msg_free_buffer(&r_msg);
+  pthread_exit(NULL);
+};
+
+void *receiver_clrsearch(struct ControlProgram *arg)
 {
   struct DriverMsg s_msg,r_msg;
   struct timeval t0;
@@ -845,9 +897,8 @@ void *receiver_clrfreq(struct ControlProgram *arg)
   r=arg->parameters->radar-1;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,CLRFREQ,"clrfreq","NONE");
-  driver_msg_add_var(&s_msg,&arg->clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","struct CLRFreqRPM");
-  driver_msg_add_var(&s_msg,&arg->parameters,sizeof(struct ControlPRM),"parameters","struct CLRFreqRPM");
+
+  driver_msg_set_command(&s_msg,CLRSEARCH,"clrfreq","NONE");
   pthread_mutex_lock(&recv_comm_lock);
   driver_msg_send(recvsock, &s_msg);
   driver_msg_recv(recvsock, &r_msg);
@@ -856,27 +907,28 @@ void *receiver_clrfreq(struct ControlProgram *arg)
   if(r_msg.status>0) {
     driver_msg_get_var_by_name(&r_msg,"clrfreqsearch",&arg->clrfreqsearch);
     if(verbose > 1 ) fprintf(stderr,"  final search parameters\n");  
-    if(verbose > 1 ) fprintf(stderr,"  start: %d\n",arg->clrfreqsearch.start);        
-    if(verbose > 1 ) fprintf(stderr,"  end: %d\n",arg->clrfreqsearch.end);    
+    if(verbose > 1 ) fprintf(stderr,"  start: %d\n",arg->clrfreqsearch.freq_start_khz);        
+    if(verbose > 1 ) fprintf(stderr,"  end: %d\n",arg->clrfreqsearch.freq_end_khz);    
     if(verbose > 1 ) fprintf(stderr,"  nave:  %d\n",arg->clrfreqsearch.nave); 
+    if(verbose > 1 ) fprintf(stderr,"  beam:  %d\n",arg->clrfreqsearch.rbeam); 
     driver_msg_get_var_by_name(&r_msg,"N",&arg->state->N);
     if(verbose > 1 ) fprintf(stderr,"  N:  %d\n",arg->state->N); 
     if(pwr!=NULL) free(pwr); 
     pwr=NULL;
     pwr = (double*) malloc(sizeof(double) * arg->state->N);
-    driver_msg_get_var_by_name(&r_msg,"pwr",pwr);
+    driver_msg_get_var_by_name(&r_msg,"pwr_per_khz",pwr);
   } else {
     if(pwr!=NULL) free(pwr); 
     pwr=NULL;
     arg->state->N=0;
-    arg->clrfreqsearch.start=0;
-    arg->clrfreqsearch.end=0;
+    arg->clrfreqsearch.freq_start_khz=0;
+    arg->clrfreqsearch.freq_end_khz=0;
     pwr = (double*) malloc(sizeof(double) * arg->state->N);
   }
   driver_msg_free_buffer(&s_msg);
   driver_msg_free_buffer(&r_msg);
 
-  centre=(arg->clrfreqsearch.end+arg->clrfreqsearch.start)/2;
+  centre=(arg->clrfreqsearch.freq_end_khz+arg->clrfreqsearch.freq_start_khz)/2;
   bandwidth=arg->state->N;
   start=centre-arg->state->N/2;
   end=centre+arg->state->N/2;

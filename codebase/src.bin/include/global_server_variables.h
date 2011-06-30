@@ -160,9 +160,10 @@ struct BlackList {
 #define GET_DATA_STATUS 'D'
 #define GET_TRIGGER_OFFSET 't'
 #define SET_TRIGGER_OFFSET 'T'
-#define PRE_CLRFREQ 'c'
-#define POST_CLRFREQ 'C'
-#define CLRFREQ 'F'
+#define PRE_CLRSEARCH 'c'
+#define POST_CLRSEARCH 'C'
+#define CLRSEARCH_READY 'a'
+#define CLRSEARCH 'b'
 //#define FULL_CLRFREQ '-'
 
 

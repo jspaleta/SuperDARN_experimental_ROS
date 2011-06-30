@@ -63,12 +63,31 @@ void *DIO_aux_msg(struct DriverMsg *msg_p)
   pthread_exit(NULL);
 };
 
-void *DIO_pre_clrfreq(struct ControlProgram *arg)
+void *DIO_ready_clrsearch(struct ControlProgram *arg)
 {
   struct DriverMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,PRE_CLRFREQ,"pre_clrfreq","NONE");
+  driver_msg_set_command(&s_msg,CLRSEARCH_READY,"clrsearch_ready","NONE");
+  pthread_mutex_lock(&dio_comm_lock);
+   if (arg!=NULL) {
+     if (arg->parameters!=NULL) {
+       driver_msg_add_var(&s_msg,&arg->clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","struct CLRFreqRPM");
+       driver_msg_send(diosock, &s_msg);
+       driver_msg_recv(diosock, &r_msg);
+     } 
+   }
+   pthread_mutex_unlock(&dio_comm_lock);
+   driver_msg_free_buffer(&s_msg);
+   driver_msg_free_buffer(&r_msg);
+   pthread_exit(NULL);
+};
+void *DIO_pre_clrsearch(struct ControlProgram *arg)
+{
+  struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  driver_msg_set_command(&s_msg,PRE_CLRSEARCH,"pre_clrsearch","NONE");
   pthread_mutex_lock(&dio_comm_lock);
   if(arg!=NULL) {
      if(arg->parameters!=NULL) {
@@ -82,12 +101,12 @@ void *DIO_pre_clrfreq(struct ControlProgram *arg)
   pthread_exit(NULL);
 };
 
-void *DIO_post_clrfreq(struct ControlProgram *arg)
+void *DIO_post_clrsearch(struct ControlProgram *arg)
 {
   struct DriverMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,POST_CLRFREQ,"post_clrfreq","NONE");
+  driver_msg_set_command(&s_msg,POST_CLRSEARCH,"post_clrsearch","NONE");
   pthread_mutex_lock(&dio_comm_lock);
   if(arg!=NULL) {
      if(arg->parameters!=NULL) {

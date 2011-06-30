@@ -191,8 +191,8 @@ struct ControlProgram *control_init() {
        struct ControlProgram *control_program;
 
        control_program=malloc(sizeof(struct ControlProgram));
-       control_program->clrfreqsearch.start=0;
-       control_program->clrfreqsearch.end=0;
+       control_program->clrfreqsearch.freq_start_khz=0;
+       control_program->clrfreqsearch.freq_end_khz=0;
        control_program->parameters=malloc(sizeof(struct ControlPRM));
        control_program->state=malloc(sizeof(struct ControlState));
        control_program->state->active=1;
@@ -643,17 +643,40 @@ void *control_handler(struct ControlProgram *control_program)
             break;
 
           case REQUEST_CLEAR_FREQ_SEARCH:
+            if (verbose > 0 ) fprintf(stderr,"Clear Search :: radar: %d channel: %d cp: %p\n",radar,channel,control_program);
             pthread_mutex_lock(&controlprogram_list_lock);
 	    driver_msg_get_var_by_name(&smsg,"clrfreq_parameters",&control_program->clrfreqsearch);
             if ( (r < 0) || (c < 0)) {
               rmsg.status=-1;
             } else {
-              rc = pthread_create(&threads[0], NULL, (void *) &DIO_pre_clrfreq,control_program);
+              if (verbose > 0 ) fprintf(stderr,"Clear Search Ready threads:: radar: %d channel: %d cp: %p\n",radar,channel,control_program);
+              i=0;
+              rc = pthread_create(&threads[i], NULL, (void *) &DIO_ready_clrsearch,control_program);
+              i++;
+              rc = pthread_create(&threads[i], NULL, (void *) &receiver_ready_clrsearch,control_program);
+              for (;i>=0;i--) {
+                pthread_join(threads[i],NULL);
+              }
+              if (verbose > 0 ) fprintf(stderr,"Clear Search Pre threads:: radar: %d channel: %d cp: %p\n",radar,channel,control_program);
+              i=0;
+              rc = pthread_create(&threads[i], NULL, (void *) &DIO_pre_clrsearch,control_program);
+              i++;
+              rc = pthread_create(&threads[i], NULL, (void *) &receiver_pre_clrsearch,control_program);
+              for (;i>=0;i--) {
+                pthread_join(threads[i],NULL);
+              }
+              if (verbose > 0 ) fprintf(stderr,"Clear Search Action thread:: radar: %d channel: %d cp: %p\n",radar,channel,control_program);
+              rc = pthread_create(&threads[0], NULL, (void *) &receiver_clrsearch,control_program);
               pthread_join(threads[0],NULL);
-              rc = pthread_create(&threads[0], NULL, (void *) &receiver_clrfreq,control_program);
-              pthread_join(threads[0],NULL);
-              rc = pthread_create(&threads[0], NULL, (void *) &DIO_post_clrfreq,control_program);
-              pthread_join(threads[0],NULL);
+              if (verbose > 0 ) fprintf(stderr,"Clear Search Post threads:: radar: %d channel: %d cp: %p\n",radar,channel,control_program);
+              i=0;
+              rc = pthread_create(&threads[i], NULL, (void *) &DIO_post_clrsearch,control_program);
+              i++;
+              rc = pthread_create(&threads[i], NULL, (void *) &receiver_post_clrsearch,control_program);
+              for (;i>=0;i--) {
+                pthread_join(threads[i],NULL);
+              }
+
               rmsg.status=1;
             }
             pthread_mutex_unlock(&controlprogram_list_lock);

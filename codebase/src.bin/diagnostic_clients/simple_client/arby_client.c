@@ -220,11 +220,11 @@ main( int argc, char *argv[])
 /*
  * Clear Frequency Search
  */
-  clrfreq_parameters.start=10000; 
-  clrfreq_parameters.end=11000;  
-  clrfreq_parameters.nave=20;  
-  clrfreq_parameters.rbeam=bmnum;  
-  clrfreq_parameters.filter_bandwidth=250;  
+   clrfreq_parameters.freq_start_khz=10000; 
+   clrfreq_parameters.freq_end_khz=11000;  
+   clrfreq_parameters.nave=20;  
+   clrfreq_parameters.rbeam=bmnum;  
+   clrfreq_parameters.rx_bandwidth_khz=3.3; 
 
    driver_msg_init(smsg);
    driver_msg_init(rmsg);

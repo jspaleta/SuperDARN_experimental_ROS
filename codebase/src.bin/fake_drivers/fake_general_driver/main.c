@@ -40,7 +40,9 @@ int main ( int argc, char **argv){
         int     maxclients=MAX_RADARS*MAX_CHANNELS;  //maximum number of clients which can be tracked
         struct  ControlPRM  clients[maxclients];	//parameter array for tracked clients
 	struct  ControlPRM  client;			//parameter structure for temp use		
-
+	/* CLRSEARCH related variables */
+	struct  CLRFreqPRM clrfreqsearch;
+	double *pwr=NULL;
 	/* GET_DATA related variables */
         struct  DataPRM	    data;
         uint32  *main_data=NULL,*back_data=NULL;
@@ -369,6 +371,7 @@ int main ( int argc, char **argv){
                               c=clients[i].channel-1;
                               if (seq_count[r][c]>=max_seq_count) max_seq_count=seq_count[r][c];
                               counter=0;
+/*
                               for (j=0;j<seq_count[r][c];j++) {
                                 if (i==0) {
                                   master_buf[j]=seq_buf[r][c][j];
@@ -378,6 +381,7 @@ int main ( int argc, char **argv){
 			  	  master_buf[j]|=seq_buf[r][c][j];
 				}
                               } 
+*/
 			    }
                           }
                         
@@ -457,7 +461,31 @@ int main ( int argc, char **argv){
 	  		else msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
-		      case PRE_CLRFREQ:
+		      case CLRSEARCH_READY:
+			/* CLRSEARCH_READY: The ROS may issue this command to all drivers, 
+			*  prior to doing a clear frequency search to hand over clear search
+			*  parameters for a specific channel. 
+ 			*/  
+			if (verbose > 1 ) printf("Driver: CLRFREQ_READY\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"DIO")==0) {
+				r_msg.status=1;
+				rval=driver_msg_get_var_by_name(&msg,"clrfreqsearch",&clrfreqsearch);
+				rval=driver_msg_get_var_by_name(&msg,"radar",&radar);
+				rval=driver_msg_get_var_by_name(&msg,"channel",&channel);
+			}
+          		else if(strcmp(driver_type,"RECV")==0) {
+				r_msg.status=1;
+				rval=driver_msg_get_var_by_name(&msg,"clrfreqsearch",&clrfreqsearch);
+				rval=driver_msg_get_var_by_name(&msg,"radar",&radar);
+				rval=driver_msg_get_var_by_name(&msg,"channel",&channel);
+			}
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
+			break;
+		      case PRE_CLRSEARCH:
 			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
 			*  prior to doing a clear frequency search 
  			*/  
@@ -467,13 +495,12 @@ int main ( int argc, char **argv){
  			*/
           		if(strcmp(driver_type,"DIO")==0) {
 				r_msg.status=1;
-				rval=driver_msg_get_var_by_name(&msg,"parameters",&client);
 			}
 	  		else r_msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
-		      case POST_CLRFREQ:
-			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
+		      case POST_CLRSEARCH:
+			/* POST_CLRFREQ: The ROS may issue this command to all drivers, 
 			*  prior to doing a clear frequency search 
  			*/  
 			if (verbose > 1 ) printf("Driver: POST_CLRFREQ\n");	
@@ -485,6 +512,33 @@ int main ( int argc, char **argv){
 			}
 	  		else r_msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
+			break;
+
+		      case CLRSEARCH:
+			/* CLRSEARCH: The ROS may issue this command to all drivers, 
+			*  to do a clear frequency search 
+ 			*/  
+			if (verbose > 1 ) printf("Driver: CLRFREQ\n");	
+			/* Inform the ROS that this driver does not handle this command by sending 
+ 			* msg back with msg.status=0.
+ 			*/
+          		if(strcmp(driver_type,"RECV")==0) {
+				r_msg.status=1;
+  				driver_msg_add_var(&r_msg,&clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","struct CLRFreqRPM");
+				temp32=clrfreqsearch.freq_end_khz-clrfreqsearch.freq_start_khz;
+
+				pwr= (double*) malloc(sizeof(double) *temp32);
+				for(i=0;i<temp32;i++) {
+				  pwr[i]=rand();
+				  printf("%8d : %8d :: %8.3lf\n",i,clrfreqsearch.freq_start_khz+i,pwr[i]);
+				}
+				driver_msg_add_var(&r_msg,&temp32,sizeof(int32),"N","int32");
+				driver_msg_add_var(&r_msg,pwr,sizeof(double)*temp32,"pwr_per_khz","array of doubles");
+			}
+	  		else r_msg.status=0;
+                        rval=driver_msg_send(msgsock, &r_msg);
+			free(pwr);
+			pwr=NULL;
 			break;
 		      case AUX_COMMAND:
 			/* AUX_COMMAND: Site hardware specific commands which are not critical for operation, but
@@ -594,7 +648,8 @@ int main ( int argc, char **argv){
 			*  These digital filters have time delays which should be accounted for in the timing of when the cards are triggered relative to the
 			*  master trigger.
 			*  This function allows for the ROS to request the offset values
-			*  Currently The receiver and dds drivers are the only driver that should respond to this command.
+			*  Currently The receiver and dds drivers are the only driver that must respond to this command with the MSI styled hardware. 
+			*  
  			*/  
 			if (verbose > 1 ) printf("Driver: GET_TRIGGER_OFFSET\n");	
 			/* Inform the ROS that this driver does not handle this command by sending 
@@ -621,8 +676,8 @@ int main ( int argc, char **argv){
 			/* SET_TRIGGER_OFFSET: Hardware like digital receivers and dds use internal digital filter logic as part of their operation. 
 			*  These digital filters have time delays which should be accounted for in the timing of when the cards are triggered relative to the
 			*  master trigger.
-			*  This function allows for the ROS to send trigger offset values to the timing card.
-			*  Currently The timing driver is the only driver that should respond to this command.
+			*  This function allows for the ROS to send trigger offset values.
+			*  Currently The timing driver is the only driver that must respond to this command in the MSI styled hardware.
  			*/  
 			if (verbose > 1 ) printf("Driver: SET_TRIGGER_OFFSET\n");	
 			/* Inform the ROS that this driver does not handle this command by sending 

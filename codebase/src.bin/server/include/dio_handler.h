@@ -9,6 +9,10 @@
 struct FreqTable *FreqLoadTable(FILE *fp);
 void *dio_site_settings(void *arg);
 void *DIO_ready_controlprogram(struct ControlProgram *arg);
+void *DIO_ready_clrsearch(struct ControlProgram *arg);
+void *DIO_pre_clrsearch(struct ControlProgram *arg);
+void *DIO_post_clrsearch(struct ControlProgram *arg);
+
 void *DIO_pretrigger(void *arg);
 //void dio_default_config(struct dio_hdw *hdw);
 //int load_config(FILE *fp,struct dio_hdw *hdw);
