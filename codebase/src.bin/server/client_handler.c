@@ -286,9 +286,12 @@ void controlprogram_exit(struct ControlProgram *control_program)
      }
      close(control_program->state->socket);
      unregister_radar_channel(control_program);
+     printf("Free sequences: %p",control_program);
      for (i=0;i<MAX_SEQS;i++) {
-       if(control_program->state->pulseseqs[i]!=NULL) TSGFree(control_program->state->pulseseqs[i]);
+       //TODO: Fix the freeing of sequences
+       //if(control_program->state->pulseseqs[i]!=NULL) TSGFree(control_program->state->pulseseqs[i]);
      }
+     printf("Free state: %p",control_program);
      if(control_program->state!=NULL) {
        if(control_program->state->fft_array!=NULL) {
          free(control_program->state->fft_array);
@@ -297,10 +300,12 @@ void controlprogram_exit(struct ControlProgram *control_program)
        free(control_program->state);
        control_program->state=NULL;
      }
+     printf("Free parameters: %p",control_program);
      if(control_program->parameters!=NULL) {
        free(control_program->parameters);
        control_program->parameters=NULL;
      }
+     printf("Free data buffers: %p",control_program);
      if(control_program->main_shm!=NULL) munmap(control_program->main_shm,control_program->data->samples);
      if(control_program->back_shm!=NULL) munmap(control_program->back_shm,control_program->data->samples);
      control_program->main_shm=NULL;
@@ -525,10 +530,10 @@ void *control_handler(struct ControlProgram *control_program)
             break;
           case GET_PARAMETERS:
               rmsg.status=status;
-              pthread_mutex_lock(&controlprogram_list_lock);
-              control_parameters=controlprogram_fill_parameters(control_program);
-              pthread_mutex_unlock(&controlprogram_list_lock);
-	      driver_msg_add_var(&rmsg,&control_parameters,sizeof(struct ControlPRM),"parameters","struct ControlPRM");
+              //pthread_mutex_lock(&controlprogram_list_lock);
+              //control_parameters=controlprogram_fill_parameters(control_program);
+              //pthread_mutex_unlock(&controlprogram_list_lock);
+	      driver_msg_add_var(&rmsg,control_program->parameters,sizeof(struct ControlPRM),"parameters","struct ControlPRM");
               driver_msg_send(socket, &rmsg);
             break;
           case GET_DATA:

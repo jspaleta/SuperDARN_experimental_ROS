@@ -264,8 +264,6 @@ main( int argc, char *argv[])
  * Request a default ControlPRM parameter structure to work with 
  */
 
-  sleep(10);
-  graceful_exit(0);
  if(verbose>1) printf("Get Default Parameters %d\n",GET_PARAMETERS);
    driver_msg_init(smsg);
    driver_msg_init(rmsg);
