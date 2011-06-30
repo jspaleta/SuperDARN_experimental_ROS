@@ -86,6 +86,16 @@ int main ( int argc, char **argv){
 	char driver_type[20]="";
 	int port_number=-1;
 
+        static struct option long_options[] =
+        {
+               /* These options don't set a flag.
+		* We distinguish them by their indices. */
+               {"verbose",	no_argument,		0, 	'v'},
+               {"driver",	required_argument, 	0, 	'd'},
+               {"port",		required_argument, 	0, 	'p'},
+               {"help",		required_argument, 	0, 	'h'},
+               {0, 0, 0, 0}
+        };
         signal(SIGINT, graceful_cleanup);
         signal(SIGTERM, graceful_cleanup);
 
@@ -94,16 +104,6 @@ int main ( int argc, char **argv){
 	/* Process arguments */
         while (1)
         {
-           static struct option long_options[] =
-             {
-               /* These options don't set a flag.
-		* We distinguish them by their indices. */
-               {"verbose",	no_argument,		0, 	'v'},
-               {"driver",	required_argument, 	0, 	'd'},
-               {"port",		required_argument, 	0, 	'p'},
-               {"help",		required_argument, 	0, 	'h'},
-               {0, 0, 0, 0}
-             };
            /* getopt_long stores the option index here. */
            int option_index = 0;
      

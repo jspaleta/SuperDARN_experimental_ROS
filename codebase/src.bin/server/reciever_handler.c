@@ -22,7 +22,7 @@ extern pthread_mutex_t recv_comm_lock, thread_list_lock;
 extern int *ready_state_pointer;
 extern struct Thread_List_Item *controlprogram_threads;
 extern struct BlackList *blacklist;
-extern int *blacklist_count_pointer;
+extern int max_blacklist,*blacklist_count_pointer;
 extern struct ClrPwr* *latest_clr_fft;
 extern int max_freqs,full_clr_start,full_clr_end;
 extern unsigned long error_count,collection_count;
@@ -74,7 +74,6 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 	int i,j,k,acount,clean;
 	int ncfs, nfreq;
 	int blacklist_count=0;
-	int numclients=0;
 	int best_index=0; 
 	int rx_bandwidth_khz,padded_tx_sideband_khz,padded_rx_sideband_khz; //in KHz
         int detrend_enabled=0; 
@@ -401,7 +400,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 
 	if(blacklist!=NULL) {  
 		blacklist_count=*blacklist_count_pointer;  /* Set the counter to the unmodified blacklist count */
-		if (verbose>1) fprintf(stderr,"  %d %d :: Filling backlist\n",arg->parameters->radar,arg->parameters->channel);	
+		if (verbose>1) fprintf(stderr,"  %d %d :: Filling backlist %d\n",arg->parameters->radar,arg->parameters->channel,blacklist_count);	
 		/*
 		* First add all other control program's assigned frequencies to the black list   
 		*/
@@ -412,7 +411,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 			  if(controlprogram!=arg) {                   
 			    if(controlprogram->state!=NULL) {                   
        				if(controlprogram->state->active!=0) {
-           				if (blacklist_count < (numclients*2)) {  
+           				if (blacklist_count < max_blacklist) {  
            					/* place controlprogram's assigned frequency on the blacklist */
            					blacklist[blacklist_count].start=controlprogram->state->current_assigned_freq-controlprogram->state->rx_sideband;
            					blacklist[blacklist_count].end=controlprogram->state->current_assigned_freq+controlprogram->state->rx_sideband;
@@ -423,7 +422,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
                        					  controlprogram->parameters->radar,controlprogram->parameters->channel, \
                        					  blacklist[blacklist_count].start,blacklist[blacklist_count].end);	
            					blacklist_count++;
-           					if (blacklist_count >= (numclients*2)) blacklist_count=numclients*2-1; 
+           					if (blacklist_count >= max_blacklist) blacklist_count=max_blacklist-1; 
 					}
          			//} 
 				}

@@ -65,7 +65,7 @@ int verbose=2;
 int die_on_socket_failure=0;
 int clear_frequency_request;
 struct BlackList *blacklist=NULL;
-int *blacklist_count_pointer;
+int max_blacklist=0,*blacklist_count_pointer=NULL;
 
 struct ClrPwr* *latest_clr_fft;
 int full_clr_start=FULL_CLR_FREQ_START;
@@ -261,6 +261,7 @@ int main()
   bad_transmit_times.start_usec=NULL;
   bad_transmit_times.duration_usec=NULL;
   blacklist_count_pointer=malloc(sizeof(int));
+  max_blacklist=(restrict_count+Max_Control_THREADS*4);
   blacklist_count=0;
   sprintf(restrict_file,"%s/restrict.dat",SITE_DIR);
   fprintf(stderr,"Opening restricted file: %s\n",restrict_file);
@@ -275,7 +276,7 @@ int main()
   fprintf(stderr,"Number of restricted windows in file: %d\n",restrict_count);
   fprintf(stderr,"max blacklist: %d\n",restrict_count+Max_Control_THREADS*4);
   fclose(fd);
-  blacklist = (struct BlackList*) malloc(sizeof(struct BlackList) * (restrict_count+Max_Control_THREADS*4));
+  blacklist = (struct BlackList*) malloc(sizeof(struct BlackList) * max_blacklist);
   if( verbose > 1 ) fprintf(stderr,"Blacklist : %p\n",blacklist);
   sprintf(restrict_file,"%s/restrict.dat",SITE_DIR);
   fd=fopen(restrict_file,"r+");
