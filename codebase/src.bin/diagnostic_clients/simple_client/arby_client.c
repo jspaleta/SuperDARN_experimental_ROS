@@ -160,10 +160,10 @@ main( int argc, char *argv[])
 /*
  * send and receive the Radar request structure.
  */
- if(verbose>1) printf("Sending the Register Chan Command %c\n",SET_RADAR_CHAN);
+ if(verbose>1) printf("Sending the Register Chan Command %c\n",REGISTER_RADAR_CHAN);
    driver_msg_init(smsg);
    driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,SET_RADAR_CHAN,"set_radar_chan","NONE");
+   driver_msg_set_command(smsg,REGISTER_RADAR_CHAN,"register_radar_chan","NONE");
    radar=1;  //Ask for radar 1  
    channel=1;  //Ask for channel 1
    driver_msg_add_var(smsg,&radar,sizeof(int32),"radar","int32");
@@ -294,10 +294,10 @@ main( int argc, char *argv[])
    driver_msg_free_buffer(rmsg);
 
 
-   if(verbose>1) printf("Sending the Set Ready Command %d\n",SET_READY_FLAG);
+   if(verbose>1) printf("Sending the Set Ready Command %d\n",CtrlProg_READY);
    driver_msg_init(smsg);
    driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,SET_READY_FLAG,"set_ready","ALL");
+   driver_msg_set_command(smsg,CtrlProg_READY,"set_ready","ALL");
    driver_msg_send(s, smsg);
    driver_msg_recv(s, rmsg);
    driver_msg_free_buffer(smsg);

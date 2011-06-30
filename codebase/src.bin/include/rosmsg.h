@@ -41,7 +41,6 @@ struct ROSMsg {
 #define GET_TRTIMES 'm'
 #define TRIGGER 'n'
 #define POSTTRIGGER 'o'
-#define GET_DATA 'p'
 #define GET_DATA_STATUS 'q'
 #define GET_TRIGGER_OFFSET 'r'
 #define SET_TRIGGER_OFFSET 's'
