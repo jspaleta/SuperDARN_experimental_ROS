@@ -117,35 +117,5 @@ struct CLRFreqPRM {
      float rx_bandwidth_khz;  //in kHz  typically c/(rsep*2)
      float tx_bandwidth_khz;  //in kHz  typically c/(rsep*2)
 };
-//ROSMsg type definitions:
-#define SET_RADAR_CHAN 'R'
-#define SET_INACTIVE 'a'
-#define SET_ACTIVE 'A'
-#define GET_SITE_SETTINGS 's'
-#define UPDATE_SITE_SETTINGS 'S'
-#define QUERY_INI_SETTING 'i'
-#define SET_SITE_IFMODE 'I'
-#define GET_PARAMETERS 'c'
-#define SET_PARAMETERS 'C'
 
-#define PING '='
-#define OKAY '^'
-#define NOOP '~'
-#define QUIT '.'
-
-#define REGISTER_SEQ '+'
-#define REMOVE_SEQ '-'
-
-#define REQUEST_ASSIGNED_FREQ '>'
-#define REQUEST_CLEAR_FREQ_SEARCH '<'
-#define LINK_RADAR_CHAN 'L'
-
-#define SET_READY_FLAG '1'
-#define UNSET_READY_FLAG '!'
-#define SET_PROCESSING_FLAG '2'
-#define UNSET_PROCESSING_FLAG '@'
-
-#define GET_DATA 'd'
-
-#define AUX_COMMAND '8'
 #endif
