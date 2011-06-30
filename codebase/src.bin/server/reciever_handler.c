@@ -12,6 +12,7 @@
 #include <fcntl.h>           /* For O_* constants */
 #include <gsl/gsl_sf.h>           
 #include "utils.h"
+#include "rosmsg.h"
 #include "global_server_variables.h"
 #include "iniparser.h"
 
@@ -44,7 +45,7 @@ int compare_fft_structs(const void *a, const void *b){
 }
 
 void *receiver_site_settings(void *arg) {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   struct SiteSettings *site_settings;
   site_settings=arg;
   driver_msg_init(&s_msg);
@@ -617,7 +618,7 @@ void receiver_exit(void *arg)
 
 void *receiver_end_controlprogram(struct ControlProgram *control_program)
 {
- struct DriverMsg s_msg,r_msg;
+ struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   if (control_program!=NULL) {
@@ -636,7 +637,7 @@ void *receiver_end_controlprogram(struct ControlProgram *control_program)
 
 void *receiver_ready_controlprogram(struct ControlProgram *control_program)
 {
- struct DriverMsg s_msg,r_msg;
+ struct ROSMsg s_msg,r_msg;
 
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
@@ -657,7 +658,7 @@ void *receiver_ready_controlprogram(struct ControlProgram *control_program)
 
 void *receiver_get_trigger_offset(struct ControlProgram *control_program)
 {
- struct DriverMsg s_msg,r_msg;
+ struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,GET_TRIGGER_OFFSET,"get_trigger_offset","NONE");
@@ -679,7 +680,7 @@ void *receiver_get_trigger_offset(struct ControlProgram *control_program)
 
 void *receiver_pretrigger(void *arg)
 {
- struct DriverMsg s_msg,r_msg;
+ struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
@@ -695,7 +696,7 @@ void *receiver_pretrigger(void *arg)
 
 void *receiver_posttrigger(void *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
@@ -711,7 +712,7 @@ void *receiver_posttrigger(void *arg)
 
 void *receiver_controlprogram_get_data(struct ControlProgram *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   struct timeval t0,t1,t3;
   char shm_device[80];
   int shm_fd;
@@ -857,7 +858,7 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
 
 void *receiver_ready_clrsearch(struct ControlProgram *control_program)
 {
- struct DriverMsg s_msg,r_msg;
+ struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,CLRSEARCH_READY,"clrsearch_ready","NONE");
@@ -875,7 +876,7 @@ void *receiver_ready_clrsearch(struct ControlProgram *control_program)
 
 void *receiver_pre_clrsearch(struct ControlProgram *control_program)
 {
- struct DriverMsg s_msg,r_msg;
+ struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,PRE_CLRSEARCH,"pre_clrsearch","NONE");
@@ -892,7 +893,7 @@ void *receiver_pre_clrsearch(struct ControlProgram *control_program)
 
 void *receiver_post_clrsearch(struct ControlProgram *control_program)
 {
- struct DriverMsg s_msg,r_msg;
+ struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,POST_CLRSEARCH,"post_clrsearch","NONE");
@@ -909,7 +910,7 @@ void *receiver_post_clrsearch(struct ControlProgram *control_program)
 
 void *receiver_clrsearch(struct ControlProgram *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   struct timeval t0;
   int i,r,bandwidth,index;
   double *pwr=NULL;

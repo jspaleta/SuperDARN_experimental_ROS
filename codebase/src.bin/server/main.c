@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <string.h>
+#include "rosmsg.h"
 #include "global_server_variables.h"
 #include "control_program.h"
 #include "client_handler.h"
@@ -163,7 +164,7 @@ int main()
   struct sockaddr_un cli_addr;
   struct Thread_List_Item *thread_list;
   struct ControlProgram *control_program;
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   int newsockfd, rc,i,j,r;
   unsigned int clilen;
   int num_threads;
@@ -176,7 +177,6 @@ int main()
   char *s,*line,*field;
 
   fprintf(stderr,"Size of Struct ROSMsg  %lu\n",(unsigned long) sizeof(struct ROSMsg));
-  fprintf(stderr,"Size of Struct DriverMsg  %lu\n",(unsigned long) sizeof(struct DriverMsg));
   fprintf(stderr,"Size of Struct int32  %lu\n",(unsigned long) sizeof(int32));
   fprintf(stderr,"Size of Struct float  %lu\n",(unsigned long) sizeof(float));
   fprintf(stderr,"Size of Struct unsigned char  %lu\n",(unsigned long) sizeof(unsigned char));

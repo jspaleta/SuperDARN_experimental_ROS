@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "rosmsg.h"
 #include "global_server_variables.h"
 
 //#define MSG_NOSIGNAL 0 
@@ -138,7 +139,7 @@ return str;
 }
 
 
-int  driver_msg_init(struct DriverMsg *msg){
+int  driver_msg_init(struct ROSMsg *msg){
   msg->command_type=0;
   strncpy(msg->command_name,"",MAX_MSG_STRING);
   strncpy(msg->driver,"",MAX_MSG_STRING);
@@ -151,14 +152,14 @@ int  driver_msg_init(struct DriverMsg *msg){
   return 0;
 };
 
-int driver_msg_set_command(struct DriverMsg *msg,char type, char *name,char *driver){
+int driver_msg_set_command(struct ROSMsg *msg,char type, char *name,char *driver){
   msg->command_type=type;
   strncpy(msg->command_name,name,MAX_MSG_STRING);
   strncpy(msg->driver,driver,MAX_MSG_STRING);
   return 1;
 }
 
-int driver_msg_free_buffer(struct DriverMsg *msg){
+int driver_msg_free_buffer(struct ROSMsg *msg){
   if(msg!=NULL) {
     msg->command_type=0;
     strncpy(msg->command_name,"",MAX_MSG_STRING);
@@ -174,7 +175,7 @@ int driver_msg_free_buffer(struct DriverMsg *msg){
   return 0;
 };
 
-int driver_msg_add_var(struct DriverMsg *msg,void *arg,unsigned int bytes,char *var_name,char *type){
+int driver_msg_add_var(struct ROSMsg *msg,void *arg,unsigned int bytes,char *var_name,char *type){
  struct msgvar var;
  struct msgvar *vars;
  int32 temp=0; 
@@ -198,7 +199,7 @@ int driver_msg_add_var(struct DriverMsg *msg,void *arg,unsigned int bytes,char *
  return 0; 
 };
 
-int driver_msg_dump_var_info(struct DriverMsg *msg){
+int driver_msg_dump_var_info(struct ROSMsg *msg){
   struct msgvar *var;
   struct msgvar *vars;
   int var_index,bytes;
@@ -214,7 +215,7 @@ int driver_msg_dump_var_info(struct DriverMsg *msg){
   return 0;
 };
 
-int driver_msg_get_var_by_index(struct DriverMsg *msg,int var_index,void *buf){
+int driver_msg_get_var_by_index(struct ROSMsg *msg,int var_index,void *buf){
   struct msgvar *var;
   struct msgvar *vars;
   int bytes;
@@ -239,7 +240,7 @@ int driver_msg_get_var_by_index(struct DriverMsg *msg,int var_index,void *buf){
   return 0;
 };
 
-int driver_msg_get_var_by_name(struct DriverMsg *msg,char *var_name,void *buf){
+int driver_msg_get_var_by_name(struct ROSMsg *msg,char *var_name,void *buf){
   struct msgvar *var;
   struct msgvar *vars;
   int var_index,bytes;
@@ -263,11 +264,11 @@ int driver_msg_get_var_by_name(struct DriverMsg *msg,char *var_name,void *buf){
   return 0;
 };
 
-int driver_msg_send(int socket,struct DriverMsg *msg) {
+int driver_msg_send(int socket,struct ROSMsg *msg) {
   int retval,error=0;
-  retval=send_data(socket,msg,sizeof(struct DriverMsg));
+  retval=send_data(socket,msg,sizeof(struct ROSMsg));
 
-  if(retval!=sizeof(struct DriverMsg)) error++; 
+  if(retval!=sizeof(struct ROSMsg)) error++; 
 
   retval=send_data(socket,(void *)msg->buffer,msg->bytes);
   if(retval!=msg->bytes) error++; 
@@ -282,14 +283,14 @@ int driver_msg_send(int socket,struct DriverMsg *msg) {
   return 0;
 }
 
-int driver_msg_recv(int socket,struct DriverMsg *msg) {
+int driver_msg_recv(int socket,struct ROSMsg *msg) {
   int error=0,retval;
   driver_msg_init(msg);
-  retval=recv_data(socket,msg,sizeof(struct DriverMsg));
+  retval=recv_data(socket,msg,sizeof(struct ROSMsg));
   msg->buffer=(uint64)NULL;
   msg->vars=(uint64)NULL;
 
-  if(retval!=sizeof(struct DriverMsg)) {
+  if(retval!=sizeof(struct ROSMsg)) {
     printf("msg_recv:  msg error : %d\n",retval);
     error++;
   }

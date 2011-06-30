@@ -12,7 +12,7 @@
 #include <errno.h>
 #include "utils.h"
 #include "control_program.h"
-#include "global_server_variables.h"
+#include "global_server_variables.h"  //should not be needed
 #include "tsg.h"
 #include "iniparser.h"
 int s;

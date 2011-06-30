@@ -1,6 +1,5 @@
-#include "global_server_variables.h"
-#include "iniparser.h"
+#include "rosmsg.h"
 
 
 
-void *GPS_aux_msg(struct DriverMsg *msg);
+void *GPS_aux_msg(struct ROSMsg *msg);

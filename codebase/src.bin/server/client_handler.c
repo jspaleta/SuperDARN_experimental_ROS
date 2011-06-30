@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
+#include "rosmsg.h"
 #include "control_program.h"
 #include "global_server_variables.h"
 #include "utils.h"
@@ -326,7 +327,7 @@ void *control_handler(struct ControlProgram *control_program)
    unsigned int length=sizeof(int);
    int32 current_freq,radar=0,channel=0;
    struct timeval tv,current_time,last_report;
-   struct DriverMsg smsg,rmsg; 
+   struct ROSMsg smsg,rmsg; 
    struct ControlPRM control_parameters; 
    struct SiteSettings settings;
 //   struct TSGprm *tsgprm;

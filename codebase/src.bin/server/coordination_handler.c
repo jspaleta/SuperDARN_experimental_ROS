@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <time.h>
+#include "rosmsg.h"
 #include "control_program.h"
 #include "global_server_variables.h"
 #include "dio_handler.h"
@@ -23,7 +24,7 @@ void *coordination_handler(struct ControlProgram *control_program)
    pthread_t threads[4];
    struct Thread_List_Item *thread_list;
    int32 gps_event,gpssecond,gpsnsecond;
-   struct DriverMsg s_msg,r_msg;
+   struct ROSMsg s_msg,r_msg;
    struct ControlProgram *cprog;
    int ready_state,trigger_state,ready_count;
 

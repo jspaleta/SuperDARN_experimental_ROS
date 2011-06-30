@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include "rosmsg.h"
 #include "control_program.h"
 #include "global_server_variables.h"
 
@@ -18,7 +19,7 @@ void dds_exit(void *arg)
 
 void *dds_register_seq(struct ControlProgram *control_program)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   int32 index;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
@@ -46,7 +47,7 @@ void *dds_register_seq(struct ControlProgram *control_program)
 
 void *dds_site_settings(void *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   struct SiteSettings *site_settings;
   site_settings=arg;
   driver_msg_init(&s_msg);
@@ -68,7 +69,7 @@ void *dds_site_settings(void *arg)
 
 void *dds_get_trigger_offset(struct ControlProgram *control_program)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,GET_TRIGGER_OFFSET,"get_trigger_offset","NONE");
@@ -89,7 +90,7 @@ void *dds_get_trigger_offset(struct ControlProgram *control_program)
 }
 void *dds_ready_controlprogram(struct ControlProgram *control_program)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,CtrlProg_READY,"ctrlprog_ready","NONE");
@@ -109,7 +110,7 @@ void *dds_ready_controlprogram(struct ControlProgram *control_program)
 
 void *dds_end_controlprogram(struct ControlProgram *control_program)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   pthread_mutex_lock(&dds_comm_lock);
@@ -125,7 +126,7 @@ void *dds_end_controlprogram(struct ControlProgram *control_program)
 
 void *dds_pretrigger(void *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
@@ -140,7 +141,7 @@ void *dds_pretrigger(void *arg)
 
 void *dds_posttrigger(void *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");

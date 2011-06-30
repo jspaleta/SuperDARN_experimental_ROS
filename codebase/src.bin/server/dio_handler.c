@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
+#include "rosmsg.h"
 #include "control_program.h"
 #include "global_server_variables.h"
 #include "dio_handler.h"
@@ -15,7 +16,7 @@ extern pthread_mutex_t dio_comm_lock;
 
 void *DIO_ready_controlprogram(struct ControlProgram *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,CtrlProg_READY,"ctrlprog_ready","NONE");
@@ -35,7 +36,7 @@ void *DIO_ready_controlprogram(struct ControlProgram *arg)
 
 void *DIO_pretrigger(void *arg)
 {
-  struct DriverMsg s_msg, r_msg;
+  struct ROSMsg s_msg, r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
@@ -49,23 +50,23 @@ void *DIO_pretrigger(void *arg)
 };
 
 
-void *DIO_aux_msg(struct DriverMsg *msg_p)
+void *DIO_aux_msg(struct ROSMsg *msg_p)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   pthread_mutex_lock(&dio_comm_lock);
-  memmove(&s_msg,msg_p,sizeof(struct DriverMsg));
+  memmove(&s_msg,msg_p,sizeof(struct ROSMsg));
   driver_msg_send(diosock, &s_msg);
   driver_msg_recv(diosock, &r_msg);
-  memmove(msg_p,&r_msg,sizeof(struct DriverMsg));
+  memmove(msg_p,&r_msg,sizeof(struct ROSMsg));
   pthread_mutex_unlock(&dio_comm_lock);
   pthread_exit(NULL);
 };
 
 void *DIO_ready_clrsearch(struct ControlProgram *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,CLRSEARCH_READY,"clrsearch_ready","NONE");
@@ -84,7 +85,7 @@ void *DIO_ready_clrsearch(struct ControlProgram *arg)
 };
 void *DIO_pre_clrsearch(struct ControlProgram *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,PRE_CLRSEARCH,"pre_clrsearch","NONE");
@@ -103,7 +104,7 @@ void *DIO_pre_clrsearch(struct ControlProgram *arg)
 
 void *DIO_post_clrsearch(struct ControlProgram *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,POST_CLRSEARCH,"post_clrsearch","NONE");
@@ -123,7 +124,7 @@ void *DIO_post_clrsearch(struct ControlProgram *arg)
 
 void *dio_site_settings(void *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   struct SiteSettings *site_settings;
   site_settings=arg;
   driver_msg_init(&s_msg);

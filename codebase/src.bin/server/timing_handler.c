@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include "rosmsg.h"
 #include "control_program.h"
 #include "global_server_variables.h"
 
@@ -12,7 +13,7 @@ extern int verbose;
 extern struct TRTimes bad_transmit_times;
 void *timing_ready_controlprogram(struct ControlProgram *control_program)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,CtrlProg_READY,"ctrlprog_ready","NONE");
@@ -33,7 +34,7 @@ void *timing_ready_controlprogram(struct ControlProgram *control_program)
 
 void *timing_end_controlprogram(struct ControlProgram *control_program)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   pthread_mutex_lock(&timing_comm_lock);
@@ -50,7 +51,7 @@ void *timing_end_controlprogram(struct ControlProgram *control_program)
 
 void *timing_register_seq(struct ControlProgram *control_program)
 {
- struct DriverMsg s_msg,r_msg;
+ struct ROSMsg s_msg,r_msg;
   int32 index;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
@@ -77,7 +78,7 @@ void *timing_register_seq(struct ControlProgram *control_program)
 
 void *timing_set_trigger_offset(struct ControlProgram *control_program)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   if (control_program!=NULL) {
@@ -104,7 +105,7 @@ void *timing_set_trigger_offset(struct ControlProgram *control_program)
 
 void *timing_pretrigger(void *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
@@ -154,7 +155,7 @@ void *timing_pretrigger(void *arg)
 
 void *timing_trigger(int *trigger_type_p)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   int trigger_type;
   trigger_type=*trigger_type_p;
   driver_msg_init(&s_msg);
@@ -179,7 +180,7 @@ void *timing_trigger(int *trigger_type_p)
 
 void *timing_wait(void *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,WAIT,"wait","NONE");
@@ -192,7 +193,7 @@ void *timing_wait(void *arg)
 
 void *timing_posttrigger(void *arg)
 {
-  struct DriverMsg s_msg,r_msg;
+  struct ROSMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,POSTTRIGGER,"posttrigger","NONE");

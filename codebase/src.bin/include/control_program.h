@@ -2,6 +2,7 @@
 #include <sys/time.h>
 #include "tsg.h"
 #include "rtypes.h"
+#include "rosmsg.h"
 #include "site.h"
 
 #ifndef _CONTROL_PROGRAM_H
@@ -107,10 +108,6 @@ struct ControlPRM {
      char description[120]; //optional: but a very good idea to set
 };
 
-struct ROSMsg {
-     int32 status;
-     char type;
-};
 
 struct CLRFreqPRM {
      int32 freq_start_khz; //In kHz
