@@ -7,6 +7,7 @@
 #include <string.h>
 #include <time.h>
 #include <getopt.h>
+#include "rosmsg.h"
 #include "control_program.h"
 #include "global_server_variables.h"
 #include "utils.h"
@@ -78,8 +79,8 @@ int main ( int argc, char **argv){
 
 
 	// function specific message variables
-        struct  DriverMsg msg;	//msg structure which indicates command status and other things
-	struct	DriverMsg r_msg;
+        struct  ROSMsg msg;	//msg structure which indicates command status and other things
+	struct	ROSMsg r_msg;
         // argument parsing variables 
         int arg;		//command line option parsing
 	char driver_type[20]="";

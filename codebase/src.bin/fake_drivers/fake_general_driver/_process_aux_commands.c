@@ -1,16 +1,17 @@
 #include <ctype.h>
 #include "iniparser.h" 
 #include "dictionary.h" 
+#include "rosmsg.h"
 #include "global_server_variables.h"
 
 
-int process_aux_msg(struct DriverMsg in_msg,struct DriverMsg *out_msg_p,int verbose) {
+int process_aux_msg(struct ROSMsg in_msg,struct ROSMsg *out_msg_p,int verbose) {
         int retval;
 	int i,r,radar=0;	
         int bytes;
         int32 gpsrate;
         struct tx_status txstatus[MAX_RADARS];
-        struct DriverMsg return_msg;
+        struct ROSMsg return_msg;
 	driver_msg_init(&return_msg);
 
 	if (strcmp(in_msg.driver,"DIO")==0) {
@@ -44,7 +45,7 @@ int process_aux_msg(struct DriverMsg in_msg,struct DriverMsg *out_msg_p,int verb
 		}
 	}
 
-        memmove(out_msg_p,&return_msg,sizeof(struct DriverMsg));
+        memmove(out_msg_p,&return_msg,sizeof(struct ROSMsg));
         return 0;
 }
 
