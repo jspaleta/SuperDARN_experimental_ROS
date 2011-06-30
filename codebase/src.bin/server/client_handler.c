@@ -237,6 +237,8 @@ struct ControlProgram *control_init() {
 
        control_program->state->cancelled=0;
        control_program->state->ready=0;
+       control_program->state->rx_trigger_offset_usec=0;
+       control_program->state->dds_trigger_offset_usec=0;
        control_program->state->processing=0;
        control_program->state->current_assigned_freq=0;
        control_program->state->thread=NULL;
@@ -615,15 +617,15 @@ void *control_handler(struct ControlProgram *control_program)
               rmsg.status=-1;
             } else {
               rmsg.status=1;
-              pthread_mutex_lock(&controlprogram_list_lock);
-              if (control_program->state->active!=0) control_program->state->active=1;
-              pthread_mutex_unlock(&controlprogram_list_lock);
                
               i=0;
               rc = pthread_create(&threads[i], NULL,(void *) &timing_wait, NULL);
               pthread_join(threads[0],NULL);
               pthread_mutex_lock(&controlprogram_list_lock);
+              if (control_program->state->active!=0) control_program->state->active=1;
               control_program->state->ready=1;
+              pthread_mutex_unlock(&controlprogram_list_lock);
+/*
               i=0;
               rc = pthread_create(&threads[i], NULL, (void *) &DIO_ready_controlprogram, control_program);
               i++;
@@ -635,8 +637,10 @@ void *control_handler(struct ControlProgram *control_program)
               for (;i>=0;i--) {
                 pthread_join(threads[i],NULL);
               }
+*/
               rc = pthread_create(&thread, NULL, (void *)&coordination_handler,(void *) control_program);
               pthread_join(thread,NULL);
+              pthread_mutex_lock(&controlprogram_list_lock);
               pthread_mutex_unlock(&controlprogram_list_lock);
             }
             driver_msg_send(socket, &rmsg);

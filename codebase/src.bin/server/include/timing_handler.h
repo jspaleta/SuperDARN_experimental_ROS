@@ -3,6 +3,7 @@
 //void *timing_handler(void *arg);
 void *timing_pretrigger(void *arg);
 void *timing_posttrigger(void *arg);
+void *timing_set_trigger_offset(struct ControlProgram *arg);
 void *timing_ready_controlprogram(struct ControlProgram *arg);
 void *timing_end_controlprogram(struct ControlProgram *arg);
 void *timing_wait(void *arg);

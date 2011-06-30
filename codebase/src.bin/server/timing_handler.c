@@ -75,27 +75,57 @@ void *timing_register_seq(struct ControlProgram *control_program)
   pthread_exit(NULL);
 }
 
+void *timing_set_trigger_offset(struct ControlProgram *control_program)
+{
+  struct DriverMsg s_msg,r_msg;
+  driver_msg_init(&s_msg);
+  driver_msg_init(&r_msg);
+  if (control_program!=NULL) {
+    if (control_program->parameters!=NULL) {
+      if (control_program->state!=NULL) {
+        driver_msg_set_command(&s_msg,SET_TRIGGER_OFFSET,"set_trigger_offset","NONE");
+        driver_msg_add_var(&s_msg,&control_program->state->rx_trigger_offset_usec,sizeof(int32),"rx_trigger_offset_usec","int32");
+        driver_msg_add_var(&s_msg,&control_program->state->dds_trigger_offset_usec,sizeof(int32),"dds_trigger_offset_usec","int32");
+        driver_msg_add_var(&s_msg,&control_program->parameters->radar,sizeof(int32),"radar","int32");
+        driver_msg_add_var(&s_msg,&control_program->parameters->channel,sizeof(int32),"channel","int32");
+
+        pthread_mutex_lock(&timing_comm_lock);
+        driver_msg_send(timingsock, &s_msg);
+        driver_msg_recv(timingsock, &r_msg);
+        pthread_mutex_unlock(&timing_comm_lock);
+
+        driver_msg_free_buffer(&s_msg);
+        driver_msg_free_buffer(&r_msg);
+        pthread_exit(NULL);
+      }
+    }  
+  }
+}
+
 void *timing_pretrigger(void *arg)
 {
   struct DriverMsg s_msg,r_msg;
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
+
   pthread_mutex_lock(&timing_comm_lock);
   driver_msg_send(timingsock, &s_msg);
   driver_msg_recv(timingsock, &r_msg);
   pthread_mutex_unlock(&timing_comm_lock);
+
   driver_msg_free_buffer(&s_msg);
   driver_msg_free_buffer(&r_msg);
-
 
   driver_msg_init(&s_msg);
   driver_msg_init(&r_msg);
   driver_msg_set_command(&s_msg,GET_TRTIMES,"get_trtimes","NONE");
+
   pthread_mutex_lock(&timing_comm_lock);
   driver_msg_send(timingsock, &s_msg);
   driver_msg_recv(timingsock, &r_msg);
   pthread_mutex_unlock(&timing_comm_lock);
+
   if(r_msg.status==1) {
     if(bad_transmit_times.start_usec!=NULL) free(bad_transmit_times.start_usec);
     if(bad_transmit_times.duration_usec!=NULL) free(bad_transmit_times.duration_usec);

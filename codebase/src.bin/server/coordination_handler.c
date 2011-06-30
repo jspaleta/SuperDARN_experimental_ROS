@@ -38,8 +38,9 @@ void *coordination_handler(struct ControlProgram *control_program)
      control_program->state->processing=0;
    } else {
    }
+   printf("Coord: Trigger State: %d\n",trigger_state); 
 /*Calculate Ready State*/
-   if(trigger_state<2) { 
+   if(trigger_state<1) { 
      thread_list=controlprogram_threads;
      while(thread_list!=NULL){
        cprog=thread_list->data;
@@ -81,27 +82,83 @@ void *coordination_handler(struct ControlProgram *control_program)
         case 2:
         //printf("Coord: All control programs ready\n"); 
         /*all control programs ready for trigger*/
-          trigger_state=1;
-          thread_list=controlprogram_threads;
 
+          //TODO: Find the highest priority control_program that is ready
+          
+          //TODO: Fill parameters of other controlprograms based on the priority channel
 
+	  //Inform the drivers that all the active controlprograms are ready
           thread_list=controlprogram_threads;
           while(thread_list!=NULL){
             cprog=thread_list->data;
             if (cprog!=NULL) {
-              if (cprog->state->active==1) {
-                if (cprog->state->ready==1) {
-                }
-                if (cprog->state->processing==1) {
-                }
+              if (cprog->state!=NULL) {
+                if (cprog->state->active==1) {
+                  if (cprog->parameters!=NULL) {
+                    i=0;
+                    rc = pthread_create(&threads[i], NULL, (void *) &DIO_ready_controlprogram, cprog);
+                    i++;
+                    rc = pthread_create(&threads[i], NULL, (void *) &timing_ready_controlprogram, cprog);
+                    i++;
+                    rc = pthread_create(&threads[i], NULL, (void *) &dds_ready_controlprogram, cprog);
+                    i++;
+                    rc = pthread_create(&threads[i], NULL, (void *) &receiver_ready_controlprogram, cprog);
+                    for (;i>=0;i--) {
+                      pthread_join(threads[i],NULL);
+                    }
+                  }
+                 }
               }
-            } else {
             }
             thread_list=thread_list->prev;
           }
 
+	  //TODO: Get calculated trigger offsets
+/*
+          thread_list=controlprogram_threads;
+          while(thread_list!=NULL){
+            cprog=thread_list->data;
+            if (cprog!=NULL) {
+              if (cprog->state!=NULL) {
+                if (cprog->state->active==1) {
+                  if (cprog->parameters!=NULL) {
+                    i=0;
+                    rc = pthread_create(&threads[i], NULL, (void *) &dds_get_trigger_offset, cprog);
+                    i++;
+                    rc = pthread_create(&threads[i], NULL, (void *) &receiver_get_trigger_offset, cprog);
+                    for (;i>=0;i--) {
+                      pthread_join(threads[i],NULL);
+                    }
+                  }
+                 }
+              }
+            }
+            thread_list=thread_list->prev;
+          }
+*/
+          //TODO: Use priority channel to force offsets
+
+	  //Set calculated trigger offsets
+          thread_list=controlprogram_threads;
+          while(thread_list!=NULL){
+            cprog=thread_list->data;
+            if (cprog!=NULL) {
+              if (cprog->state!=NULL) {
+                if (cprog->state->active==1) {
+                  if (cprog->parameters!=NULL) {
+                    i=0;
+                    rc = pthread_create(&threads[i], NULL, (void *) &timing_set_trigger_offset, cprog);
+                    for (;i>=0;i--) {
+                      pthread_join(threads[i],NULL);
+                    }
+                  }
+                 }
+              }
+            }
+            thread_list=thread_list->prev;
+          }
+          trigger_state=1; //pretrigger
           i=0;
-          //printf("Coord: DDS Pre-trigger\n"); 
           rc = pthread_create(&threads[i], NULL, (void *) &dds_pretrigger, NULL);
           i++;
           rc = pthread_create(&threads[i], NULL, (void *) &receiver_pretrigger, NULL);
@@ -112,12 +169,11 @@ void *coordination_handler(struct ControlProgram *control_program)
           for (;i>=0;i--) {
             pthread_join(threads[i],NULL);
           }
-          //printf("Coord: Pre-trigger done\n"); 
+
           trigger_state=2; //trigger
 /*
  *             trigger_type:  0: free run  1: elapsed-time  2: gps
  */       
-          usleep(100);
           rc = pthread_create(&threads[0], NULL, (void *) &timing_trigger, (void *)&trigger_type);
           pthread_join(threads[0],NULL);
           trigger_state=3;//post-trigger
@@ -158,7 +214,7 @@ void *coordination_handler(struct ControlProgram *control_program)
             }
             thread_list=thread_list->prev;
           }
-          trigger_state=0;//post-trigger
+          trigger_state=0;//not processing a triggered event
           ready_count=0;
           ready_state=0;
           break; 

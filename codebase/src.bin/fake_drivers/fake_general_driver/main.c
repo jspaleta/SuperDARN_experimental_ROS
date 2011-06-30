@@ -688,10 +688,14 @@ int main ( int argc, char **argv){
 				driver_msg_get_var_by_name(&msg,"rx_trigger_offset_usec",&temp32);
 				temp32=0;
 				driver_msg_get_var_by_name(&msg,"dds_trigger_offset_usec",&temp32);
+				temp32=0;
+				driver_msg_get_var_by_name(&msg,"radar",&temp32);
+				temp32=0;
+				driver_msg_get_var_by_name(&msg,"channel",&temp32);
 			}
 	  		else r_msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
-
+			break;
 		      case GET_EVENT_TIME:
 			/* GET_EVENT_TIME: The ROS may issue this command to a driver. 
 			*  Only one driver should respond to this command 

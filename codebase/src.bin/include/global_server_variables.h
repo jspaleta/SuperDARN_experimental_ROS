@@ -97,30 +97,26 @@ struct Thread_List_Item {
 
 struct ControlState {
 /* State Variables for internal ROS Usage */
+     char ready;
+     char processing;
      int32 cancelled;
      int32 socket;
      int32 active;
-     char ready;
-     char processing;
-//     int32 linked; //required: DO NOT SET MANUALLY
-//     int32 best_assigned_freq; 
-//     float best_assigned_noise; 
+     int32 rx_trigger_offset_usec;
+     int32 dds_trigger_offset_usec;
      int32 current_assigned_freq; 
-     float current_assigned_noise; 
      int32 gpssecond;
      int32 gpsnsecond;
-//     double best_assigned_pwr; 
-     double current_assigned_pwr; 
-//     int32 freq_change_needed; 
      int32 tx_sideband; //in kHz 
      int32 rx_sideband; //in kHz
      int32 N; 
-     struct TSGbuf *pulseseqs[MAX_SEQS]; //array of pulseseq pointers
      int32 num_registered_seqs;
      int32 max_allowed_seqs;
-//     struct ControlProgram *linked_program;
+     float current_assigned_noise; 
+     double current_assigned_pwr; 
      struct timeval trigger_timeout;
      struct Thread_List_Item *thread;
+     struct TSGbuf *pulseseqs[MAX_SEQS]; //array of pulseseq pointers
      t_fft_index *fft_array;
 };
 
