@@ -53,6 +53,7 @@ struct ROSMsg {
 #define SITE_SETTINGS 'y'
 #define REQUEST_ASSIGNED_FREQ '>'
 #define REQUEST_CLEAR_FREQ_SEARCH '<'
+#define QUERY_INI_SETTING 'z'
 #define PING '='
 #define OKAY '^'
 #define NOOP '~'
@@ -60,7 +61,6 @@ struct ROSMsg {
 //#define GET_SITE_SETTINGS 's'
 //#define GPS_SET_TRIGGER_RATE 'b'
 //#define UPDATE_SITE_SETTINGS 'S'
-//#define QUERY_INI_SETTING 'i'
 //#define SET_SITE_IFMODE 'I'
 
 

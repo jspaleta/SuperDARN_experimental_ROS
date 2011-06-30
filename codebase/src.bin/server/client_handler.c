@@ -496,18 +496,20 @@ void *control_handler(struct ControlProgram *control_program)
             }
             driver_msg_send(socket, &rmsg);
             break;
-          case GET_SITE_SETTINGS:
+          case SITE_SETTINGS:
             settings=site_settings;
 	    driver_msg_add_var(&rmsg,&settings,sizeof(struct SiteSettings),"site_settings","struct SiteSettings");
             rmsg.status=-1;
             driver_msg_send(socket, &rmsg);
             break;
+/*
           case SET_SITE_IFMODE:
             settings=site_settings;
 	    driver_msg_get_var_by_name(&smsg,&settings.ifmode);
             driver_msg_send(socket, &rmsg);
             break;
-          case SET_RADAR_CHAN:
+*/
+          case REGISTER_RADAR_CHAN:
 	      driver_msg_get_var_by_name(&smsg,"radar",&radar);
 	      driver_msg_get_var_by_name(&smsg,"channel",&channel);
               pthread_mutex_lock(&controlprogram_list_lock);
@@ -613,7 +615,7 @@ void *control_handler(struct ControlProgram *control_program)
             pthread_mutex_unlock(&controlprogram_list_lock);
             driver_msg_send(socket, &rmsg);
             break;
-          case SET_READY_FLAG:
+          case CtrlProg_READY:
             if ( (r < 0) || (c < 0)) {
               rmsg.status=-1;
             } else {
