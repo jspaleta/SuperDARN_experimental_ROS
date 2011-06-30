@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <errno.h>
+#include <getopt.h>
 #include "utils.h"
 #include "rosmsg.h"
 #include "control_program.h"
@@ -83,7 +84,68 @@ main( int argc, char *argv[])
   char *secname_in_dict=NULL; 
   char secname_static[200]; 
   char entry[200]; 
-  int32 nsecs;
+  int arg;
+
+  radar=1;  //Default radar 1  
+  channel=1;  //Default channel 1
+  /* Process arguments */
+  static struct option long_options[] =
+  {
+               /* These options don't set a flag.
+                * We distinguish them by their indices. */
+               {"verbose",      no_argument,            0,      'v'},
+               {"radar",       required_argument,      0,      'r'},
+               {"channel",         required_argument,      0,      'c'},
+               {"help",         required_argument,      0,      'h'},
+               {0, 0, 0, 0}
+  };
+  while (1)
+  {
+           /* getopt_long stores the option index here. */
+           int option_index = 0;
+
+           arg = getopt_long (argc, argv, "vhr:c:",
+                            long_options, &option_index);
+
+           /* Detect the end of the options. */
+           if (arg == -1)
+             break;
+
+           switch (arg)
+           {
+             case 'r':
+               radar=atoi(optarg);
+               printf ("option -r with value `%s' %d\n", optarg,radar);
+              break;
+             case 'c':
+               channel=atoi(optarg);
+               printf ("option -c with value `%s' %d\n", optarg,channel);
+               break;
+
+             case 'v':
+                verbose++;
+               break;
+
+             case 'h':
+             case '?':
+               printf ("Usage:\n" );
+               printf ("Generic ROS diagnostic controlprogram for prototyping\n" );
+               printf ("-h / --help : show this message\n");
+               printf ("-v / --verbose : increase verbosity by 1\n");
+               printf ("-r radar / --radar radar  : Select radar number\n");
+               printf ("radar values: 1 to MAX_RADARS supported by the site\n");
+               printf ("-c channel / --channel channel  : Select channel number\n");
+               printf ("channel values: 1 to MAX_CHANNELS supported by the site\n");
+               exit(0);
+               break;
+
+             default:
+               abort();
+  	    }
+
+  }
+
+
   smsg=malloc(sizeof(struct ROSMsg));
   rmsg=malloc(sizeof(struct ROSMsg));
   driver_msg_init(smsg);
@@ -164,8 +226,6 @@ main( int argc, char *argv[])
    driver_msg_init(smsg);
    driver_msg_init(rmsg);
    driver_msg_set_command(smsg,REGISTER_RADAR_CHAN,"register_radar_chan","NONE");
-   radar=1;  //Ask for radar 1  
-   channel=1;  //Ask for channel 1
    driver_msg_add_var(smsg,&radar,sizeof(int32),"radar","int32");
    driver_msg_add_var(smsg,&channel,sizeof(int32),"channel","int32");
    driver_msg_send(s, smsg); //Send the Command Message
@@ -178,7 +238,6 @@ main( int argc, char *argv[])
  * Re-create TSGMake using modified TSGBuf structure
  * Look at whether TSGAdd TSGCheck DIOVerifyID are needed
  */
-
  if(verbose>1) printf("Entering MakeTimeSeq\n");
  pulseseq=TSGMake(&prm,index,&flag);
  if (pulseseq!=NULL) {
@@ -205,6 +264,8 @@ main( int argc, char *argv[])
  * Request a default ControlPRM parameter structure to work with 
  */
 
+  sleep(10);
+  graceful_exit(0);
  if(verbose>1) printf("Get Default Parameters %d\n",GET_PARAMETERS);
    driver_msg_init(smsg);
    driver_msg_init(rmsg);
