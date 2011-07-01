@@ -28,10 +28,6 @@ void graceful_cleanup(int signum){
   exit(0);
 }
 
-     
-     
-     
-
 int main ( int argc, char **argv){
     // DECLARE AND INITIALIZE ANY NECESSARY VARIABLES
 	/* Commonly needed variables */
@@ -48,14 +44,15 @@ int main ( int argc, char **argv){
         struct  DataPRM	    data;
         uint32  *main_data=NULL,*back_data=NULL;
 	/* REGISTER_SEQ related variables */
-        struct  TSGbuf *pulseseqs[MAX_RADARS][MAX_CHANNELS][MAX_SEQS]; //timing sequence table
-        int seq_count[MAX_RADARS][MAX_CHANNELS];			//unpacked seq length
+        struct  TSGbuf *pulseseqs[MAX_RADARS+1][MAX_CHANNELS+1][MAX_SEQS+1]; //timing sequence table
+        int seq_count[MAX_RADARS+1][MAX_CHANNELS+1];			//unpacked seq length
+        int state_time_usec=5;
 	int	max_seq_count;				// maximum unpackage seq length	
-	unsigned int	*seq_buf[MAX_RADARS][MAX_CHANNELS];		//unpacked sequence table
+	unsigned int	*seq_buf[MAX_RADARS+1][MAX_CHANNELS+1];		//unpacked sequence table
 	unsigned int	*master_buf;			// master buffer for all sequences
 
 	/* READY related variables */
-        int ready_index[MAX_RADARS][MAX_CHANNELS];	//table to indicate if client is ready for trigger
+        int ready_index[MAX_RADARS+1][MAX_CHANNELS+1];	//table to indicate if client is ready for trigger
         int old_seq_id=-10;				// old and new seq_id used to know if seqs have changed 
         int new_seq_id=-1;				//  and unpacking needs to be done again
         int numclients=0;				// number of active clients
@@ -72,7 +69,7 @@ int main ( int argc, char **argv){
         struct timeval select_timeout;	// timeout for select function
 	// counter and temporary variables
 	int	i,j,r,c;
-        int32   index;
+        int32   index[3];
 	int 	temp;
 	int32 	temp32;
         unsigned long counter;
@@ -184,13 +181,14 @@ int main ( int argc, char **argv){
 
 	/* These are useful for all drivers */
         max_seq_count=0;
-	for (r=0;r<MAX_RADARS;r++){
-	  for (c=0;c<MAX_CHANNELS;c++){
+	for (r=0;r<=MAX_RADARS;r++){
+	  for (c=0;c<=MAX_CHANNELS;c++){
 	    if (verbose > 1) printf("%d %d\n",r,c);
-	    for (i=0;i<MAX_SEQS;i++) pulseseqs[r][c][i]=NULL;
+	    for (i=0;i<=MAX_SEQS;i++) pulseseqs[r][c][i]=NULL;
             ready_index[r][c]=-1; 
             seq_buf[r][c]=malloc(4*MAX_TIME_SEQ_LEN);
-           
+            memset(seq_buf[r][c],0,4*MAX_TIME_SEQ_LEN); 
+            seq_count[r][c]=0;
           } 
         }
 
@@ -264,26 +262,24 @@ int main ( int argc, char **argv){
  			*/
 		        r_msg.status=0;
 			rval=driver_msg_get_var_by_name(&msg,"parameters",&client);
-			rval=driver_msg_get_var_by_name(&msg,"index",&index);
-                        r=client.radar-1; 
-                        c=client.channel-1; 
-		        if (verbose > 1) printf("Driver: Requested sequence index: %d\n",index);	
+			rval=driver_msg_get_var_by_name(&msg,"index",index);
+		        if (verbose > 1) printf("Driver: Requested sequence index: %d %d %d\n",index[0],index[1],index[2]);	
 			/*Prepare the memory pointers*/
-                        if (pulseseqs[r][c][index]!=NULL) {
-                            if (pulseseqs[r][c][index]->rep!=NULL)  free(pulseseqs[r][c][index]->rep);
-                            if (pulseseqs[r][c][index]->code!=NULL) free(pulseseqs[r][c][index]->code);
-                            free(pulseseqs[r][c][index]);
+                        if (pulseseqs[index[0]][index[1]][index[2]]!=NULL) {
+                          if (pulseseqs[index[0]][index[1]][index[2]]->rep!=NULL)free(pulseseqs[index[0]][index[1]][index[2]]->rep);
+                          if (pulseseqs[index[0]][index[1]][index[2]]->code!=NULL)free(pulseseqs[index[0]][index[1]][index[2]]->code);
+                          free(pulseseqs[index[0]][index[1]][index[2]]);
                         }
-
-			  /* Fill memory pointers */
-                        pulseseqs[r][c][index]=malloc(sizeof(struct TSGbuf));
-			rval=driver_msg_get_var_by_name(&msg,"pulseseq",pulseseqs[r][c][index]);
-                        pulseseqs[r][c][index]->rep=
-                            malloc(sizeof(unsigned char)*pulseseqs[r][c][index]->len);
-                        pulseseqs[r][c][index]->code=
-                            malloc(sizeof(unsigned char)*pulseseqs[r][c][index]->len);
-			rval=driver_msg_get_var_by_name(&msg,"rep",pulseseqs[r][c][index]->rep);
-			rval=driver_msg_get_var_by_name(&msg,"code",pulseseqs[r][c][index]->code);
+			/* Fill memory pointers */
+                        pulseseqs[index[0]][index[1]][index[2]]=malloc(sizeof(struct TSGbuf));
+			rval=driver_msg_get_var_by_name(&msg,"pulseseq",pulseseqs[index[0]][index[1]][index[2]]);
+                        pulseseqs[index[0]][index[1]][index[2]]->rep=
+                            malloc(sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->len);
+                        pulseseqs[index[0]][index[1]][index[2]]->code=
+                            malloc(sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->len);
+		        if (verbose > 1) printf("Driver: Done Filling the memory\n");	
+			rval=driver_msg_get_var_by_name(&msg,"rep",pulseseqs[index[0]][index[1]][index[2]]->rep);
+			rval=driver_msg_get_var_by_name(&msg,"code",pulseseqs[index[0]][index[1]][index[2]]->code);
 			/* Inform the ROS that this driver recv all data without error
  			* by sending msg back with msg.status=1.
  			*/
@@ -329,13 +325,11 @@ int main ( int argc, char **argv){
                         } else {
                             clients[numclients]=client;
                             ready_index[r][c]=numclients;
-                            numclients=(numclients+1);
+                            numclients++;
                         }
-                        index=client.current_pulseseq_index; 
 
                         if (numclients >= maxclients) msg.status=-2;
                         numclients=numclients % maxclients;
-
 			/* Inform the ROS that this driver recv all data without error
  			* by sending msg back with msg.status=1.
  			*/
@@ -352,41 +346,40 @@ int main ( int argc, char **argv){
                         r_msg.status=1;
                         rval=driver_msg_send(msgsock, &r_msg);
 			/* Calculate sequence index */
-                          new_seq_id=-1;
-	                  for( i=0; i<numclients; i++) {
-                            r=clients[i].radar-1;
-                            c=clients[i].channel-1;
-                            new_seq_id+=r*1000 +
-                              c*100 +
-                              clients[i].current_pulseseq_index+1;
-                            if (verbose > 1) printf("%d %d %d\n",i,new_seq_id,clients[i].current_pulseseq_index); 
-                          }
-                          if (verbose > 1) printf("Driver: %d %d\n",new_seq_id,old_seq_id);
+                        new_seq_id=-1;
+	                for( i=0; i<numclients; i++) {
+                          memmove(index,clients[i].pulseseq_index,sizeof(int32)*3); 
+                          new_seq_id+=index[0]*1000 +
+                            index[1]*100 +
+                            index[0]+1;
+                          if (verbose > 1) printf("%d : %d : %d %d %d\n",i,new_seq_id,index[0],index[1],index[2]); 
+                        }
+                        if (verbose > 1) printf("Driver: %d %d\n",new_seq_id,old_seq_id);
 
 			/* If sequence index has changed..repopulate the 
  			* master sequence.  Not needed for all drivers. */
+			/* TODO : Fill the seq_buf here */
+          		if((strcmp(driver_type,"TIMING")==0) ||(strcmp(driver_type,"DDS")==0)) {
+			  if (verbose > 0) printf("\nDriver: Unpack the pulse sequences \n");	
                           if (new_seq_id!=old_seq_id) { 
                             max_seq_count=0;
                             for (i=0;i<numclients;i++) {
                               r=clients[i].radar-1;
                               c=clients[i].channel-1;
+			      seq_count[r][c]=unpack_sequence(r,c,state_time_usec,pulseseqs[index[0]][index[1]][index[2]],seq_buf[r][c]);	
                               if (seq_count[r][c]>=max_seq_count) max_seq_count=seq_count[r][c];
                               counter=0;
-/*
                               for (j=0;j<seq_count[r][c];j++) {
                                 if (i==0) {
                                   master_buf[j]=seq_buf[r][c][j];
                                   counter++;
-                                }
-                                else  {
-			  	  master_buf[j]|=seq_buf[r][c][j];
-				}
+                                } else {
+			          master_buf[j]|=seq_buf[r][c][j];
+			        }
                               } 
-*/
 			    }
                           }
-                        
-
+			}
                         if (new_seq_id < 0 ) {
                           old_seq_id=-10;
                         }  else {
@@ -420,16 +413,19 @@ int main ( int argc, char **argv){
 	  		else r_msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
                         break;
+
 		      case WAIT:
 			/* WAIT: After a trigger or external trigger command has been issued. The ROS 
 			*  may issue this command to a driver as a way to wait for pulse sequence operations
-			*  to be complete. Drivers are expected to block until pulse sequence operations are done.
+			*  to be complete. Drivers responding to this command are expected to block until 
+			*  pulse sequence operations are done.
  			*/  
 			if (verbose > 1 ) printf("Driver: Wait\n");	
 			/* Driver would put the logic necessary to block waiting for a sequence operation to complete*/
                         r_msg.status=1;
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
+
 		      case POSTTRIGGER:
 			/* POSTTRIGGER: After a trigger or external trigger event, the ROS server may 
  			* instruct all drivers to do whatever posttrigger operations are necessary to clean 
@@ -446,6 +442,7 @@ int main ( int argc, char **argv){
                         if (verbose > 1)  printf("Driver: Ending Post-trigger Setup\n");
                         rval=driver_msg_send(msgsock, &r_msg);
                         break;
+
 		      case SITE_SETTINGS:
 			/* SITE_SETTINGS: The ROS may issue this command to a driver. 
 			*   
@@ -462,6 +459,7 @@ int main ( int argc, char **argv){
 	  		else msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
+
 		      case CLRSEARCH_READY:
 			/* CLRSEARCH_READY: The ROS may issue this command to all drivers, 
 			*  prior to doing a clear frequency search to hand over clear search
@@ -486,6 +484,7 @@ int main ( int argc, char **argv){
 	  		else r_msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
+
 		      case PRE_CLRSEARCH:
 			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
 			*  prior to doing a clear frequency search 
@@ -500,6 +499,7 @@ int main ( int argc, char **argv){
 	  		else r_msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
+
 		      case POST_CLRSEARCH:
 			/* POST_CLRFREQ: The ROS may issue this command to all drivers, 
 			*  prior to doing a clear frequency search 
@@ -541,6 +541,7 @@ int main ( int argc, char **argv){
 			free(pwr);
 			pwr=NULL;
 			break;
+
 		      case AUX_COMMAND:
 			/* AUX_COMMAND: Site hardware specific commands which are not critical for operation, but
  			*  controlprograms may optionally access to if they are site aware.  
@@ -557,12 +558,12 @@ int main ( int argc, char **argv){
 			}
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
+
+
+
 /* Commands that should only be servced  by a single driver. 
  * Site ini file should be configured to instruct the ROS as to which driver
  * services each of the following commands */
-
-
-
 		      case GET_TRTIMES:
 			/* GET_TRTIMES: After a trigger or external trigger command has been issued. The ROS 
 			*  may issue this command to a driver as a way to retrieve information about the
@@ -586,6 +587,7 @@ int main ( int argc, char **argv){
 			}
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
+
 		      case GET_DATA_STATUS:
 			/* GET_DATA_STATUS: After a trigger or external trigger command has been issued. The ROS 
 			*  may issue this command to a driver as a way to determine if there was an error 
@@ -609,6 +611,7 @@ int main ( int argc, char **argv){
 	  		else r_msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
+
 		      case GET_DATA:
 			/* GET_DATA: After a trigger or external trigger command has been issued. The ROS 
 			*  may issue this command to a driver as a way to retrieve sample data. 
@@ -644,13 +647,14 @@ int main ( int argc, char **argv){
 	  		else r_msg.status=0;
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
+
 		      case GET_TRIGGER_OFFSET:
-			/* GET_TRIGGER_OFFSET: Hardware like digital receivers and dds use internal digital filter logic as part of their operation. 
-			*  These digital filters have time delays which should be accounted for in the timing of when the cards are triggered relative to the
-			*  master trigger.
-			*  This function allows for the ROS to request the offset values
-			*  Currently The receiver and dds drivers are the only driver that must respond to this command with the MSI styled hardware. 
-			*  
+			/* GET_TRIGGER_OFFSET: Hardware like digital receivers and dds use internal digital filter logic
+			*  as part of their operation, These digital filters have time delays which should be accounted 
+			*  for in the timing of when the cards are triggered relative to the master trigger.
+			*  This function allows for the ROS to request the offset values.
+			*  Currently The receiver and dds drivers are the only driver that must respond to this command 
+			*  with the MSI styled hardware. 
  			*/  
 			if (verbose > 1 ) printf("Driver: GET_TRIGGER_OFFSET\n");	
 			/* Inform the ROS that this driver does not handle this command by sending 
@@ -674,11 +678,12 @@ int main ( int argc, char **argv){
                         rval=driver_msg_send(msgsock, &r_msg);
 			break;
 		      case SET_TRIGGER_OFFSET:
-			/* SET_TRIGGER_OFFSET: Hardware like digital receivers and dds use internal digital filter logic as part of their operation. 
-			*  These digital filters have time delays which should be accounted for in the timing of when the cards are triggered relative to the
-			*  master trigger.
+			/* SET_TRIGGER_OFFSET: Hardware like digital receivers and dds use internal digital filter logic
+			*  as part of their operation. These digital filters have time delays which should be accounted
+			*  for in the timing of when the cards are triggered relative to the master trigger.
 			*  This function allows for the ROS to send trigger offset values.
-			*  Currently The timing driver is the only driver that must respond to this command in the MSI styled hardware.
+			*  Currently The timing driver is the only driver that must respond to this command in the 
+			*  MSI styled hardware.
  			*/  
 			if (verbose > 1 ) printf("Driver: SET_TRIGGER_OFFSET\n");	
 			/* Inform the ROS that this driver does not handle this command by sending 

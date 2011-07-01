@@ -14,9 +14,8 @@
 #include "utils.h"
 #include "rosmsg.h"
 #include "control_program.h"
-//#include "global_server_variables.h"  //should not be needed
 #include "tsg.h"
-#include "iniparser.h"
+
 int s;
 char *ros_ip=ROS_IP;
 int ros_port=ROS_PORT;
@@ -73,9 +72,6 @@ main( int argc, char *argv[])
   int ptab[8] = {0,14,22,24,27,31,42,43};
   int bmnum; 
 
-  dictionary *aux_dict=NULL;
-  void *temp_buf=NULL; // malloced buffer needs to be freed 
-  void *dict_buf=NULL; // pointer into dictionary do not free
   unsigned int bufsize;
   char value[200];
   int32 bytes;
