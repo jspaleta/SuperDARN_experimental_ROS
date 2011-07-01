@@ -1,7 +1,10 @@
+Q: What is the difference between the ROS and the RST?
+Simply put,  the ROS is hardware control.  The RST is science.  Ideally it should be possible to take a controlprogram built using the tools in the RST and point it at any ROS server (whether it be a real radar or a virtual test radar instance) and the controlprogram should be able to operate without modification and without aprior knowledge of the site capabilities.
+
 Q: What is a radar channel?
 A: The ROS organizes hardware capabilities via the concept of a radar channel.  The "channel" concept was originally introduced in the radops 2000 and has been used to support the stereo capable radars in the past.  The ROS concept of a "radar channel" extends this future to make it possible to support maximal digital radar capability at each radar location. 
 
-Everything necessary to fully describe a SuperDARN radar beam needs to be expressed as a "radar channel" parameter.  Typically a "radar" will correspond to a station id as defined in the RST and the SuperDARN data. Most existing radars will have an ROS that supports only 1 radar. Kodiak and McMurdo for example support only 1 radar.  But the Christmas Valley and Fort Hays sites support 2 radars from the same control system.  
+Everything necessary to fully describe a SuperDARN radar beam needs to be expressed as a "radar channel" parameter.  Typically a "radar" will correspond to a station id as defined in the RST and the SuperDARN data. Most existing SuperDANR sites will have an ROS that supports only 1 radar. Kodiak and McMurdo for example support only 1 radar.  But the Christmas Valley and Fort Hays sites support 2 radars from the same computer control system.  
 
 Each "radar" can support 1 or more "channels."  These "channels" are essentially the collection of all the hardware capabilities necessary to define a radar beam. Parameters like the beam direction, the transmit frequency, the receiver frequency, the receiver bandwdith, the pulse sequence to be transmitted, etc...     
 
