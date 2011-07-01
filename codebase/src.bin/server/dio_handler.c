@@ -74,6 +74,8 @@ void *DIO_ready_clrsearch(struct ControlProgram *arg)
    if (arg!=NULL) {
      if (arg->parameters!=NULL) {
        driver_msg_add_var(&s_msg,&arg->clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","struct CLRFreqRPM");
+       driver_msg_add_var(&s_msg,&arg->parameters->radar,sizeof(int32),"radar","int32");
+       driver_msg_add_var(&s_msg,&arg->parameters->channel,sizeof(int32),"channel","int32");
        driver_msg_send(diosock, &s_msg);
        driver_msg_recv(diosock, &r_msg);
      } 

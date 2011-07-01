@@ -864,6 +864,8 @@ void *receiver_ready_clrsearch(struct ControlProgram *control_program)
   pthread_mutex_lock(&recv_comm_lock);
   if (control_program!=NULL) {
        driver_msg_add_var(&s_msg,&control_program->clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","CLRFreqPRM");
+       driver_msg_add_var(&s_msg,&control_program->parameters->radar,sizeof(int32),"radar","int32");
+       driver_msg_add_var(&s_msg,&control_program->parameters->channel,sizeof(int32),"channel","int32");
        driver_msg_send(recvsock, &s_msg);
        driver_msg_recv(recvsock, &r_msg);
   }

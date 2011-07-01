@@ -2,7 +2,7 @@
 #include "site.h"
 #include "iniparser.h"
 
-
+extern int verbose;
 int _open_ini_file(dictionary **arg) {
      dictionary *Site_INI=*arg;
      char ini_name[80]="";
@@ -13,7 +13,7 @@ int _open_ini_file(dictionary **arg) {
        Site_INI=NULL;
      }
      sprintf(ini_name,"%s/site.ini",SITE_DIR);
-     fprintf(stderr, "parsing ini file: %s\n", ini_name);
+     if(verbose >0) fprintf(stderr, "parsing ini file: %s\n", ini_name);
      Site_INI=iniparser_load(ini_name);
      if (Site_INI==NULL) {
 	fprintf(stderr, "cannot parse file: %s\n", ini_name);
