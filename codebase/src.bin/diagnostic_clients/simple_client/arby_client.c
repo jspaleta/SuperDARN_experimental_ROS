@@ -46,8 +46,8 @@ main( int argc, char *argv[])
 {
   int nrang,frang,rsep,smsep,txpl,mpinc,mppul,nbaud,samples;
   int *pcode=NULL;
-  int status,index,i,freq,j=0;
-  int32 bufnum,radar,channel;
+  int status,i,freq,j=0;
+  int32 bufnum,radar,channel,index;
   int flag,counter;
   short I,Q;
   char command;
@@ -247,11 +247,12 @@ main( int argc, char *argv[])
    driver_msg_init(rmsg);
    driver_msg_set_command(smsg,REGISTER_SEQ,"register_seq","NONE");
    tprm.len=pulseseq->len;
-   tprm.index=pulseseq->index;
    tprm.step=pulseseq->step;
    tprm.samples=0;
    tprm.smdelay=0;
+   index=pulseseq->index;
    driver_msg_add_var(smsg,&tprm,sizeof(struct SeqPRM),"tprm","SeqPRM");
+   driver_msg_add_var(smsg,&index,sizeof(int32),"index","int32");
    driver_msg_add_var(smsg,pulseseq->rep,sizeof(unsigned char)*pulseseq->len,"rep","unsigned char array");
    driver_msg_add_var(smsg,pulseseq->code,sizeof(unsigned char)*pulseseq->len,"code","unsigned char array");
    driver_msg_send(s, smsg);
@@ -341,7 +342,7 @@ main( int argc, char *argv[])
      printf("  channel: %d\n",parameters.channel);
      printf("  tfreq: %d\n",parameters.tfreq);
      printf("  current transmit beam: %d\n",parameters.tbeam);
-     printf("  current pulse index: %d\n",parameters.current_pulseseq_index);
+     printf("  current pulse index: %d %d %d\n",parameters.pulseseq_index[0],parameters.pulseseq_index[1],parameters.pulseseq_index[2]);
    }
    driver_msg_init(smsg);
    driver_msg_init(rmsg);
@@ -440,12 +441,12 @@ main( int argc, char *argv[])
     driver_msg_get_var_by_name(rmsg,"txstatus",&txstatus); 
     driver_msg_free_buffer(rmsg);
     printf("AUX  STATUS DONE\n");
-    for (i=0;i<MAX_TRANSMITTERS;i++) {
-      printf("%d : %d %d %d\n",i,
-        txstatus.LOWPWR[i],
-        txstatus.AGC[i],
-        txstatus.status[i]);
-    }
+//    for (i=0;i<MAX_TRANSMITTERS;i++) {
+//      printf("%d : %d %d %d\n",i,
+//        txstatus.LOWPWR[i],
+//        txstatus.AGC[i],
+//        txstatus.status[i]);
+//    }
 
  if(verbose>1) printf("Get Parameters %d\n",GET_PARAMETERS);
    driver_msg_init(smsg);
@@ -462,7 +463,7 @@ main( int argc, char *argv[])
      printf("  channel: %d\n",parameters.channel);
      printf("  tfreq: %d\n",parameters.tfreq);
      printf("  current transmit beam: %d\n",parameters.tbeam);
-     printf("  current pulse index: %d\n",parameters.current_pulseseq_index);
+     printf("  current pulse index: %d %d %d\n",parameters.pulseseq_index[0],parameters.pulseseq_index[1],parameters.pulseseq_index[2]);
    }
 
    gettimeofday(&t1,NULL);

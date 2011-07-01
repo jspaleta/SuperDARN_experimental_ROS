@@ -67,7 +67,9 @@ void _enforce_priority(int radar,struct ControlProgram *priority_cprog,struct Th
 		        cprog->parameters->rbeamwidth=priority_cprog->parameters->rbeamwidth;	
                       }
 		      if(iniparser_getboolean(Site_INI,"priority:enforce_seq_index",0)){
-		        cprog->parameters->current_pulseseq_index=priority_cprog->parameters->current_pulseseq_index;	
+		        cprog->parameters->pulseseq_index[0]=priority_cprog->parameters->pulseseq_index[0];	
+		        cprog->parameters->pulseseq_index[1]=priority_cprog->parameters->pulseseq_index[1];	
+		        cprog->parameters->pulseseq_index[2]=priority_cprog->parameters->pulseseq_index[2];	
                       }
 		      if(iniparser_getboolean(Site_INI,"priority:enforce_trise",0)){
 		        cprog->parameters->trise=priority_cprog->parameters->trise;	

@@ -99,7 +99,6 @@ struct ControlState {
      double current_assigned_pwr; 
      struct timeval trigger_timeout;
      struct Thread_List_Item *thread;
-     struct TSGbuf *pulseseqs[MAX_SEQS]; //array of pulseseq pointers
      t_fft_index *fft_array;
 };
 

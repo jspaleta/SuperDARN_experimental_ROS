@@ -52,6 +52,8 @@ pthread_cond_t ready_flag;
 pthread_t status_thread=0,timeout_thread=0;
 
 /* State Global Variables */
+struct TSGbuf *pulseseqs[MAX_RADARS+1][MAX_CHANNELS+1][MAX_SEQS+1];
+
 dictionary *Site_INI;
 int num_radars=0,num_channels=0;
 void* **radar_channels;
@@ -165,7 +167,7 @@ int main()
   struct Thread_List_Item *thread_list;
   struct ControlProgram *control_program;
   struct ROSMsg s_msg,r_msg;
-  int newsockfd, rc,i,j,r;
+  int newsockfd, rc,i,j,r,c;
   unsigned int clilen;
   int num_threads;
   int restrict_count,blacklist_count,start,end;
@@ -185,6 +187,17 @@ int main()
   fprintf(stderr,"Size of Struct SeqPRM  %lu\n",(unsigned long) sizeof(struct SeqPRM));
   fprintf(stderr,"Size of Struct DataPRM  %lu\n",(unsigned long) sizeof(struct DataPRM));
   fprintf(stderr,"Size of Struct SiteSettings  %lu\n",(unsigned long) sizeof(struct SiteSettings));
+  for(r=0;r<=MAX_RADARS;r++) {
+    for(c=0;c<=MAX_CHANNELS;c++) {
+      for(i=0;i<=MAX_SEQS;i++) {
+        pulseseqs[r][c][i]=malloc(sizeof(struct TSGbuf));
+        pulseseqs[r][c][i]->len=0;
+        pulseseqs[r][c][i]->rep=NULL;
+        pulseseqs[r][c][i]->code=NULL;
+        pulseseqs[r][c][i]->prm=NULL;
+      }
+    }
+  }
 /* Put in Commandline arg parsing here */
 
 /* Load Site INI file */

@@ -19,7 +19,6 @@ struct TRTimes {
 };
 
 struct SeqPRM {
-  uint32 index;
   uint32 len;
   uint32 step;  //packed timesequence stepsize in microseconds
   uint32 samples;
@@ -79,7 +78,7 @@ struct ControlPRM {
      int32 channel; //required: DO NOT SET MANUALLY
      int32 local;  //if local use shared memory for data handling else use tcp
      int32 priority; //optional: valid 0-99: lower value higher priority when running multiple operational programs
-     int32 current_pulseseq_index; //required: registered pulse sequence to use 
+     int32 pulseseq_index[3]; //required: registered pulse sequence to use 
 // transmit beam definition one of these needs to be non-zero
      int32 tbeam;  //required: valid 0-31: defines standard look directions 
      uint32 tbeamcode; //optional: used for special beam directions, used only if beam is invalid value.

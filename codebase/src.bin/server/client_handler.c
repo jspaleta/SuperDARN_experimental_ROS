@@ -28,7 +28,7 @@ extern struct Thread_List_Item *controlprogram_threads;
 extern struct TRTimes bad_transmit_times;
 extern struct SiteSettings site_settings;
 extern dictionary *Site_INI;
-
+extern struct TSGbuf *pulseseqs[MAX_RADARS+1][MAX_CHANNELS+1][MAX_SEQS+1];
 int unregister_radar_channel(struct ControlProgram *control_program)
 {
   int i,j,status;
@@ -67,87 +67,6 @@ struct ControlProgram* find_registered_controlprogram_by_radar_channel(int radar
   return  control_program;
 }
 
-struct ControlPRM controlprogram_fill_parameters(struct ControlProgram *control_program)
-{
-  struct ControlPRM control_parameters;      
-  struct ControlProgram *cp,*best[num_radars];      
-  int priority=99; //Lowest priority wins-- its like golf
-  int r,c;
-  if (TX_BEAM_PRIORITY |RX_BEAM_PRIORITY |TX_FREQ_PRIORITY|RX_FREQ_PRIORITY|TIME_SEQ_PRIORITY) {  
-    for (r=1;r<=num_radars;r++) {
-      priority=99;
-      best[r-1]=NULL; 
-      for (c=1;c<=num_channels;c++) {
-        cp=find_registered_controlprogram_by_radar_channel(r,c);
-        if (cp!=NULL) {
-          if (cp->state->active!=0) {
-            if (cp->parameters!=NULL) {
-              if (cp->parameters->priority<priority) {
-                best[r-1]=cp;
-                priority=cp->parameters->priority;
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  if (control_program!=NULL) {
-    if (control_program->parameters!=NULL) {
-       //strcpy(control_parameters.name,control_program->parameters->name);
-       //strcpy(control_parameters.description,control_program->parameters->description);
-       control_parameters.radar=control_program->radarinfo->radar;
-       control_parameters.channel=control_program->radarinfo->channel;
-       r=control_parameters.radar-1;
-       control_parameters.current_pulseseq_index=control_program->parameters->current_pulseseq_index;
-       control_parameters.priority=control_program->parameters->priority;
-       if (TX_BEAM_PRIORITY) {
-         control_parameters.tbeam=best[r]->parameters->tbeam;
-         control_parameters.tbeamcode=best[r]->parameters->tbeamcode;
-         control_parameters.tbeamwidth=best[r]->parameters->tbeamwidth;
-         control_parameters.tbeamazm=best[r]->parameters->tbeamazm;
-       } else {
-         control_parameters.tbeam=control_program->parameters->tbeam;
-         control_parameters.tbeamcode=control_program->parameters->tbeamcode;
-         control_parameters.tbeamwidth=control_program->parameters->tbeamwidth;
-         control_parameters.tbeamazm=control_program->parameters->tbeamazm;
-       }
-       if (TX_FREQ_PRIORITY) {
-         control_parameters.tfreq=best[r]->parameters->tfreq;
-         control_parameters.trise=best[r]->parameters->trise;
-       } else {
-         control_parameters.tfreq=control_program->parameters->tfreq;
-         control_parameters.trise=control_program->parameters->trise;
-       }
-       if (RX_BEAM_PRIORITY) {
-         control_parameters.rbeam=best[r]->parameters->rbeam;
-         control_parameters.rbeamcode=best[r]->parameters->rbeamcode;
-         control_parameters.rbeamwidth=best[r]->parameters->rbeamwidth;
-         control_parameters.rbeamazm=best[r]->parameters->rbeamazm;
-       } else {
-         control_parameters.rbeam=control_program->parameters->rbeam;
-         control_parameters.rbeamcode=control_program->parameters->rbeamcode;
-         control_parameters.rbeamwidth=control_program->parameters->rbeamwidth;
-         control_parameters.rbeamazm=control_program->parameters->rbeamazm;
-       }
-       if (RX_FREQ_PRIORITY) {
-         control_parameters.rfreq=best[r]->parameters->rfreq;
-         control_parameters.number_of_samples=best[r]->parameters->number_of_samples;
-       } else {
-         control_parameters.rfreq=control_program->parameters->rfreq;
-         control_parameters.number_of_samples=control_program->parameters->number_of_samples;
-       }
-       control_parameters.buffer_index=control_program->parameters->buffer_index;
-       control_parameters.baseband_samplerate=control_program->parameters->baseband_samplerate;
-       control_parameters.filter_bandwidth=control_program->parameters->filter_bandwidth;
-       control_parameters.match_filter=control_program->parameters->match_filter;
-       control_parameters.status=control_program->parameters->status;
-    } else {
-    }
-  } else {
-  }
-  return control_parameters;
-}
 
 struct ControlPRM* controlprogram_link_parameters(struct ControlPRM *control_parameters)
 {
@@ -188,7 +107,6 @@ int register_radar_channel(struct ControlProgram *control_program,int radar,int 
 }
 
 struct ControlProgram *control_init() {
-       int i;
        struct ControlProgram *control_program;
 
        control_program=malloc(sizeof(struct ControlProgram));
@@ -207,7 +125,9 @@ struct ControlProgram *control_init() {
        strcpy(control_program->parameters->description,"Generic  Control Program  Description - 120");
        control_program->parameters->radar=-1;
        control_program->parameters->channel=-1;
-       control_program->parameters->current_pulseseq_index=-1;
+       control_program->parameters->pulseseq_index[0]=-1;
+       control_program->parameters->pulseseq_index[1]=-1;
+       control_program->parameters->pulseseq_index[2]=-1;
        control_program->parameters->priority=50;
        control_program->parameters->tbeam=-1;
        control_program->parameters->tbeamcode=-1;
@@ -248,9 +168,6 @@ struct ControlProgram *control_init() {
        control_program->radarinfo->radar=-1;
        control_program->radarinfo->channel=-1;
 
-       for (i=0;i<MAX_SEQS;i++) {
-         control_program->state->pulseseqs[i]=NULL;
-       }
        return control_program;
 }
 
@@ -287,10 +204,6 @@ void controlprogram_exit(struct ControlProgram *control_program)
      close(control_program->state->socket);
      unregister_radar_channel(control_program);
      printf("Free sequences: %p",control_program);
-     for (i=0;i<MAX_SEQS;i++) {
-       //TODO: Fix the freeing of sequences
-       //if(control_program->state->pulseseqs[i]!=NULL) TSGFree(control_program->state->pulseseqs[i]);
-     }
      printf("Free state: %p",control_program);
      if(control_program->state!=NULL) {
        if(control_program->state->fft_array!=NULL) {
@@ -326,14 +239,13 @@ void controlprogram_exit(struct ControlProgram *control_program)
 
 void *control_handler(struct ControlProgram *control_program)
 {
-   int tid,i,r=-1,c=-1,status,rc;
+   int tid,i,index=-1,r=-1,c=-1,status,rc;
    fd_set rfds;
-   int cancel=0,retval,socket,socket_err;
+   int retval,socket,socket_err;
    unsigned int length=sizeof(int);
    int32 current_freq,radar=0,channel=0;
    struct timeval tv,current_time,last_report;
    struct ROSMsg smsg,rmsg; 
-   struct ControlPRM control_parameters; 
    struct SiteSettings settings;
 //   struct TSGprm *tsgprm;
    struct SeqPRM tprm;
@@ -343,7 +255,6 @@ void *control_handler(struct ControlProgram *control_program)
    int return_type,entry_exists;
    char *temp_strp;
    int32 temp_int32;
-   dictionary *aux_dict=NULL;
 /*
 *  Init the Control Program state
 */
@@ -592,32 +503,36 @@ void *control_handler(struct ControlProgram *control_program)
             driver_msg_send(socket, &rmsg);
             break;
           case REGISTER_SEQ:
-            rmsg.status=1;
-            pthread_mutex_lock(&controlprogram_list_lock);
-	    driver_msg_get_var_by_name(&smsg,"tprm",&tprm);
-            control_program->state->pulseseqs[tprm.index]=malloc(sizeof(struct TSGbuf));
-            control_program->parameters->current_pulseseq_index=tprm.index;
-            control_program->state->pulseseqs[tprm.index]->len=tprm.len;
-            control_program->state->pulseseqs[tprm.index]->step=tprm.step;
-            control_program->state->pulseseqs[tprm.index]->index=tprm.index;
-            control_program->state->pulseseqs[tprm.index]->rep=
-                malloc(sizeof(unsigned char)*control_program->state->pulseseqs[tprm.index]->len);
-            control_program->state->pulseseqs[tprm.index]->code=
-                malloc(sizeof(unsigned char)*control_program->state->pulseseqs[tprm.index]->len);
-            control_program->state->pulseseqs[tprm.index]->prm=malloc(sizeof(struct TSGprm));
-	    driver_msg_get_var_by_name(&smsg,"rep",control_program->state->pulseseqs[tprm.index]->rep);
-	    driver_msg_get_var_by_name(&smsg,"code",control_program->state->pulseseqs[tprm.index]->code);
             if ( (r < 0) || (c < 0)) {
               rmsg.status=-1;
             } else {
+              pthread_mutex_lock(&controlprogram_list_lock);
+              rmsg.status=1;
+	      driver_msg_get_var_by_name(&smsg,"tprm",&tprm);
+	      driver_msg_get_var_by_name(&smsg,"index",&index);
+              control_program->parameters->pulseseq_index[0]=radar;
+              control_program->parameters->pulseseq_index[1]=channel;
+              control_program->parameters->pulseseq_index[2]=index;
+              pulseseqs[radar][channel][index]->len=tprm.len;
+              pulseseqs[radar][channel][index]->step=tprm.step;
+              if(pulseseqs[radar][channel][index]->rep!=NULL) free(pulseseqs[radar][channel][index]->rep); 
+                pulseseqs[radar][channel][index]->rep=
+                  malloc(sizeof(unsigned char)*pulseseqs[radar][channel][index]->len);
+              if(pulseseqs[radar][channel][index]->code!=NULL) free(pulseseqs[radar][channel][index]->code);
+                pulseseqs[radar][channel][index]->code=
+                  malloc(sizeof(unsigned char)*pulseseqs[radar][channel][index]->len);
+              if(pulseseqs[radar][channel][index]->prm!=NULL) free(pulseseqs[radar][channel][index]->prm);
+                pulseseqs[radar][channel][index]->prm=malloc(sizeof(struct TSGprm));
+	      driver_msg_get_var_by_name(&smsg,"rep",pulseseqs[radar][channel][index]->rep);
+	      driver_msg_get_var_by_name(&smsg,"code",pulseseqs[radar][channel][index]->code);
             //send on to timing socket
               rc = pthread_create(&threads[0], NULL, (void *)&timing_register_seq,(void *) control_program);
             //send on to dds socket
               rc = pthread_create(&threads[1], NULL, (void *)&dds_register_seq,(void *) control_program);
               pthread_join(threads[0],NULL);
               pthread_join(threads[1],NULL);
+              pthread_mutex_unlock(&controlprogram_list_lock);
             }
-            pthread_mutex_unlock(&controlprogram_list_lock);
             driver_msg_send(socket, &rmsg);
             break;
           case CtrlProg_READY:

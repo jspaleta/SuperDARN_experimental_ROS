@@ -643,7 +643,7 @@ void *receiver_ready_controlprogram(struct ControlProgram *control_program)
   driver_msg_set_command(&s_msg,CtrlProg_READY,"ctrlprog_ready","NONE");
   pthread_mutex_lock(&recv_comm_lock);
   if (control_program!=NULL) {
-     if (control_program->state->pulseseqs[control_program->parameters->current_pulseseq_index]!=NULL) {
+     if (control_program->parameters!=NULL) {
        driver_msg_add_var(&s_msg,control_program->parameters,sizeof(struct ControlPRM),"parameters","ControlPRM");
        driver_msg_send(recvsock, &s_msg);
        driver_msg_recv(recvsock, &r_msg);
@@ -663,7 +663,7 @@ void *receiver_get_trigger_offset(struct ControlProgram *control_program)
   driver_msg_set_command(&s_msg,GET_TRIGGER_OFFSET,"get_trigger_offset","NONE");
   pthread_mutex_lock(&recv_comm_lock);
   if (control_program!=NULL) {
-     if (control_program->state->pulseseqs[control_program->parameters->current_pulseseq_index]!=NULL) {
+     if (control_program->parameters!=NULL) {
        driver_msg_add_var(&s_msg,&control_program->parameters->radar,sizeof(int32),"radar","int32");
        driver_msg_add_var(&s_msg,&control_program->parameters->channel,sizeof(int32),"channel","int32");
        driver_msg_send(recvsock, &s_msg);
