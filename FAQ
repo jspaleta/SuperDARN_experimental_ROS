@@ -1,0 +1,14 @@
+Q: What is a radar channel?
+A: The ROS organizes hardware capabilities via the concept of a radar channel.  The "channel" concept was originally introduced in the radops 2000 and has been used to support the stereo capable radars in the past.  The ROS concept of a "radar channel" extends this future to make it possible to support maximal digital radar capability at each radar location. 
+
+Everything necessary to fully describe a SuperDARN radar beam needs to be expressed as a "radar channel" parameter.  Typically a "radar" will correspond to a station id as defined in the RST and the SuperDARN data. Most existing radars will have an ROS that supports only 1 radar. Kodiak and McMurdo for example support only 1 radar.  But the Christmas Valley and Fort Hays sites support 2 radars from the same control system.  
+
+Each "radar" can support 1 or more "channels."  These "channels" are essentially the collection of all the hardware capabilities necessary to define a radar beam. Parameters like the beam direction, the transmit frequency, the receiver frequency, the receiver bandwdith, the pulse sequence to be transmitted, etc...     
+
+Controlprograms which want to interact with the ROS server will first register the radar channels they want to control.
+
+Q: What is Channel priority?
+A: Due to hardware limitations at some sites, it may not be possible to have multiple indepedent channels in all respects.  For example, the transmit and receive hardware may support being able to reciever on multiple channels, each with their own frequency, but the phasing matrix may only be able to support one beam direction at a time.
+
+By using a channel priority it is possible to enforce site specific limitations, and still get access to additional capability for experimental science use.  For example, with the hardware limitation expressed above the following scenario is possible: Channel 1 is highest priority and runs the standard SuperDARN schedule. Channel 2, runs a specialized science program at a different frequency than channel 1, but is forced to use the beam direction set by Channel 1.    
+ 
