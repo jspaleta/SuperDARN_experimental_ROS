@@ -21,7 +21,17 @@
 int verbose=0;
 int sock,msgsock;
 dictionary *diagnostic_INI=NULL;
+struct timeval t0,t1;
 
+
+char* elapsed_string(struct timeval t0,struct timeval t1) {
+  static char elapsed_secs_string[80]; 
+  double elapsed_secs;
+  elapsed_secs=t1.tv_sec+(double)t1.tv_usec/1E6;
+  elapsed_secs-=t0.tv_sec+(double)t0.tv_usec/1E6;
+  sprintf(elapsed_secs_string,"%g",elapsed_secs);
+  return elapsed_secs_string;
+}
 
 void graceful_cleanup(int signum){
   fprintf(stdout,"\n\n");
@@ -70,6 +80,8 @@ int main ( int argc, char **argv){
 	int	rval;		//use for return values which indicate errors
         fd_set rfds,efds;	//TCP socket status
         struct timeval select_timeout;	// timeout for select function
+	static char   command_string[40];
+	static char   entry_string[80];
 	// counter and temporary variables
 	int	i,j,r,c;
         int32   index[3];
@@ -212,6 +224,8 @@ int main ( int argc, char **argv){
 	while (1) {
                 ros_msg_init(&msg);
                 ros_msg_init(&r_msg);
+		sprintf(command_string,"UNKNOWN");
+	  	r_msg.status=0;
                 rval=1;
 		msgsock=accept(sock, 0, 0);
 		if (verbose > 0) printf("accepting socket!!!!!\n");
@@ -253,13 +267,14 @@ int main ( int argc, char **argv){
                     ros_msg_recv(msgsock,&msg);
                     datacode=msg.command_type;
 		    if (verbose > 1) printf("\nmsg code is %c\n", datacode);
+                    gettimeofday(&t0,NULL);
 		/* Process commands that have come in on the socket */	
 		    switch( datacode ){
 
 /* Commands which can be serviced by multiple drivers */
 
 		      case REGISTER_SEQ:
-                        iniparser_set(diagnostic_INI,"REGISTER_SEQ", NULL,NULL);
+		        sprintf(command_string,"REGISTER_SEQ");
 			/* REGISTER_SEQ: Control programs request pulse sequences to use and pass them
  			* to the ROS server process. The ROS server process in turn passes the sequences
  			* to each driver to use as needed for hardware configuration */ 
@@ -291,14 +306,13 @@ int main ( int argc, char **argv){
  			* by sending msg back with msg.status=1.
  			*/
 		        r_msg.status=1;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			/* Reset the local sequence state */
                         old_seq_id=-10;
                         new_seq_id=-1;
                         break;
 
 		      case CtrlProg_END:
-                        iniparser_set(diagnostic_INI,"CtrlProg_END", NULL,NULL);
+		        sprintf(command_string,"CtrlProg_END");
 			/* CtrlProg_END: When Control Programs disconnect from the ROS server, the
  			* the ROS server informs each driver so drivers can reset internal state variables.
  			*/  
@@ -307,13 +321,12 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does handle this command, and its okay to send the
  			* associated data by sending msg back with msg.status=1.
  			*/
-                        rval=ros_msg_send(msgsock, &r_msg);
                         old_seq_id=-10;
                         new_seq_id=-1;
                         break;
 
 		      case CtrlProg_READY:
-                        iniparser_set(diagnostic_INI,"CtrlProg_READY", NULL,NULL);
+		        sprintf(command_string,"CtrlProg_READY");
 			/* CtrlProg_READY: When Control Programs inform the ROS server they are ready for
  			* the next trigger, the ROS server informs each driver so drivers can reset internal 
  			* state variables.
@@ -324,7 +337,6 @@ int main ( int argc, char **argv){
  			*/
 			rval=ros_msg_get_var_by_name(&msg,"parameters",&client);
 			r_msg.status=1;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			if (verbose > 1) printf("Radar: %d, Channel: %d Beamnum: %d Status %d\n",
 			    client.radar,client.channel,client.tbeam,msg.status);	
                         r=client.radar-1; 
@@ -345,7 +357,7 @@ int main ( int argc, char **argv){
                         break; 
 
 		      case PRETRIGGER:
-                        iniparser_set(diagnostic_INI,"PRETRIGGER", NULL,NULL);
+		        sprintf(command_string,"CtrlProg_PRETRIGGER");
 			/* PRETRIGGER: When all controlprograms are ready, the ROS server will instruct all drivers 
  			* to do whatever pretrigger operations are necessary prior to the next trigger event.
  			*/  
@@ -354,7 +366,6 @@ int main ( int argc, char **argv){
  			* associated data by sending msg back with msg.status=1.
  			*/
                         r_msg.status=1;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			/* Calculate sequence index */
                         new_seq_id=-1;
 	                for( i=0; i<numclients; i++) {
@@ -401,7 +412,7 @@ int main ( int argc, char **argv){
                         break; 
 
 		      case TRIGGER:
-                        iniparser_set(diagnostic_INI,"TRIGGER", NULL,NULL);
+		        sprintf(command_string,"CtrlProg_TRIGGER");
 			/* TRIGGER: The ROS may instruct drivers to issue a trigger event. Typically only
  			* the timing driver will be expected to do something when this command is issued.
  			* Other drivers will typically ignore this command and will rely on signals from
@@ -410,11 +421,10 @@ int main ( int argc, char **argv){
 			if (verbose > 1 ) printf("Driver: Send Master Trigger\n");	
           		if(strcmp(driver_type,"TIMING")==0) r_msg.status=1;
 	  		else r_msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
                         break;
 
                       case EXTERNAL_TRIGGER:
-                        iniparser_set(diagnostic_INI,"EXTERNAL_TRIGGER", NULL,NULL);
+		        sprintf(command_string,"EXTERNAL_TRIGGER");
 			/* EXTERNAL_TRIGGER: The ROS may instruct drivers to setup for an external trigger event.
  			*  Typically only the timing driver will be expected to do something when 
  			*  this command is issued.  Other drivers will typically ignore this command and will relyi
@@ -423,11 +433,10 @@ int main ( int argc, char **argv){
                         if (verbose > 1 ) printf("Driver: Setup for external trigger\n");
           		if(strcmp(driver_type,"TIMING")==0) r_msg.status=1;
 	  		else r_msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
                         break;
 
 		      case WAIT:
-                        iniparser_set(diagnostic_INI,"WAIT", NULL,NULL);
+		        sprintf(command_string,"WAIT");
 			/* WAIT: After a trigger or external trigger command has been issued. The ROS 
 			*  may issue this command to a driver as a way to wait for pulse sequence operations
 			*  to be complete. Drivers responding to this command are expected to block until 
@@ -436,11 +445,10 @@ int main ( int argc, char **argv){
 			if (verbose > 1 ) printf("Driver: Wait\n");	
 			/* Driver would put the logic necessary to block waiting for a sequence operation to complete*/
                         r_msg.status=1;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case POSTTRIGGER:
-                        iniparser_set(diagnostic_INI,"POSTTRIGGER", NULL,NULL);
+		        sprintf(command_string,"POSTTRIGGER");
 			/* POSTTRIGGER: After a trigger or external trigger event, the ROS server may 
  			* instruct all drivers to do whatever posttrigger operations are necessary to clean 
  			* internal driver state.
@@ -454,11 +462,10 @@ int main ( int argc, char **argv){
                           }
                         }
                         if (verbose > 1)  printf("Driver: Ending Post-trigger Setup\n");
-                        rval=ros_msg_send(msgsock, &r_msg);
                         break;
 
 		      case SITE_SETTINGS:
-                        iniparser_set(diagnostic_INI,"SITE_SETTINGS", NULL,NULL);
+		        sprintf(command_string,"SITE_SETTINGS");
 			/* SITE_SETTINGS: The ROS may issue this command to a driver. 
 			*   
  			*/  
@@ -472,11 +479,10 @@ int main ( int argc, char **argv){
 				rval=ros_msg_get_var_by_name(&msg,"if_rxfe_settings",&site_settings.if_settings);
 			}
 	  		else msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case CLRSEARCH_READY:
-                        iniparser_set(diagnostic_INI,"CLRSEARCH_READY", NULL,NULL);
+		        sprintf(command_string,"CLRSEARCH_READY");
 			/* CLRSEARCH_READY: The ROS may issue this command to all drivers, 
 			*  prior to doing a clear frequency search to hand over clear search
 			*  parameters for a specific channel. 
@@ -498,11 +504,10 @@ int main ( int argc, char **argv){
 				rval=ros_msg_get_var_by_name(&msg,"channel",&channel);
 			}
 	  		else r_msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case PRE_CLRSEARCH:
-                        iniparser_set(diagnostic_INI,"PRE_CLRSEARCH", NULL,NULL);
+		        sprintf(command_string,"PRE_CLRSEARCH");
 			/* PRE_CLRFREQ: The ROS may issue this command to all drivers, 
 			*  prior to doing a clear frequency search 
  			*/  
@@ -514,11 +519,10 @@ int main ( int argc, char **argv){
 				r_msg.status=1;
 			}
 	  		else r_msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case POST_CLRSEARCH:
-                        iniparser_set(diagnostic_INI,"POST_CLRSEARCH", NULL,NULL);
+		        sprintf(command_string,"POST_CLRSEARCH");
 			/* POST_CLRFREQ: The ROS may issue this command to all drivers, 
 			*  prior to doing a clear frequency search 
  			*/  
@@ -530,11 +534,10 @@ int main ( int argc, char **argv){
 				r_msg.status=1;
 			}
 	  		else r_msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case CLRSEARCH:
-                        iniparser_set(diagnostic_INI,"CLRSEARCH", NULL,NULL);
+		        sprintf(command_string,"CLRSEARCH");
 			/* CLRSEARCH: The ROS may issue this command to all drivers, 
 			*  to do a clear frequency search 
  			*/  
@@ -557,13 +560,12 @@ int main ( int argc, char **argv){
 				ros_msg_add_var(&r_msg,pwr,sizeof(double)*temp32,"pwr_per_khz","array of doubles");
 			}
 	  		else r_msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			free(pwr);
 			pwr=NULL;
 			break;
 
 		      case AUX_COMMAND:
-                        iniparser_set(diagnostic_INI,"AUX_COMMAND", NULL,NULL);
+		        sprintf(command_string,"AUX_COMMAND");
 			/* AUX_COMMAND: Site hardware specific commands which are not critical for operation, but
  			*  controlprograms may optionally access to if they are site aware.  
  			*/  
@@ -577,7 +579,6 @@ int main ( int argc, char **argv){
 			  /* process aux command dictionary here */
 			  process_aux_msg(msg,&r_msg,verbose);
 			}
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 
@@ -586,7 +587,7 @@ int main ( int argc, char **argv){
  * Site ini file should be configured to instruct the ROS as to which driver
  * services each of the following commands */
 		      case GET_TRTIMES:
-                        iniparser_set(diagnostic_INI,"GET_TRTIMES", NULL,NULL);
+		        sprintf(command_string,"GET_TRTIMES");
 			/* GET_TRTIMES: After a trigger or external trigger command has been issued. The ROS 
 			*  may issue this command to a driver as a way to retrieve information about the
 			*  actual TR time windows that were used. 
@@ -607,11 +608,10 @@ int main ( int argc, char **argv){
 				  ros_msg_add_var(&r_msg,transmit_times.duration_usec,sizeof(uint32)*transmit_times.length,"tr_windows_duration_usec","array");
 				}
 			}
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case GET_DATA_STATUS:
-                        iniparser_set(diagnostic_INI,"GET_DATA_STATUS", NULL,NULL);
+		        sprintf(command_string,"GET_DATA_STATUS");
 			/* GET_DATA_STATUS: After a trigger or external trigger command has been issued. The ROS 
 			*  may issue this command to a driver as a way to determine if there was an error 
 			*  collecting sample data.  Typically if there is no error GET_DATA will be sent as 
@@ -632,11 +632,10 @@ int main ( int argc, char **argv){
 				ros_msg_add_var(&r_msg,&data_status,sizeof(int32),"data_status","int32");
 			}
 	  		else r_msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case GET_DATA:
-                        iniparser_set(diagnostic_INI,"GET_DATA", NULL,NULL);
+		        sprintf(command_string,"GET_DATA");
 			/* GET_DATA: After a trigger or external trigger command has been issued. The ROS 
 			*  may issue this command to a driver as a way to retrieve sample data. 
 			*  The receiver driver is the only driver that should respond to this command
@@ -669,11 +668,10 @@ int main ( int argc, char **argv){
                                 }
 			}
 	  		else r_msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case GET_TRIGGER_OFFSET:
-                        iniparser_set(diagnostic_INI,"GET_TRIGGER_OFFSET", NULL,NULL);
+		        sprintf(command_string,"GET_TRIGGER_OFFSET");
 			/* GET_TRIGGER_OFFSET: Hardware like digital receivers and dds use internal digital filter logic
 			*  as part of their operation, These digital filters have time delays which should be accounted 
 			*  for in the timing of when the cards are triggered relative to the master trigger.
@@ -700,10 +698,9 @@ int main ( int argc, char **argv){
 				ros_msg_add_var(&r_msg,&data_status,sizeof(int32),"dds_trigger_offset_usec","int32");
 			}
 	  		else r_msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 		      case SET_TRIGGER_OFFSET:
-                        iniparser_set(diagnostic_INI,"SET_TRIGGER_OFFSET", NULL,NULL);
+		        sprintf(command_string,"SET_TRIGGER_OFFSET");
 			/* SET_TRIGGER_OFFSET: Hardware like digital receivers and dds use internal digital filter logic
 			*  as part of their operation. These digital filters have time delays which should be accounted
 			*  for in the timing of when the cards are triggered relative to the master trigger.
@@ -726,10 +723,9 @@ int main ( int argc, char **argv){
 				ros_msg_get_var_by_name(&msg,"channel",&temp32);
 			}
 	  		else r_msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 		      case GET_EVENT_TIME:
-                        iniparser_set(diagnostic_INI,"GET_EVENT_TIME", NULL,NULL);
+		        sprintf(command_string,"GET_EVENT_TIME");
 			/* GET_EVENT_TIME: The ROS may issue this command to a driver. 
 			*  Only one driver should respond to this command 
 			*  This should be turned into an AUX command 
@@ -746,21 +742,24 @@ int main ( int argc, char **argv){
 				ros_msg_add_var(&r_msg,&gpsnsecond,sizeof(int32),"gps_nsecond","int32");
 			}
 	  		else r_msg.status=0;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 			/* Required default case for unserviced commands */
 		      default:
-                        iniparser_set(diagnostic_INI,"default", NULL,NULL);
+		        sprintf(command_string,"UNKNOWN");
 			/* NOOPs: ROS commands that are not understood by the driver should send a msg.status=0  
 			* Some drivers will not need to process all of the named commands listed above. 
 			* For those driver the default case can be used and the ROS will deal with it accordingly.
  			*/  
 			if (verbose > -10) printf("Driver: BAD CODE: %c : %d\n",datacode,(unsigned int)datacode);
                         r_msg.status=-1;
-                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 		    }
+                    gettimeofday(&t1,NULL);
+                    iniparser_set(diagnostic_INI,command_string, NULL,NULL);
+                    sprintf(entry_string,"%s:%s",command_string,"elapsed_secs");
+                    iniparser_set(diagnostic_INI,entry_string, elapsed_string(t0,t1),NULL);
+                    rval=ros_msg_send(msgsock, &r_msg);
 		  }	
                   ros_msg_free_buffer(&r_msg);
                   ros_msg_free_buffer(&msg);
