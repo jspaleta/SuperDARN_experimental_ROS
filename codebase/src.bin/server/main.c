@@ -398,14 +398,14 @@ int main()
       graceful_socket_cleanup(1);
   } else {
     if (verbose>0) fprintf(stderr,"GPS Socket %d\n",gpssock);
-    driver_msg_init(&s_msg);
-    driver_msg_init(&r_msg);
-    driver_msg_set_command(&s_msg,AUX_COMMAND,"GPS_SET_TRIGGER_RATE","GPS");
-    driver_msg_add_var(&s_msg,&gpsrate,sizeof(int32),"gpsrate","int32");
-    driver_msg_send(gpssock, &s_msg);
-    driver_msg_recv(gpssock, &r_msg);
-    driver_msg_free_buffer(&s_msg);
-    driver_msg_free_buffer(&r_msg);
+    ros_msg_init(&s_msg);
+    ros_msg_init(&r_msg);
+    ros_msg_set_command(&s_msg,AUX_COMMAND,"GPS_SET_TRIGGER_RATE","GPS");
+    ros_msg_add_var(&s_msg,&gpsrate,sizeof(int32),"gpsrate","int32");
+    ros_msg_send(gpssock, &s_msg);
+    ros_msg_recv(gpssock, &r_msg);
+    ros_msg_free_buffer(&s_msg);
+    ros_msg_free_buffer(&r_msg);
   }
   if (verbose>1) fprintf(stderr,"Done with Sockets\n");
 /*

@@ -210,8 +210,8 @@ int main ( int argc, char **argv){
 	sock=tcpsocket(port_number);
 	listen(sock, 5);
 	while (1) {
-                driver_msg_init(&msg);
-                driver_msg_init(&r_msg);
+                ros_msg_init(&msg);
+                ros_msg_init(&r_msg);
                 rval=1;
 		msgsock=accept(sock, 0, 0);
 		if (verbose > 0) printf("accepting socket!!!!!\n");
@@ -250,7 +250,7 @@ int main ( int argc, char **argv){
                   if ( FD_ISSET(msgsock,&rfds) && rval>0 ) {
                     if (verbose>1) printf("Data is ready to be read\n");
 		    if (verbose > 1) printf("%d Recv Msg\n",msgsock);
-                    driver_msg_recv(msgsock,&msg);
+                    ros_msg_recv(msgsock,&msg);
                     datacode=msg.command_type;
 		    if (verbose > 1) printf("\nmsg code is %c\n", datacode);
 		/* Process commands that have come in on the socket */	
@@ -268,8 +268,8 @@ int main ( int argc, char **argv){
  			* sequence data by sending msg back with msg.status=1.
  			*/
 		        r_msg.status=0;
-			rval=driver_msg_get_var_by_name(&msg,"parameters",&client);
-			rval=driver_msg_get_var_by_name(&msg,"index",index);
+			rval=ros_msg_get_var_by_name(&msg,"parameters",&client);
+			rval=ros_msg_get_var_by_name(&msg,"index",index);
 		        if (verbose > 1) printf("Driver: Requested sequence index: %d %d %d\n",index[0],index[1],index[2]);	
 			/*Prepare the memory pointers*/
                         if (pulseseqs[index[0]][index[1]][index[2]]!=NULL) {
@@ -279,19 +279,19 @@ int main ( int argc, char **argv){
                         }
 			/* Fill memory pointers */
                         pulseseqs[index[0]][index[1]][index[2]]=malloc(sizeof(struct TSGbuf));
-			rval=driver_msg_get_var_by_name(&msg,"pulseseq",pulseseqs[index[0]][index[1]][index[2]]);
+			rval=ros_msg_get_var_by_name(&msg,"pulseseq",pulseseqs[index[0]][index[1]][index[2]]);
                         pulseseqs[index[0]][index[1]][index[2]]->rep=
                             malloc(sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->len);
                         pulseseqs[index[0]][index[1]][index[2]]->code=
                             malloc(sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->len);
 		        if (verbose > 1) printf("Driver: Done Filling the memory\n");	
-			rval=driver_msg_get_var_by_name(&msg,"rep",pulseseqs[index[0]][index[1]][index[2]]->rep);
-			rval=driver_msg_get_var_by_name(&msg,"code",pulseseqs[index[0]][index[1]][index[2]]->code);
+			rval=ros_msg_get_var_by_name(&msg,"rep",pulseseqs[index[0]][index[1]][index[2]]->rep);
+			rval=ros_msg_get_var_by_name(&msg,"code",pulseseqs[index[0]][index[1]][index[2]]->code);
 			/* Inform the ROS that this driver recv all data without error
  			* by sending msg back with msg.status=1.
  			*/
 		        r_msg.status=1;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			/* Reset the local sequence state */
                         old_seq_id=-10;
                         new_seq_id=-1;
@@ -303,11 +303,11 @@ int main ( int argc, char **argv){
  			* the ROS server informs each driver so drivers can reset internal state variables.
  			*/  
 		        if (verbose > 0) printf("\nDriver: client is done\n");	
-			rval=driver_msg_get_var_by_name(&msg,"parameters",&client);
+			rval=ros_msg_get_var_by_name(&msg,"parameters",&client);
 			/* Inform the ROS that this driver does handle this command, and its okay to send the
  			* associated data by sending msg back with msg.status=1.
  			*/
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
                         old_seq_id=-10;
                         new_seq_id=-1;
                         break;
@@ -322,9 +322,9 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does handle this command, and its okay to send the
  			* associated data by sending msg back with msg.status=1.
  			*/
-			rval=driver_msg_get_var_by_name(&msg,"parameters",&client);
+			rval=ros_msg_get_var_by_name(&msg,"parameters",&client);
 			r_msg.status=1;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			if (verbose > 1) printf("Radar: %d, Channel: %d Beamnum: %d Status %d\n",
 			    client.radar,client.channel,client.tbeam,msg.status);	
                         r=client.radar-1; 
@@ -354,7 +354,7 @@ int main ( int argc, char **argv){
  			* associated data by sending msg back with msg.status=1.
  			*/
                         r_msg.status=1;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			/* Calculate sequence index */
                         new_seq_id=-1;
 	                for( i=0; i<numclients; i++) {
@@ -410,7 +410,7 @@ int main ( int argc, char **argv){
 			if (verbose > 1 ) printf("Driver: Send Master Trigger\n");	
           		if(strcmp(driver_type,"TIMING")==0) r_msg.status=1;
 	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
                         break;
 
                       case EXTERNAL_TRIGGER:
@@ -423,7 +423,7 @@ int main ( int argc, char **argv){
                         if (verbose > 1 ) printf("Driver: Setup for external trigger\n");
           		if(strcmp(driver_type,"TIMING")==0) r_msg.status=1;
 	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
                         break;
 
 		      case WAIT:
@@ -436,7 +436,7 @@ int main ( int argc, char **argv){
 			if (verbose > 1 ) printf("Driver: Wait\n");	
 			/* Driver would put the logic necessary to block waiting for a sequence operation to complete*/
                         r_msg.status=1;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case POSTTRIGGER:
@@ -454,7 +454,7 @@ int main ( int argc, char **argv){
                           }
                         }
                         if (verbose > 1)  printf("Driver: Ending Post-trigger Setup\n");
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
                         break;
 
 		      case SITE_SETTINGS:
@@ -467,12 +467,12 @@ int main ( int argc, char **argv){
  			* msg back with msg.status=0.
  			*/
           		if(strcmp(driver_type,"DIO")==0) {
-				rval=driver_msg_get_var_by_name(&msg,"ifmode",&site_settings.ifmode);
-				rval=driver_msg_get_var_by_name(&msg,"rf_rxfe_settings",&site_settings.rf_settings);
-				rval=driver_msg_get_var_by_name(&msg,"if_rxfe_settings",&site_settings.if_settings);
+				rval=ros_msg_get_var_by_name(&msg,"ifmode",&site_settings.ifmode);
+				rval=ros_msg_get_var_by_name(&msg,"rf_rxfe_settings",&site_settings.rf_settings);
+				rval=ros_msg_get_var_by_name(&msg,"if_rxfe_settings",&site_settings.if_settings);
 			}
 	  		else msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case CLRSEARCH_READY:
@@ -487,18 +487,18 @@ int main ( int argc, char **argv){
  			*/
           		if(strcmp(driver_type,"DIO")==0) {
 				r_msg.status=1;
-				rval=driver_msg_get_var_by_name(&msg,"clrfreqsearch",&clrfreqsearch);
-				rval=driver_msg_get_var_by_name(&msg,"radar",&radar);
-				rval=driver_msg_get_var_by_name(&msg,"channel",&channel);
+				rval=ros_msg_get_var_by_name(&msg,"clrfreqsearch",&clrfreqsearch);
+				rval=ros_msg_get_var_by_name(&msg,"radar",&radar);
+				rval=ros_msg_get_var_by_name(&msg,"channel",&channel);
 			}
           		else if(strcmp(driver_type,"RECV")==0) {
 				r_msg.status=1;
-				rval=driver_msg_get_var_by_name(&msg,"clrfreqsearch",&clrfreqsearch);
-				rval=driver_msg_get_var_by_name(&msg,"radar",&radar);
-				rval=driver_msg_get_var_by_name(&msg,"channel",&channel);
+				rval=ros_msg_get_var_by_name(&msg,"clrfreqsearch",&clrfreqsearch);
+				rval=ros_msg_get_var_by_name(&msg,"radar",&radar);
+				rval=ros_msg_get_var_by_name(&msg,"channel",&channel);
 			}
 	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case PRE_CLRSEARCH:
@@ -514,7 +514,7 @@ int main ( int argc, char **argv){
 				r_msg.status=1;
 			}
 	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case POST_CLRSEARCH:
@@ -530,7 +530,7 @@ int main ( int argc, char **argv){
 				r_msg.status=1;
 			}
 	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case CLRSEARCH:
@@ -544,7 +544,7 @@ int main ( int argc, char **argv){
  			*/
           		if(strcmp(driver_type,"RECV")==0) {
 				r_msg.status=1;
-  				driver_msg_add_var(&r_msg,&clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","struct CLRFreqRPM");
+  				ros_msg_add_var(&r_msg,&clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","struct CLRFreqRPM");
 				temp32=clrfreqsearch.freq_end_khz-clrfreqsearch.freq_start_khz;
 
 				pwr= (double*) malloc(sizeof(double) *temp32);
@@ -553,11 +553,11 @@ int main ( int argc, char **argv){
 				  pwr[i]=rand();
 				  if(verbose > 3 ) printf("%8d : %8d :: %8.3lf\n",i,clrfreqsearch.freq_start_khz+i,pwr[i]);
 				}
-				driver_msg_add_var(&r_msg,&temp32,sizeof(int32),"N","int32");
-				driver_msg_add_var(&r_msg,pwr,sizeof(double)*temp32,"pwr_per_khz","array of doubles");
+				ros_msg_add_var(&r_msg,&temp32,sizeof(int32),"N","int32");
+				ros_msg_add_var(&r_msg,pwr,sizeof(double)*temp32,"pwr_per_khz","array of doubles");
 			}
 	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			free(pwr);
 			pwr=NULL;
 			break;
@@ -577,7 +577,7 @@ int main ( int argc, char **argv){
 			  /* process aux command dictionary here */
 			  process_aux_msg(msg,&r_msg,verbose);
 			}
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 
@@ -601,13 +601,13 @@ int main ( int argc, char **argv){
 
 			if(r_msg.status==1) {
 			        if (verbose > 1 ) printf("Driver: tr_length %d\n",transmit_times.length);	
-				driver_msg_add_var(&r_msg,&transmit_times.length,sizeof(int32),"num_tr_windows","int32");
+				ros_msg_add_var(&r_msg,&transmit_times.length,sizeof(int32),"num_tr_windows","int32");
 				if(transmit_times.length > 0) {
-				  driver_msg_add_var(&r_msg,transmit_times.start_usec,sizeof(uint32)*transmit_times.length,"tr_windows_start_usec","array");
-				  driver_msg_add_var(&r_msg,transmit_times.duration_usec,sizeof(uint32)*transmit_times.length,"tr_windows_duration_usec","array");
+				  ros_msg_add_var(&r_msg,transmit_times.start_usec,sizeof(uint32)*transmit_times.length,"tr_windows_start_usec","array");
+				  ros_msg_add_var(&r_msg,transmit_times.duration_usec,sizeof(uint32)*transmit_times.length,"tr_windows_duration_usec","array");
 				}
 			}
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case GET_DATA_STATUS:
@@ -625,14 +625,14 @@ int main ( int argc, char **argv){
 			data_status=1;
           		if(strcmp(driver_type,"RECV")==0) {
 				r_msg.status=1;
-				driver_msg_get_var_by_name(&msg,"radar",&radar);
-				driver_msg_get_var_by_name(&msg,"channel",&channel);
-				driver_msg_get_var_by_name(&msg,"bufnum",&bufnum);
+				ros_msg_get_var_by_name(&msg,"radar",&radar);
+				ros_msg_get_var_by_name(&msg,"channel",&channel);
+				ros_msg_get_var_by_name(&msg,"bufnum",&bufnum);
 				data_status=1;
-				driver_msg_add_var(&r_msg,&data_status,sizeof(int32),"data_status","int32");
+				ros_msg_add_var(&r_msg,&data_status,sizeof(int32),"data_status","int32");
 			}
 	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case GET_DATA:
@@ -647,14 +647,14 @@ int main ( int argc, char **argv){
  			*/
           		if(strcmp(driver_type,"RECV")==0) {
 				r_msg.status=1;
-				driver_msg_get_var_by_name(&msg,"radar",&radar);
-				driver_msg_get_var_by_name(&msg,"channel",&channel);
+				ros_msg_get_var_by_name(&msg,"radar",&radar);
+				ros_msg_get_var_by_name(&msg,"channel",&channel);
                                 data.use_shared_memory=0;
 				data.shared_memory_offset=0;
 				data.bufnum=0;
 				data.samples=100;
 				data.status=1;
-				driver_msg_add_var(&r_msg,&data,sizeof(struct DataPRM),"dataprm","struct DataPRM");
+				ros_msg_add_var(&r_msg,&data,sizeof(struct DataPRM),"dataprm","struct DataPRM");
                                 if(data.use_shared_memory==0) {
                                   if(main_data==NULL) {
 				    main_data=malloc(sizeof(uint32)*data.samples);	
@@ -664,12 +664,12 @@ int main ( int argc, char **argv){
                                   }
                                   collect_data(main_data,&data);   
                                   collect_data(back_data,&data);   
-				  driver_msg_add_var(&r_msg,main_data,sizeof(uint32)*data.samples,"main_data","array");
-				  driver_msg_add_var(&r_msg,back_data,sizeof(uint32)*data.samples,"back_data","array");
+				  ros_msg_add_var(&r_msg,main_data,sizeof(uint32)*data.samples,"main_data","array");
+				  ros_msg_add_var(&r_msg,back_data,sizeof(uint32)*data.samples,"back_data","array");
                                 }
 			}
 	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 		      case GET_TRIGGER_OFFSET:
@@ -688,19 +688,19 @@ int main ( int argc, char **argv){
           		if(strcmp(driver_type,"RECV")==0) {
 			        temp32=70;   //positive 70 microsecond offset relative to t0 
 				r_msg.status=1;
-				driver_msg_get_var_by_name(&msg,"radar",&radar);
-				driver_msg_get_var_by_name(&msg,"channel",&channel);
-				driver_msg_add_var(&r_msg,&data_status,sizeof(int32),"rx_trigger_offset_usec","int32");
+				ros_msg_get_var_by_name(&msg,"radar",&radar);
+				ros_msg_get_var_by_name(&msg,"channel",&channel);
+				ros_msg_add_var(&r_msg,&data_status,sizeof(int32),"rx_trigger_offset_usec","int32");
 			}
           		if(strcmp(driver_type,"DDS")==0) {
 			        temp32=-50;   //negative 50 microsecond offset relative to t0 
 				r_msg.status=1;
-				driver_msg_get_var_by_name(&msg,"radar",&radar);
-				driver_msg_get_var_by_name(&msg,"channel",&channel);
-				driver_msg_add_var(&r_msg,&data_status,sizeof(int32),"dds_trigger_offset_usec","int32");
+				ros_msg_get_var_by_name(&msg,"radar",&radar);
+				ros_msg_get_var_by_name(&msg,"channel",&channel);
+				ros_msg_add_var(&r_msg,&data_status,sizeof(int32),"dds_trigger_offset_usec","int32");
 			}
 	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 		      case SET_TRIGGER_OFFSET:
                         iniparser_set(diagnostic_INI,"SET_TRIGGER_OFFSET", NULL,NULL);
@@ -717,16 +717,16 @@ int main ( int argc, char **argv){
  			*/
           		if(strcmp(driver_type,"TIMING")==0) {
 				temp32=0;
-				driver_msg_get_var_by_name(&msg,"rx_trigger_offset_usec",&temp32);
+				ros_msg_get_var_by_name(&msg,"rx_trigger_offset_usec",&temp32);
 				temp32=0;
-				driver_msg_get_var_by_name(&msg,"dds_trigger_offset_usec",&temp32);
+				ros_msg_get_var_by_name(&msg,"dds_trigger_offset_usec",&temp32);
 				temp32=0;
-				driver_msg_get_var_by_name(&msg,"radar",&temp32);
+				ros_msg_get_var_by_name(&msg,"radar",&temp32);
 				temp32=0;
-				driver_msg_get_var_by_name(&msg,"channel",&temp32);
+				ros_msg_get_var_by_name(&msg,"channel",&temp32);
 			}
 	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 		      case GET_EVENT_TIME:
                         iniparser_set(diagnostic_INI,"GET_EVENT_TIME", NULL,NULL);
@@ -741,12 +741,12 @@ int main ( int argc, char **argv){
           		if(strcmp(driver_type,"GPS")==0) {
 				r_msg.status=1;
 			        if (verbose > 1 ) printf("GET_EVENT_TIME: %d\n",msg.status);	
-				driver_msg_add_var(&r_msg,&gps_event,sizeof(int32),"gps_event","int32");
-				driver_msg_add_var(&r_msg,&gpssecond,sizeof(int32),"gps_second","int32");
-				driver_msg_add_var(&r_msg,&gpsnsecond,sizeof(int32),"gps_nsecond","int32");
+				ros_msg_add_var(&r_msg,&gps_event,sizeof(int32),"gps_event","int32");
+				ros_msg_add_var(&r_msg,&gpssecond,sizeof(int32),"gps_second","int32");
+				ros_msg_add_var(&r_msg,&gpsnsecond,sizeof(int32),"gps_nsecond","int32");
 			}
 	  		else r_msg.status=0;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 
 			/* Required default case for unserviced commands */
@@ -758,12 +758,12 @@ int main ( int argc, char **argv){
  			*/  
 			if (verbose > -10) printf("Driver: BAD CODE: %c : %d\n",datacode,(unsigned int)datacode);
                         r_msg.status=-1;
-                        rval=driver_msg_send(msgsock, &r_msg);
+                        rval=ros_msg_send(msgsock, &r_msg);
 			break;
 		    }
 		  }	
-                  driver_msg_free_buffer(&r_msg);
-                  driver_msg_free_buffer(&msg);
+                  ros_msg_free_buffer(&r_msg);
+                  ros_msg_free_buffer(&msg);
 		} //while rval loop 
 		if (verbose > 0 ) fprintf(stderr,"Closing socket\n");
 		close(msgsock);

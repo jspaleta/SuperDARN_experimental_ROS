@@ -139,7 +139,7 @@ return str;
 }
 
 
-int  driver_msg_init(struct ROSMsg *msg){
+int  ros_msg_init(struct ROSMsg *msg){
   msg->command_type=0;
   strncpy(msg->command_name,"",MAX_MSG_STRING);
   strncpy(msg->driver,"",MAX_MSG_STRING);
@@ -152,14 +152,14 @@ int  driver_msg_init(struct ROSMsg *msg){
   return 0;
 };
 
-int driver_msg_set_command(struct ROSMsg *msg,char type, char *name,char *driver){
+int ros_msg_set_command(struct ROSMsg *msg,char type, char *name,char *driver){
   msg->command_type=type;
   strncpy(msg->command_name,name,MAX_MSG_STRING);
   strncpy(msg->driver,driver,MAX_MSG_STRING);
   return 1;
 }
 
-int driver_msg_free_buffer(struct ROSMsg *msg){
+int ros_msg_free_buffer(struct ROSMsg *msg){
   if(msg!=NULL) {
     msg->command_type=0;
     strncpy(msg->command_name,"",MAX_MSG_STRING);
@@ -175,7 +175,7 @@ int driver_msg_free_buffer(struct ROSMsg *msg){
   return 0;
 };
 
-int driver_msg_add_var(struct ROSMsg *msg,void *arg,unsigned int bytes,char *var_name,char *type){
+int ros_msg_add_var(struct ROSMsg *msg,void *arg,unsigned int bytes,char *var_name,char *type){
  struct msgvar var;
  struct msgvar *vars;
  int32 temp=0; 
@@ -192,14 +192,14 @@ int driver_msg_add_var(struct ROSMsg *msg,void *arg,unsigned int bytes,char *var
  memmove(&temp,(void *)msg->buffer,sizeof(int32));
 
  if(var.offset+var.bytes!=msg->bytes){
-   fprintf(stderr,"Error in driver_msg_add_var\n");
+   fprintf(stderr,"Error in ros_msg_add_var\n");
    return -1;
  }
 
  return 0; 
 };
 
-int driver_msg_dump_var_info(struct ROSMsg *msg){
+int ros_msg_dump_var_info(struct ROSMsg *msg){
   struct msgvar *var;
   struct msgvar *vars;
   int var_index,bytes;
@@ -215,14 +215,14 @@ int driver_msg_dump_var_info(struct ROSMsg *msg){
   return 0;
 };
 
-int driver_msg_get_var_by_index(struct ROSMsg *msg,int var_index,void *buf){
+int ros_msg_get_var_by_index(struct ROSMsg *msg,int var_index,void *buf){
   struct msgvar *var;
   struct msgvar *vars;
   int bytes;
   void *address;
   vars=(struct msgvar *)msg->vars;
   if(var_index >= msg->num_vars) {
-   fprintf(stderr,"Error in driver_msg_get_var_by_index\n");
+   fprintf(stderr,"Error in ros_msg_get_var_by_index\n");
    return -1;
   }
   var=&vars[var_index];
@@ -231,7 +231,7 @@ int driver_msg_get_var_by_index(struct ROSMsg *msg,int var_index,void *buf){
   address=(void *)msg->buffer+var->offset;
 
   if((address<(void *)msg->buffer) || (address+bytes > (void *)msg->buffer+msg->bytes)) {
-    fprintf(stderr,"Error in driver_msg_get_var_by_index\n");
+    fprintf(stderr,"Error in ros_msg_get_var_by_index\n");
     return -1;
     address=(void *)msg->buffer;
     bytes=msg->bytes;
@@ -240,7 +240,7 @@ int driver_msg_get_var_by_index(struct ROSMsg *msg,int var_index,void *buf){
   return 0;
 };
 
-int driver_msg_get_var_by_name(struct ROSMsg *msg,char *var_name,void *buf){
+int ros_msg_get_var_by_name(struct ROSMsg *msg,char *var_name,void *buf){
   struct msgvar *var;
   struct msgvar *vars;
   int var_index,bytes;
@@ -257,14 +257,14 @@ int driver_msg_get_var_by_name(struct ROSMsg *msg,char *var_name,void *buf){
   bytes=var->bytes;
   address=(void *)msg->buffer+var->offset;
   if(  ((uint64)address<(uint64)msg->buffer) || (((uint64)address+(uint64)bytes) > ((uint64)msg->buffer+(uint64)msg->bytes))) {
-    fprintf(stderr,"Error in driver_msg_get_var_by_name\n");
+    fprintf(stderr,"Error in ros_msg_get_var_by_name\n");
     return -1;
   }
   memmove(buf,address,bytes);
   return 0;
 };
 
-int driver_msg_send(int socket,struct ROSMsg *msg) {
+int ros_msg_send(int socket,struct ROSMsg *msg) {
   int retval,error=0;
   retval=send_data(socket,msg,sizeof(struct ROSMsg));
 
@@ -277,15 +277,15 @@ int driver_msg_send(int socket,struct ROSMsg *msg) {
   if(retval!=msg->num_vars*sizeof(struct msgvar)) error++; 
 
   if(error>0) {
-    printf("driver_msg_send Error\n");
+    printf("ros_msg_send Error\n");
     return -1;
   }
   return 0;
 }
 
-int driver_msg_recv(int socket,struct ROSMsg *msg) {
+int ros_msg_recv(int socket,struct ROSMsg *msg) {
   int error=0,retval;
-  driver_msg_init(msg);
+  ros_msg_init(msg);
   retval=recv_data(socket,msg,sizeof(struct ROSMsg));
   msg->buffer=(uint64)NULL;
   msg->vars=(uint64)NULL;

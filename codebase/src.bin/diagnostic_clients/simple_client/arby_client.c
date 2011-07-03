@@ -26,13 +26,13 @@ void graceful_exit(int signum)
   struct ROSMsg smsg,rmsg;
         if (signum==13) errno=EPIPE;
         else {
-          driver_msg_init(&smsg);
-          driver_msg_init(&rmsg);
-          driver_msg_set_command(&smsg,QUIT,"quit","NONE");
-          driver_msg_send(s, &smsg);
-          driver_msg_recv(s, &rmsg);
-          driver_msg_free_buffer(&smsg);
-          driver_msg_free_buffer(&rmsg);
+          ros_msg_init(&smsg);
+          ros_msg_init(&rmsg);
+          ros_msg_set_command(&smsg,QUIT,"quit","NONE");
+          ros_msg_send(s, &smsg);
+          ros_msg_recv(s, &rmsg);
+          ros_msg_free_buffer(&smsg);
+          ros_msg_free_buffer(&rmsg);
           printf("Msg Status: %d\n",rmsg.status); 
         }
         fclose(fp);
@@ -144,8 +144,8 @@ main( int argc, char *argv[])
 
   smsg=malloc(sizeof(struct ROSMsg));
   rmsg=malloc(sizeof(struct ROSMsg));
-  driver_msg_init(smsg);
-  driver_msg_init(rmsg);
+  ros_msg_init(smsg);
+  ros_msg_init(rmsg);
 //Initialize structures
 
   for (i=0;i<MAX_TRANSMITTERS;i++) {
@@ -219,16 +219,16 @@ main( int argc, char *argv[])
  * send and receive the Radar request structure.
  */
  if(verbose>1) printf("Sending the Register Chan Command %c\n",REGISTER_RADAR_CHAN);
-   driver_msg_init(smsg);
-   driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,REGISTER_RADAR_CHAN,"register_radar_chan","NONE");
-   driver_msg_add_var(smsg,&radar,sizeof(int32),"radar","int32");
-   driver_msg_add_var(smsg,&channel,sizeof(int32),"channel","int32");
-   driver_msg_send(s, smsg); //Send the Command Message
-   driver_msg_recv(s, rmsg); //resv the handshake back
+   ros_msg_init(smsg);
+   ros_msg_init(rmsg);
+   ros_msg_set_command(smsg,REGISTER_RADAR_CHAN,"register_radar_chan","NONE");
+   ros_msg_add_var(smsg,&radar,sizeof(int32),"radar","int32");
+   ros_msg_add_var(smsg,&channel,sizeof(int32),"channel","int32");
+   ros_msg_send(s, smsg); //Send the Command Message
+   ros_msg_recv(s, rmsg); //resv the handshake back
    if(verbose>1) printf("Radar Chan Transfer Status: %d\n",rmsg->status); 
-   driver_msg_free_buffer(smsg);
-   driver_msg_free_buffer(rmsg);
+   ros_msg_free_buffer(smsg);
+   ros_msg_free_buffer(rmsg);
 /*
  * Create Pulse Sequence mimic SiteTimeSeq function in site library.
  * Re-create TSGMake using modified TSGBuf structure
@@ -239,38 +239,38 @@ main( int argc, char *argv[])
  if (pulseseq!=NULL) {
    if(verbose>1) printf("Pulseseq len: %d\n",pulseseq->len);
    if(verbose>1) printf("Sending the Register Seq Command %d\n",REGISTER_SEQ);
-   driver_msg_init(smsg);
-   driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,REGISTER_SEQ,"register_seq","NONE");
+   ros_msg_init(smsg);
+   ros_msg_init(rmsg);
+   ros_msg_set_command(smsg,REGISTER_SEQ,"register_seq","NONE");
    tprm.len=pulseseq->len;
    tprm.step=pulseseq->step;
    tprm.samples=0;
    tprm.smdelay=0;
    index=pulseseq->index;
-   driver_msg_add_var(smsg,&tprm,sizeof(struct SeqPRM),"tprm","SeqPRM");
-   driver_msg_add_var(smsg,&index,sizeof(int32),"index","int32");
-   driver_msg_add_var(smsg,pulseseq->rep,sizeof(unsigned char)*pulseseq->len,"rep","unsigned char array");
-   driver_msg_add_var(smsg,pulseseq->code,sizeof(unsigned char)*pulseseq->len,"code","unsigned char array");
-   driver_msg_send(s, smsg);
-   driver_msg_recv(s, rmsg);
+   ros_msg_add_var(smsg,&tprm,sizeof(struct SeqPRM),"tprm","SeqPRM");
+   ros_msg_add_var(smsg,&index,sizeof(int32),"index","int32");
+   ros_msg_add_var(smsg,pulseseq->rep,sizeof(unsigned char)*pulseseq->len,"rep","unsigned char array");
+   ros_msg_add_var(smsg,pulseseq->code,sizeof(unsigned char)*pulseseq->len,"code","unsigned char array");
+   ros_msg_send(s, smsg);
+   ros_msg_recv(s, rmsg);
      if(verbose>1) printf("PulseSeq Transfer Status: %d\n",rmsg->status); 
-   driver_msg_free_buffer(smsg);
-   driver_msg_free_buffer(rmsg);
+   ros_msg_free_buffer(smsg);
+   ros_msg_free_buffer(rmsg);
  }
 /*
  * Request a default ControlPRM parameter structure to work with 
  */
 
  if(verbose>1) printf("Get Default Parameters %d\n",GET_PARAMETERS);
-   driver_msg_init(smsg);
-   driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,GET_PARAMETERS,"get_parameters","NONE");
-   driver_msg_send(s, smsg);
-   driver_msg_recv(s, rmsg);
-   driver_msg_get_var_by_name(rmsg,"parameters",&parameters);
+   ros_msg_init(smsg);
+   ros_msg_init(rmsg);
+   ros_msg_set_command(smsg,GET_PARAMETERS,"get_parameters","NONE");
+   ros_msg_send(s, smsg);
+   ros_msg_recv(s, rmsg);
+   ros_msg_get_var_by_name(rmsg,"parameters",&parameters);
       if(verbose>1) printf("Get Parameters Command Status: %d\n",rmsg->status); 
-   driver_msg_free_buffer(smsg);
-   driver_msg_free_buffer(rmsg);
+   ros_msg_free_buffer(smsg);
+   ros_msg_free_buffer(rmsg);
  while(1) {
 /* Rotate beam direction*/
    bmnum=(bmnum +1) % 16;
@@ -283,36 +283,36 @@ main( int argc, char *argv[])
    clrfreq_parameters.rbeam=bmnum;  
    clrfreq_parameters.rx_bandwidth_khz=3.3; 
 
-   driver_msg_init(smsg);
-   driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,REQUEST_CLEAR_FREQ_SEARCH,"request_clear_freq_search","NONE");
-   driver_msg_add_var(smsg,&clrfreq_parameters,sizeof(struct CLRFreqPRM),"clrfreq_parameters","CLRFreqPRM");
-   driver_msg_send(s, smsg);
-   driver_msg_recv(s, rmsg);
-   driver_msg_free_buffer(smsg);
-   driver_msg_free_buffer(rmsg);
+   ros_msg_init(smsg);
+   ros_msg_init(rmsg);
+   ros_msg_set_command(smsg,REQUEST_CLEAR_FREQ_SEARCH,"request_clear_freq_search","NONE");
+   ros_msg_add_var(smsg,&clrfreq_parameters,sizeof(struct CLRFreqPRM),"clrfreq_parameters","CLRFreqPRM");
+   ros_msg_send(s, smsg);
+   ros_msg_recv(s, rmsg);
+   ros_msg_free_buffer(smsg);
+   ros_msg_free_buffer(rmsg);
 
-   driver_msg_init(smsg);
-   driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,REQUEST_ASSIGNED_FREQ,"request_assigned_freq","NONE");
-   driver_msg_send(s, smsg);
-   driver_msg_recv(s, rmsg);
-   driver_msg_get_var_by_name(rmsg,"assigned_freq_khz",&tfreq);
-   driver_msg_get_var_by_name(rmsg,"assigned_noise_pwr",&noise);
-   driver_msg_free_buffer(smsg);
-   driver_msg_free_buffer(rmsg);
+   ros_msg_init(smsg);
+   ros_msg_init(rmsg);
+   ros_msg_set_command(smsg,REQUEST_ASSIGNED_FREQ,"request_assigned_freq","NONE");
+   ros_msg_send(s, smsg);
+   ros_msg_recv(s, rmsg);
+   ros_msg_get_var_by_name(rmsg,"assigned_freq_khz",&tfreq);
+   ros_msg_get_var_by_name(rmsg,"assigned_noise_pwr",&noise);
+   ros_msg_free_buffer(smsg);
+   ros_msg_free_buffer(rmsg);
 
 
    if(verbose>1) printf("Data Acquisition Loop\n");
    gettimeofday(&t0,NULL);
    if(verbose>1) printf("Sending the Keepalive Command\n");
-   driver_msg_init(smsg);
-   driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,PING,"ping","NONE");
-   driver_msg_send(s, smsg);
-   driver_msg_recv(s, rmsg);
-   driver_msg_free_buffer(smsg);
-   driver_msg_free_buffer(rmsg);
+   ros_msg_init(smsg);
+   ros_msg_init(rmsg);
+   ros_msg_set_command(smsg,PING,"ping","NONE");
+   ros_msg_send(s, smsg);
+   ros_msg_recv(s, rmsg);
+   ros_msg_free_buffer(smsg);
+   ros_msg_free_buffer(rmsg);
    if(verbose>1) printf("Msg Status: %d\n",rmsg->status); 
 
 /*
@@ -340,24 +340,24 @@ main( int argc, char *argv[])
      printf("  current transmit beam: %d\n",parameters.tbeam);
      printf("  current pulse index: %d %d %d\n",parameters.pulseseq_index[0],parameters.pulseseq_index[1],parameters.pulseseq_index[2]);
    }
-   driver_msg_init(smsg);
-   driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,SET_PARAMETERS,"set_parameters","NONE");
-   driver_msg_add_var(smsg,&parameters,sizeof(struct CLRFreqPRM),"parameters","ControlPRM");
-   driver_msg_send(s, smsg);
-   driver_msg_recv(s, rmsg);
-   driver_msg_free_buffer(smsg);
-   driver_msg_free_buffer(rmsg);
+   ros_msg_init(smsg);
+   ros_msg_init(rmsg);
+   ros_msg_set_command(smsg,SET_PARAMETERS,"set_parameters","NONE");
+   ros_msg_add_var(smsg,&parameters,sizeof(struct CLRFreqPRM),"parameters","ControlPRM");
+   ros_msg_send(s, smsg);
+   ros_msg_recv(s, rmsg);
+   ros_msg_free_buffer(smsg);
+   ros_msg_free_buffer(rmsg);
 
 
    if(verbose>1) printf("Sending the Set Ready Command %d\n",CtrlProg_READY);
-   driver_msg_init(smsg);
-   driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,CtrlProg_READY,"set_ready","ALL");
-   driver_msg_send(s, smsg);
-   driver_msg_recv(s, rmsg);
-   driver_msg_free_buffer(smsg);
-   driver_msg_free_buffer(rmsg);
+   ros_msg_init(smsg);
+   ros_msg_init(rmsg);
+   ros_msg_set_command(smsg,CtrlProg_READY,"set_ready","ALL");
+   ros_msg_send(s, smsg);
+   ros_msg_recv(s, rmsg);
+   ros_msg_free_buffer(smsg);
+   ros_msg_free_buffer(rmsg);
 
    gettimeofday(&t2,NULL);
    elapsed=(t2.tv_sec-t0.tv_sec)*1E6;
@@ -365,12 +365,12 @@ main( int argc, char *argv[])
    if(verbose>0) printf("  Ready Elapsed Microseconds: %ld\n",elapsed);
 
    if(verbose>1) printf("Sending the get data Command %d\n",GET_DATA);
-   driver_msg_init(smsg);
-   driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,GET_DATA,"GET_DATA","ALL");
+   ros_msg_init(smsg);
+   ros_msg_init(rmsg);
+   ros_msg_set_command(smsg,GET_DATA,"GET_DATA","ALL");
    bufnum=0;
-   driver_msg_add_var(smsg,&bufnum,sizeof(int32),"data_buffer_number","int32");
-   driver_msg_send(s, smsg);
+   ros_msg_add_var(smsg,&bufnum,sizeof(int32),"data_buffer_number","int32");
+   ros_msg_send(s, smsg);
 
    if(main_data!=NULL) {
         free(main_data);
@@ -381,24 +381,24 @@ main( int argc, char *argv[])
         back_data=NULL;
    }
    if(verbose>1) printf("wait for data structure\n");
-   driver_msg_recv(s, rmsg);
+   ros_msg_recv(s, rmsg);
 
-   driver_msg_get_var_by_name(rmsg,"dprm",&dprm);
+   ros_msg_get_var_by_name(rmsg,"dprm",&dprm);
    if(verbose>1) printf("  samples: %d\n",dprm.samples);
    if(verbose>1) printf("  status: %d\n",dprm.status);
    if(dprm.status>=0) {
         main_data=malloc(sizeof(uint32)*dprm.samples);
         back_data=malloc(sizeof(uint32)*dprm.samples);
-        driver_msg_get_var_by_name(rmsg,"main_data",main_data);
-        driver_msg_get_var_by_name(rmsg,"back_data",back_data);
+        ros_msg_get_var_by_name(rmsg,"main_data",main_data);
+        ros_msg_get_var_by_name(rmsg,"back_data",back_data);
         if(bad_transmit_times.start_usec!=NULL) free(bad_transmit_times.start_usec);
         if(bad_transmit_times.duration_usec!=NULL) free(bad_transmit_times.duration_usec);
-        driver_msg_get_var_by_name(rmsg,"num_tr_windows",&bad_transmit_times.length);
+        ros_msg_get_var_by_name(rmsg,"num_tr_windows",&bad_transmit_times.length);
         if(verbose>1) printf("Number of Bad TR regions: %d\n",bad_transmit_times.length);
         bad_transmit_times.start_usec=malloc(sizeof(uint32)*bad_transmit_times.length);
         bad_transmit_times.duration_usec=malloc(sizeof(uint32)*bad_transmit_times.length);
-        driver_msg_get_var_by_name(rmsg,"tr_window_start_usec",bad_transmit_times.start_usec);
-        driver_msg_get_var_by_name(rmsg,"tr_window_duration_usec",bad_transmit_times.duration_usec);
+        ros_msg_get_var_by_name(rmsg,"tr_window_start_usec",bad_transmit_times.start_usec);
+        ros_msg_get_var_by_name(rmsg,"tr_window_duration_usec",bad_transmit_times.duration_usec);
         for (i=0;i<bad_transmit_times.length;i++) if(verbose>1) printf("  Start:  %d (usec) Duration:  %d (usec)\n",
                                                      bad_transmit_times.start_usec[i],bad_transmit_times.duration_usec[i]);
         if (verbose > 1) printf("Main Data Peek\n");
@@ -411,8 +411,8 @@ main( int argc, char *argv[])
         }
         j++;
    }
-   driver_msg_free_buffer(smsg);
-   driver_msg_free_buffer(rmsg);
+   ros_msg_free_buffer(smsg);
+   ros_msg_free_buffer(rmsg);
       gettimeofday(&t3,NULL);
       elapsed=(t3.tv_sec-t2.tv_sec)*1E6;
       elapsed+=(t3.tv_usec-t2.tv_usec);
@@ -423,19 +423,19 @@ main( int argc, char *argv[])
 *   if multiple operating programs are running. (This relates to priority parameter)
 */
 
-    driver_msg_set_command(smsg,AUX_COMMAND,"GET_TX_STATUS","DIO");
+    ros_msg_set_command(smsg,AUX_COMMAND,"GET_TX_STATUS","DIO");
     smsg->status=1;
     printf("AUX  STATUS Radar %d\n",radar);
-    driver_msg_add_var(smsg,&radar,sizeof(int32),"radar","int32");
+    ros_msg_add_var(smsg,&radar,sizeof(int32),"radar","int32");
     temp=0;
-    driver_msg_get_var_by_name(smsg,"radar",&temp);
+    ros_msg_get_var_by_name(smsg,"radar",&temp);
     printf("AUX  STATUS Send %d\n",temp);
-    driver_msg_send(s, smsg);
-    driver_msg_free_buffer(smsg);
-    driver_msg_recv(s, rmsg);
-    driver_msg_dump_var_info(rmsg); 
-    driver_msg_get_var_by_name(rmsg,"txstatus",&txstatus); 
-    driver_msg_free_buffer(rmsg);
+    ros_msg_send(s, smsg);
+    ros_msg_free_buffer(smsg);
+    ros_msg_recv(s, rmsg);
+    ros_msg_dump_var_info(rmsg); 
+    ros_msg_get_var_by_name(rmsg,"txstatus",&txstatus); 
+    ros_msg_free_buffer(rmsg);
     printf("AUX  STATUS DONE\n");
 //    for (i=0;i<MAX_TRANSMITTERS;i++) {
 //      printf("%d : %d %d %d\n",i,
@@ -445,15 +445,15 @@ main( int argc, char *argv[])
 //    }
 
  if(verbose>1) printf("Get Parameters %d\n",GET_PARAMETERS);
-   driver_msg_init(smsg);
-   driver_msg_init(rmsg);
-   driver_msg_set_command(smsg,GET_PARAMETERS,"get_parameters","NONE");
-   driver_msg_send(s, smsg);
-   driver_msg_recv(s, rmsg);
-   driver_msg_get_var_by_name(rmsg,"parameters",&parameters);
+   ros_msg_init(smsg);
+   ros_msg_init(rmsg);
+   ros_msg_set_command(smsg,GET_PARAMETERS,"get_parameters","NONE");
+   ros_msg_send(s, smsg);
+   ros_msg_recv(s, rmsg);
+   ros_msg_get_var_by_name(rmsg,"parameters",&parameters);
       if(verbose>1) printf("Get Parameters Command Status: %d\n",rmsg->status); 
-   driver_msg_free_buffer(smsg);
-   driver_msg_free_buffer(rmsg);
+   ros_msg_free_buffer(smsg);
+   ros_msg_free_buffer(rmsg);
    if(verbose>1) {
      printf("  radar: %d\n",parameters.radar);
      printf("  channel: %d\n",parameters.channel);

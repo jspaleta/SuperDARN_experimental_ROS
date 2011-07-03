@@ -10,7 +10,7 @@ int process_aux_msg(struct ROSMsg incoming_msg,struct ROSMsg *outbound_msg) {
         struct ROSMsg msg;
 	pthread_t thread;
         
-        driver_msg_init(&msg);
+        ros_msg_init(&msg);
         printf("AUX: in: %s: %s\n",incoming_msg.driver,incoming_msg.command_name);
         printf("AUX: msg: %s: %s\n",msg.driver,msg.command_name);
         memmove(&msg,&incoming_msg,sizeof(struct ROSMsg));

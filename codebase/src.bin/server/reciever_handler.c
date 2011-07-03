@@ -48,20 +48,20 @@ void *receiver_site_settings(void *arg) {
   struct ROSMsg s_msg,r_msg;
   struct SiteSettings *site_settings;
   site_settings=arg;
-  driver_msg_init(&s_msg);
-  driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,SITE_SETTINGS,"site_settings","NONE");
+  ros_msg_init(&s_msg);
+  ros_msg_init(&r_msg);
+  ros_msg_set_command(&s_msg,SITE_SETTINGS,"site_settings","NONE");
   if (site_settings!=NULL) {
-    driver_msg_add_var(&s_msg,&site_settings->ifmode,sizeof(int32),"ifmode","int32");
-    driver_msg_add_var(&s_msg,&site_settings->rf_settings,sizeof(struct RXFESettings),"rf_rxfe_settings","RFXESetting");
-    driver_msg_add_var(&s_msg,&site_settings->if_settings,sizeof(struct RXFESettings),"if_rxfe_settings","RXFESetting");
+    ros_msg_add_var(&s_msg,&site_settings->ifmode,sizeof(int32),"ifmode","int32");
+    ros_msg_add_var(&s_msg,&site_settings->rf_settings,sizeof(struct RXFESettings),"rf_rxfe_settings","RFXESetting");
+    ros_msg_add_var(&s_msg,&site_settings->if_settings,sizeof(struct RXFESettings),"if_rxfe_settings","RXFESetting");
   }
   pthread_mutex_lock(&recv_comm_lock);
-  driver_msg_send(recvsock, &s_msg);
-  driver_msg_recv(recvsock, &r_msg);
+  ros_msg_send(recvsock, &s_msg);
+  ros_msg_recv(recvsock, &r_msg);
   pthread_mutex_unlock(&recv_comm_lock);
-  driver_msg_free_buffer(&s_msg);
-  driver_msg_free_buffer(&r_msg);
+  ros_msg_free_buffer(&s_msg);
+  ros_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
 
 }                                                           
@@ -618,18 +618,18 @@ void receiver_exit(void *arg)
 void *receiver_end_controlprogram(struct ControlProgram *control_program)
 {
  struct ROSMsg s_msg,r_msg;
-  driver_msg_init(&s_msg);
-  driver_msg_init(&r_msg);
+  ros_msg_init(&s_msg);
+  ros_msg_init(&r_msg);
   if (control_program!=NULL) {
     pthread_mutex_lock(&recv_comm_lock);
-    driver_msg_set_command(&s_msg,CtrlProg_END,"ctrlprog_end","NONE");
-    driver_msg_add_var(&s_msg,control_program->parameters,sizeof(struct ControlPRM),"parameters","ControlPRM");
-    driver_msg_send(recvsock, &s_msg);
-    driver_msg_recv(recvsock, &r_msg);
+    ros_msg_set_command(&s_msg,CtrlProg_END,"ctrlprog_end","NONE");
+    ros_msg_add_var(&s_msg,control_program->parameters,sizeof(struct ControlPRM),"parameters","ControlPRM");
+    ros_msg_send(recvsock, &s_msg);
+    ros_msg_recv(recvsock, &r_msg);
     pthread_mutex_unlock(&recv_comm_lock);
   }
-  driver_msg_free_buffer(&s_msg);
-  driver_msg_free_buffer(&r_msg);
+  ros_msg_free_buffer(&s_msg);
+  ros_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
 
 };
@@ -638,41 +638,41 @@ void *receiver_ready_controlprogram(struct ControlProgram *control_program)
 {
  struct ROSMsg s_msg,r_msg;
 
-  driver_msg_init(&s_msg);
-  driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,CtrlProg_READY,"ctrlprog_ready","NONE");
+  ros_msg_init(&s_msg);
+  ros_msg_init(&r_msg);
+  ros_msg_set_command(&s_msg,CtrlProg_READY,"ctrlprog_ready","NONE");
   pthread_mutex_lock(&recv_comm_lock);
   if (control_program!=NULL) {
      if (control_program->parameters!=NULL) {
-       driver_msg_add_var(&s_msg,control_program->parameters,sizeof(struct ControlPRM),"parameters","ControlPRM");
-       driver_msg_send(recvsock, &s_msg);
-       driver_msg_recv(recvsock, &r_msg);
+       ros_msg_add_var(&s_msg,control_program->parameters,sizeof(struct ControlPRM),"parameters","ControlPRM");
+       ros_msg_send(recvsock, &s_msg);
+       ros_msg_recv(recvsock, &r_msg);
      }
   }
   pthread_mutex_unlock(&recv_comm_lock);
-  driver_msg_free_buffer(&s_msg);
-  driver_msg_free_buffer(&r_msg);
+  ros_msg_free_buffer(&s_msg);
+  ros_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
 };
 
 void *receiver_get_trigger_offset(struct ControlProgram *control_program)
 {
  struct ROSMsg s_msg,r_msg;
-  driver_msg_init(&s_msg);
-  driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,GET_TRIGGER_OFFSET,"get_trigger_offset","NONE");
+  ros_msg_init(&s_msg);
+  ros_msg_init(&r_msg);
+  ros_msg_set_command(&s_msg,GET_TRIGGER_OFFSET,"get_trigger_offset","NONE");
   pthread_mutex_lock(&recv_comm_lock);
   if (control_program!=NULL) {
      if (control_program->parameters!=NULL) {
-       driver_msg_add_var(&s_msg,&control_program->parameters->radar,sizeof(int32),"radar","int32");
-       driver_msg_add_var(&s_msg,&control_program->parameters->channel,sizeof(int32),"channel","int32");
-       driver_msg_send(recvsock, &s_msg);
-       driver_msg_recv(recvsock, &r_msg);
-       driver_msg_get_var_by_name(&r_msg,"rx_trigger_offset_usec",&control_program->state->rx_trigger_offset_usec);
+       ros_msg_add_var(&s_msg,&control_program->parameters->radar,sizeof(int32),"radar","int32");
+       ros_msg_add_var(&s_msg,&control_program->parameters->channel,sizeof(int32),"channel","int32");
+       ros_msg_send(recvsock, &s_msg);
+       ros_msg_recv(recvsock, &r_msg);
+       ros_msg_get_var_by_name(&r_msg,"rx_trigger_offset_usec",&control_program->state->rx_trigger_offset_usec);
      }
   }
-  driver_msg_free_buffer(&s_msg);
-  driver_msg_free_buffer(&r_msg);
+  ros_msg_free_buffer(&s_msg);
+  ros_msg_free_buffer(&r_msg);
   pthread_mutex_unlock(&recv_comm_lock);
   pthread_exit(NULL);
 };
@@ -680,15 +680,15 @@ void *receiver_get_trigger_offset(struct ControlProgram *control_program)
 void *receiver_pretrigger(void *arg)
 {
  struct ROSMsg s_msg,r_msg;
-  driver_msg_init(&s_msg);
-  driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
+  ros_msg_init(&s_msg);
+  ros_msg_init(&r_msg);
+  ros_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
   pthread_mutex_lock(&recv_comm_lock);
-  driver_msg_send(recvsock, &s_msg);
-  driver_msg_recv(recvsock, &r_msg);
+  ros_msg_send(recvsock, &s_msg);
+  ros_msg_recv(recvsock, &r_msg);
   pthread_mutex_unlock(&recv_comm_lock);
-  driver_msg_free_buffer(&s_msg);
-  driver_msg_free_buffer(&r_msg);
+  ros_msg_free_buffer(&s_msg);
+  ros_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
 
 };
@@ -696,15 +696,15 @@ void *receiver_pretrigger(void *arg)
 void *receiver_posttrigger(void *arg)
 {
   struct ROSMsg s_msg,r_msg;
-  driver_msg_init(&s_msg);
-  driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
+  ros_msg_init(&s_msg);
+  ros_msg_init(&r_msg);
+  ros_msg_set_command(&s_msg,PRETRIGGER,"pretrigger","NONE");
   pthread_mutex_lock(&recv_comm_lock);
-  driver_msg_send(recvsock, &s_msg);
-  driver_msg_recv(recvsock, &r_msg);
+  ros_msg_send(recvsock, &s_msg);
+  ros_msg_recv(recvsock, &r_msg);
   pthread_mutex_unlock(&recv_comm_lock);
-  driver_msg_free_buffer(&s_msg);
-  driver_msg_free_buffer(&r_msg);
+  ros_msg_free_buffer(&s_msg);
+  ros_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
 
 };
@@ -756,19 +756,19 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
         arg->back_addr=NULL;
         arg->data->status=-1;
         printf("Sending GET_DATA_STATUS to RECV\n"); 
-        driver_msg_init(&s_msg);
-        driver_msg_init(&r_msg);
-        driver_msg_set_command(&s_msg,GET_DATA_STATUS,"get_data_status","NONE");
-	driver_msg_add_var(&s_msg,&arg->parameters->radar,sizeof(int32),"radar","int32");
-	driver_msg_add_var(&s_msg,&arg->parameters->channel,sizeof(int32),"channel","int32");
-	driver_msg_add_var(&s_msg,&arg->data->bufnum,sizeof(int32),"bufnum","int32");
+        ros_msg_init(&s_msg);
+        ros_msg_init(&r_msg);
+        ros_msg_set_command(&s_msg,GET_DATA_STATUS,"get_data_status","NONE");
+	ros_msg_add_var(&s_msg,&arg->parameters->radar,sizeof(int32),"radar","int32");
+	ros_msg_add_var(&s_msg,&arg->parameters->channel,sizeof(int32),"channel","int32");
+	ros_msg_add_var(&s_msg,&arg->data->bufnum,sizeof(int32),"bufnum","int32");
         pthread_mutex_lock(&recv_comm_lock);
-  	driver_msg_send(recvsock, &s_msg);
-	driver_msg_recv(recvsock, &r_msg);
+  	ros_msg_send(recvsock, &s_msg);
+	ros_msg_recv(recvsock, &r_msg);
         pthread_mutex_unlock(&recv_comm_lock);
-	driver_msg_get_var_by_name(&r_msg,"data_status",&arg->data->status);
-        driver_msg_free_buffer(&s_msg);
-        driver_msg_free_buffer(&r_msg);
+	ros_msg_get_var_by_name(&r_msg,"data_status",&arg->data->status);
+        ros_msg_free_buffer(&s_msg);
+        ros_msg_free_buffer(&r_msg);
         printf("GET_DATA_STATUS: %d\n",arg->data->status); 
 
       } else {
@@ -777,16 +777,16 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
       }      
       if (arg->data->status>0 ) {
         printf("Sending GET_DATA to RECV\n"); 
-        driver_msg_init(&s_msg);
-        driver_msg_init(&r_msg);
-        driver_msg_set_command(&s_msg,GET_DATA,"get_data","NONE");
-	driver_msg_add_var(&s_msg,&arg->parameters->radar,sizeof(int32),"radar","int32");
-	driver_msg_add_var(&s_msg,&arg->parameters->channel,sizeof(int32),"channel","int32");
+        ros_msg_init(&s_msg);
+        ros_msg_init(&r_msg);
+        ros_msg_set_command(&s_msg,GET_DATA,"get_data","NONE");
+	ros_msg_add_var(&s_msg,&arg->parameters->radar,sizeof(int32),"radar","int32");
+	ros_msg_add_var(&s_msg,&arg->parameters->channel,sizeof(int32),"channel","int32");
         pthread_mutex_lock(&recv_comm_lock);
-  	driver_msg_send(recvsock, &s_msg);
-	driver_msg_recv(recvsock, &r_msg);
+  	ros_msg_send(recvsock, &s_msg);
+	ros_msg_recv(recvsock, &r_msg);
         pthread_mutex_unlock(&recv_comm_lock);
-	driver_msg_get_var_by_name(&r_msg,"dataprm",arg->data);
+	ros_msg_get_var_by_name(&r_msg,"dataprm",arg->data);
         printf("Data Samples: %d\n",arg->data->samples);
         if(r_msg.status>0) {
           if(arg->data->use_shared_memory) {
@@ -804,13 +804,13 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
 	    arg->main_addr=malloc(sizeof(uint32)*arg->data->samples);	
 	    arg->back_addr=malloc(sizeof(uint32)*arg->data->samples);	
             printf("Reading data arrays\n");
-	    driver_msg_get_var_by_name(&r_msg,"main_data",arg->main_addr);
-	    driver_msg_get_var_by_name(&r_msg,"back_data",arg->back_addr);
+	    ros_msg_get_var_by_name(&r_msg,"main_data",arg->main_addr);
+	    ros_msg_get_var_by_name(&r_msg,"back_data",arg->back_addr);
             printf("Done Reading data arrays\n");
 	  }
         }
-        driver_msg_free_buffer(&s_msg);
-        driver_msg_free_buffer(&r_msg);
+        ros_msg_free_buffer(&s_msg);
+        ros_msg_free_buffer(&r_msg);
 
       } 
 
@@ -858,54 +858,54 @@ void *receiver_controlprogram_get_data(struct ControlProgram *arg)
 void *receiver_ready_clrsearch(struct ControlProgram *control_program)
 {
  struct ROSMsg s_msg,r_msg;
-  driver_msg_init(&s_msg);
-  driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,CLRSEARCH_READY,"clrsearch_ready","NONE");
+  ros_msg_init(&s_msg);
+  ros_msg_init(&r_msg);
+  ros_msg_set_command(&s_msg,CLRSEARCH_READY,"clrsearch_ready","NONE");
   pthread_mutex_lock(&recv_comm_lock);
   if (control_program!=NULL) {
-       driver_msg_add_var(&s_msg,&control_program->clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","CLRFreqPRM");
-       driver_msg_add_var(&s_msg,&control_program->parameters->radar,sizeof(int32),"radar","int32");
-       driver_msg_add_var(&s_msg,&control_program->parameters->channel,sizeof(int32),"channel","int32");
-       driver_msg_send(recvsock, &s_msg);
-       driver_msg_recv(recvsock, &r_msg);
+       ros_msg_add_var(&s_msg,&control_program->clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","CLRFreqPRM");
+       ros_msg_add_var(&s_msg,&control_program->parameters->radar,sizeof(int32),"radar","int32");
+       ros_msg_add_var(&s_msg,&control_program->parameters->channel,sizeof(int32),"channel","int32");
+       ros_msg_send(recvsock, &s_msg);
+       ros_msg_recv(recvsock, &r_msg);
   }
   pthread_mutex_unlock(&recv_comm_lock);
-  driver_msg_free_buffer(&s_msg);
-  driver_msg_free_buffer(&r_msg);
+  ros_msg_free_buffer(&s_msg);
+  ros_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
 };
 
 void *receiver_pre_clrsearch(struct ControlProgram *control_program)
 {
  struct ROSMsg s_msg,r_msg;
-  driver_msg_init(&s_msg);
-  driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,PRE_CLRSEARCH,"pre_clrsearch","NONE");
+  ros_msg_init(&s_msg);
+  ros_msg_init(&r_msg);
+  ros_msg_set_command(&s_msg,PRE_CLRSEARCH,"pre_clrsearch","NONE");
   pthread_mutex_lock(&recv_comm_lock);
   if (control_program!=NULL) {
-       driver_msg_send(recvsock, &s_msg);
-       driver_msg_recv(recvsock, &r_msg);
+       ros_msg_send(recvsock, &s_msg);
+       ros_msg_recv(recvsock, &r_msg);
   }
   pthread_mutex_unlock(&recv_comm_lock);
-  driver_msg_free_buffer(&s_msg);
-  driver_msg_free_buffer(&r_msg);
+  ros_msg_free_buffer(&s_msg);
+  ros_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
 };
 
 void *receiver_post_clrsearch(struct ControlProgram *control_program)
 {
  struct ROSMsg s_msg,r_msg;
-  driver_msg_init(&s_msg);
-  driver_msg_init(&r_msg);
-  driver_msg_set_command(&s_msg,POST_CLRSEARCH,"post_clrsearch","NONE");
+  ros_msg_init(&s_msg);
+  ros_msg_init(&r_msg);
+  ros_msg_set_command(&s_msg,POST_CLRSEARCH,"post_clrsearch","NONE");
   pthread_mutex_lock(&recv_comm_lock);
   if (control_program!=NULL) {
-       driver_msg_send(recvsock, &s_msg);
-       driver_msg_recv(recvsock, &r_msg);
+       ros_msg_send(recvsock, &s_msg);
+       ros_msg_recv(recvsock, &r_msg);
   }
   pthread_mutex_unlock(&recv_comm_lock);
-  driver_msg_free_buffer(&s_msg);
-  driver_msg_free_buffer(&r_msg);
+  ros_msg_free_buffer(&s_msg);
+  ros_msg_free_buffer(&r_msg);
   pthread_exit(NULL);
 };
 
@@ -918,28 +918,28 @@ void *receiver_clrsearch(struct ControlProgram *arg)
   int start,end,centre;
   gettimeofday(&t0,NULL);
   r=arg->parameters->radar-1;
-  driver_msg_init(&s_msg);
-  driver_msg_init(&r_msg);
+  ros_msg_init(&s_msg);
+  ros_msg_init(&r_msg);
 
-  driver_msg_set_command(&s_msg,CLRSEARCH,"clrfreq","NONE");
+  ros_msg_set_command(&s_msg,CLRSEARCH,"clrfreq","NONE");
   pthread_mutex_lock(&recv_comm_lock);
-  driver_msg_send(recvsock, &s_msg);
-  driver_msg_recv(recvsock, &r_msg);
+  ros_msg_send(recvsock, &s_msg);
+  ros_msg_recv(recvsock, &r_msg);
   pthread_mutex_unlock(&recv_comm_lock);
 
   if(r_msg.status>0) {
-    driver_msg_get_var_by_name(&r_msg,"clrfreqsearch",&arg->clrfreqsearch);
+    ros_msg_get_var_by_name(&r_msg,"clrfreqsearch",&arg->clrfreqsearch);
     if(verbose > 1 ) fprintf(stderr,"  final search parameters\n");  
     if(verbose > 1 ) fprintf(stderr,"  start: %d\n",arg->clrfreqsearch.freq_start_khz);        
     if(verbose > 1 ) fprintf(stderr,"  end: %d\n",arg->clrfreqsearch.freq_end_khz);    
     if(verbose > 1 ) fprintf(stderr,"  nave:  %d\n",arg->clrfreqsearch.nave); 
     if(verbose > 1 ) fprintf(stderr,"  beam:  %d\n",arg->clrfreqsearch.rbeam); 
-    driver_msg_get_var_by_name(&r_msg,"N",&arg->state->N);
+    ros_msg_get_var_by_name(&r_msg,"N",&arg->state->N);
     if(verbose > 1 ) fprintf(stderr,"  N:  %d\n",arg->state->N); 
     if(pwr!=NULL) free(pwr); 
     pwr=NULL;
     pwr = (double*) malloc(sizeof(double) * arg->state->N);
-    driver_msg_get_var_by_name(&r_msg,"pwr_per_khz",pwr);
+    ros_msg_get_var_by_name(&r_msg,"pwr_per_khz",pwr);
   } else {
     if(pwr!=NULL) free(pwr); 
     pwr=NULL;
@@ -948,8 +948,8 @@ void *receiver_clrsearch(struct ControlProgram *arg)
     arg->clrfreqsearch.freq_end_khz=0;
     pwr = (double*) malloc(sizeof(double) * arg->state->N);
   }
-  driver_msg_free_buffer(&s_msg);
-  driver_msg_free_buffer(&r_msg);
+  ros_msg_free_buffer(&s_msg);
+  ros_msg_free_buffer(&r_msg);
 
   centre=(arg->clrfreqsearch.freq_end_khz+arg->clrfreqsearch.freq_start_khz)/2;
   bandwidth=arg->state->N;

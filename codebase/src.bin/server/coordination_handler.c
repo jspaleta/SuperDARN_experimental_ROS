@@ -195,16 +195,16 @@ void *coordination_handler(struct ControlProgram *control_program)
           pthread_join(threads[0],NULL);
           trigger_state=3;//post-trigger
 
-          driver_msg_init(&s_msg);
-          driver_msg_init(&r_msg);
-          driver_msg_set_command(&s_msg,GET_EVENT_TIME,"get_event_time","GPS");
-          driver_msg_send(gpssock, &s_msg);
-          driver_msg_recv(gpssock, &r_msg);
-          driver_msg_get_var_by_name(&r_msg,"gps_event",&gps_event);
-          driver_msg_get_var_by_name(&r_msg,"gps_second",&gpssecond);
-          driver_msg_get_var_by_name(&r_msg,"gps_nsecond",&gpsnsecond);
-          driver_msg_free_buffer(&r_msg);
-          driver_msg_free_buffer(&s_msg);
+          ros_msg_init(&s_msg);
+          ros_msg_init(&r_msg);
+          ros_msg_set_command(&s_msg,GET_EVENT_TIME,"get_event_time","GPS");
+          ros_msg_send(gpssock, &s_msg);
+          ros_msg_recv(gpssock, &r_msg);
+          ros_msg_get_var_by_name(&r_msg,"gps_event",&gps_event);
+          ros_msg_get_var_by_name(&r_msg,"gps_second",&gpssecond);
+          ros_msg_get_var_by_name(&r_msg,"gps_nsecond",&gpsnsecond);
+          ros_msg_free_buffer(&r_msg);
+          ros_msg_free_buffer(&s_msg);
 
           i=0;
           if(control_program->state->active==1) { 
