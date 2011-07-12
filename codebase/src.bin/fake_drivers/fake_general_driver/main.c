@@ -21,7 +21,6 @@
 int verbose=0;
 int sock,msgsock;
 dictionary *diagnostic_INI=NULL;
-struct timeval t0,t1;
 
 
 char* elapsed_string(struct timeval t0,struct timeval t1) {
@@ -47,6 +46,8 @@ int main ( int argc, char **argv){
 	int32	bufnum=0,radar=0,channel=0,data_status=0;
 	struct SiteSettings site_settings;	
         dictionary *Site_INI=NULL;
+        char ini_filename[80]="";
+
         int     maxclients=MAX_RADARS*MAX_CHANNELS;  //maximum number of clients which can be tracked
         struct  ControlPRM  clients[maxclients];	//parameter array for tracked clients
 	struct  ControlPRM  client;			//parameter structure for temp use		
@@ -88,6 +89,12 @@ int main ( int argc, char **argv){
 	int 	temp;
 	int32 	temp32;
         unsigned long counter;
+	struct timeval t0,t1;
+	int strlength=0;
+	char *time_string;
+	char value[120];
+	char err_string[120]="";
+	int err_val=0;
 
 
 	// function specific message variables
@@ -105,6 +112,7 @@ int main ( int argc, char **argv){
                {"verbose",	no_argument,		0, 	'v'},
                {"driver",	required_argument, 	0, 	'd'},
                {"port",		required_argument, 	0, 	'p'},
+               {"config",	required_argument, 	0, 	'c'},
                {"help",		required_argument, 	0, 	'h'},
                {0, 0, 0, 0}
         };
@@ -120,7 +128,7 @@ int main ( int argc, char **argv){
            /* getopt_long stores the option index here. */
            int option_index = 0;
      
-           arg = getopt_long (argc, argv, "vhp:d:",
+           arg = getopt_long (argc, argv, "vhp:c:d:",
                             long_options, &option_index);
      
            /* Detect the end of the options. */
@@ -137,6 +145,12 @@ int main ( int argc, char **argv){
                port_number=atoi(optarg); 
                printf ("option -p with value `%s' %d\n", optarg,port_number);
                break;
+             case 'c':
+               if(strlen(optarg) < 80 ) { 
+                 strncpy(ini_filename,optarg,80); 
+                 printf ("option -c with value `%s'\n", optarg);
+               } else printf ("option -c config filename longer than 80 characters\n");
+               break;
      
              case 'v':
 		verbose++; 	
@@ -148,6 +162,8 @@ int main ( int argc, char **argv){
                printf ("Generic ROS driver for prototyping\n" );
                printf ("-h / --help : show this message\n");
                printf ("-v / --verbose : increase verbosity by 1\n");
+               printf ("-c FILE / --config FILE  : Filepath for ini file\n");
+               printf ("-p PORT / --port PORT  : port number to use\n");
                printf ("-d DRIVER / --driver DRIVER  : Select type of driver to mimic\n");
                printf ("DRIVER values: DDS,RECV,TIMING,DIO,GPS\n");
 	       exit(0);	 
@@ -157,30 +173,17 @@ int main ( int argc, char **argv){
                abort();
              }
         }
-	if(port_number <= 0 ) {
-          if(strcmp(driver_type,"DDS")==0) {
-		port_number=DDS_HOST_PORT;
-	  }
-          if(strcmp(driver_type,"TIMING")==0) {
-		port_number=TIMING_HOST_PORT;
-	  }
-          if(strcmp(driver_type,"DIO")==0) {
-		port_number=DIO_HOST_PORT;
-	  }
-          if(strcmp(driver_type,"GPS")==0) {
-		port_number=GPS_HOST_PORT;
-	  }
-          if(strcmp(driver_type,"RECV")==0) {
-		port_number=RECV_HOST_PORT;
-	  }
-        }
-	printf("Driver Type:  %s Port: %d \n",driver_type,port_number);
-	printf("Verbose Level:  %d \n",verbose);
-        diagnostic_INI=dictionary_new(0);
-        iniparser_set(diagnostic_INI,driver_type, NULL,NULL);
 	Site_INI=NULL;
 	/* Pull the site ini file */ 
-	temp=_open_ini_file(&Site_INI);
+        if(strlen(ini_filename)==0) { 
+          fprintf(stdout,"Using default site.ini location\n");
+          sprintf(ini_filename,"%s/site.ini",SITE_DIR);
+        }
+	temp=_open_ini_file(&Site_INI,ini_filename);
+        if(temp < 0 ) {
+                fprintf(stderr,"Error opening Site ini file, exiting driver\n");
+                exit(temp);
+        }
         if(verbose > 0) {
           fprintf(stdout,"Site wide settings:\n");
           _dump_ini_section(stdout,Site_INI,"site");
@@ -189,10 +192,29 @@ int main ( int argc, char **argv){
           fprintf(stdout,"%s Driver settings:\n",driver_type);
           _dump_ini_section(stdout,Site_INI,driver_type);
         }
-        if(temp < 0 ) {
-                fprintf(stderr,"Error opening Site ini file, exiting driver\n");
-                exit(temp);
+	/* Driver specific values from Ini settings */
+	if(port_number <= 0 ) {
+          if(strcmp(driver_type,"DDS")==0) {
+		port_number=iniparser_getint(Site_INI,"dds_driver:tcp_port",DDS_HOST_PORT);
+	  }
+          if(strcmp(driver_type,"TIMING")==0) {
+		port_number=iniparser_getint(Site_INI,"timing_driver:tcp_port",TIMING_HOST_PORT);
+	  }
+          if(strcmp(driver_type,"DIO")==0) {
+		port_number=iniparser_getint(Site_INI,"dio_driver:tcp_port",DIO_HOST_PORT);
+	  }
+          if(strcmp(driver_type,"GPS")==0) {
+		port_number=iniparser_getint(Site_INI,"gps_driver:tcp_port",GPS_HOST_PORT);
+	  }
+          if(strcmp(driver_type,"RECV")==0) {
+		port_number=iniparser_getint(Site_INI,"recv_driver:tcp_port",RECV_HOST_PORT);
+	  }
         }
+
+	printf("Driver Type:  %s Port: %d \n",driver_type,port_number);
+	printf("Verbose Level:  %d \n",verbose);
+        diagnostic_INI=dictionary_new(0);
+        iniparser_set(diagnostic_INI,driver_type, NULL,NULL);
 
 	/* Initialize the internal driver state variables */
 	if (verbose > 1) printf("Zeroing arrays\n");
@@ -234,6 +256,8 @@ int main ( int argc, char **argv){
 			return EXIT_FAILURE;
 		}
 		else while (rval>=0){
+	          strcpy(err_string,"");
+	          err_val=0;
                   /* Look for messages from external client process */
                   FD_ZERO(&rfds);
                   FD_SET(msgsock, &rfds); //Add msgsock to the read watch
@@ -759,6 +783,18 @@ int main ( int argc, char **argv){
                     iniparser_set(diagnostic_INI,command_string, NULL,NULL);
                     sprintf(entry_string,"%s:%s",command_string,"elapsed_secs");
                     iniparser_set(diagnostic_INI,entry_string, elapsed_string(t0,t1),NULL);
+                    sprintf(entry_string,"%s:%s",command_string,"time_stamp");
+		    time_string=ctime(&t0.tv_sec);
+                    strlength=strlen(time_string)-1;
+                    strncpy(value,time_string,strlength);
+		    value[strlength]='\0';
+                    iniparser_set(diagnostic_INI,entry_string, value,NULL);
+                    sprintf(entry_string,"%s:%s",command_string,"err_val");
+                    sprintf(value,"%d",err_val);
+                    iniparser_set(diagnostic_INI,entry_string, value,NULL);
+                    sprintf(entry_string,"%s:%s",command_string,"err_string");
+                    sprintf(value,"%s",err_string);
+                    iniparser_set(diagnostic_INI,entry_string, value,NULL);
                     rval=ros_msg_send(msgsock, &r_msg);
 		  }	
                   ros_msg_free_buffer(&r_msg);

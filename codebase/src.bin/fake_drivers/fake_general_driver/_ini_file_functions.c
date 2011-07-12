@@ -3,16 +3,14 @@
 #include "iniparser.h"
 
 extern int verbose;
-int _open_ini_file(dictionary **arg) {
+int _open_ini_file(dictionary **arg,char *ini_name) {
      dictionary *Site_INI=*arg;
-     char ini_name[80]="";
 
 
      if(Site_INI!=NULL) {
        iniparser_freedict(Site_INI);
        Site_INI=NULL;
      }
-     sprintf(ini_name,"%s/site.ini",SITE_DIR);
      if(verbose >0) fprintf(stderr, "parsing ini file: %s\n", ini_name);
      Site_INI=iniparser_load(ini_name);
      if (Site_INI==NULL) {
