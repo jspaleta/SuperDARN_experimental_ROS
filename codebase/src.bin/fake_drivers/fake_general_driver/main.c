@@ -10,13 +10,12 @@
 #include "rosmsg.h"
 #include "control_program.h"
 #include "global_server_variables.h"
+#include "site_defaults.h"
 #include "utils.h"
 #include "iniparser.h"
 #include "dictionary.h"
+#include "driver_structures.h"
 
-#define MAX_TSG 16
-#define	MAX_TIME_SEQ_LEN 1048576
-#define MAX_PULSES 100
 
 int verbose=0;
 int sock,msgsock;
@@ -47,7 +46,7 @@ int main ( int argc, char **argv){
 	struct SiteSettings site_settings;	
         dictionary *Site_INI=NULL;
         char ini_filename[80]="";
-
+	t_driver  dinfo;
         int     maxclients=MAX_RADARS*MAX_CHANNELS;  //maximum number of clients which can be tracked
         struct  ControlPRM  clients[maxclients];	//parameter array for tracked clients
 	struct  ControlPRM  client;			//parameter structure for temp use		
@@ -60,7 +59,6 @@ int main ( int argc, char **argv){
 	/* REGISTER_SEQ related variables */
         struct  TSGbuf *pulseseqs[MAX_RADARS+1][MAX_CHANNELS+1][MAX_SEQS+1]; //timing sequence table
         int seq_count[MAX_RADARS+1][MAX_CHANNELS+1];			//unpacked seq length
-        int state_time_usec=5;
 	int	max_seq_count;				// maximum unpackage seq length	
 	unsigned int	*seq_buf[MAX_RADARS+1][MAX_CHANNELS+1];		//unpacked sequence table
 	unsigned int	*master_buf;			// master buffer for all sequences
@@ -102,8 +100,6 @@ int main ( int argc, char **argv){
 	struct	ROSMsg r_msg;
         // argument parsing variables 
         int arg;		//command line option parsing
-	char driver_type[20]="";
-	int port_number=-1;
 
         static struct option long_options[] =
         {
@@ -111,7 +107,6 @@ int main ( int argc, char **argv){
 		* We distinguish them by their indices. */
                {"verbose",	no_argument,		0, 	'v'},
                {"driver",	required_argument, 	0, 	'd'},
-               {"port",		required_argument, 	0, 	'p'},
                {"config",	required_argument, 	0, 	'c'},
                {"help",		required_argument, 	0, 	'h'},
                {0, 0, 0, 0}
@@ -120,7 +115,7 @@ int main ( int argc, char **argv){
         signal(SIGINT, graceful_cleanup);
         signal(SIGTERM, graceful_cleanup);
 
-	strcpy(driver_type,"TIMING");
+	strcpy(dinfo.type,"TIMING");
 
 	/* Process arguments */
         while (1)
@@ -128,7 +123,7 @@ int main ( int argc, char **argv){
            /* getopt_long stores the option index here. */
            int option_index = 0;
      
-           arg = getopt_long (argc, argv, "vhp:c:d:",
+           arg = getopt_long (argc, argv, "vhc:d:",
                             long_options, &option_index);
      
            /* Detect the end of the options. */
@@ -139,23 +134,17 @@ int main ( int argc, char **argv){
              {
              case 'd':
                printf ("option -d with value `%s'\n", optarg);
-	       strcpy(driver_type,optarg);
+	       strcpy(dinfo.type,optarg);
               break;
-             case 'p':
-               port_number=atoi(optarg); 
-               printf ("option -p with value `%s' %d\n", optarg,port_number);
-               break;
              case 'c':
                if(strlen(optarg) < 80 ) { 
                  strncpy(ini_filename,optarg,80); 
                  printf ("option -c with value `%s'\n", optarg);
                } else printf ("option -c config filename longer than 80 characters\n");
                break;
-     
              case 'v':
 		verbose++; 	
                break;
-     
 	     case 'h':	
              case '?':
                printf ("Usage:\n" );
@@ -189,32 +178,18 @@ int main ( int argc, char **argv){
           _dump_ini_section(stdout,Site_INI,"site");
           fprintf(stdout,"Frequency assignment settings:\n");
           _dump_ini_section(stdout,Site_INI,"frequency_assignment");
-          fprintf(stdout,"%s Driver settings:\n",driver_type);
-          _dump_ini_section(stdout,Site_INI,driver_type);
+          fprintf(stdout,"%s Driver settings:\n",dinfo.type);
+          _dump_ini_section(stdout,Site_INI,dinfo.type);
         }
 	/* Driver specific values from Ini settings */
-	if(port_number <= 0 ) {
-          if(strcmp(driver_type,"DDS")==0) {
-		port_number=iniparser_getint(Site_INI,"dds_driver:tcp_port",DDS_HOST_PORT);
-	  }
-          if(strcmp(driver_type,"TIMING")==0) {
-		port_number=iniparser_getint(Site_INI,"timing_driver:tcp_port",TIMING_HOST_PORT);
-	  }
-          if(strcmp(driver_type,"DIO")==0) {
-		port_number=iniparser_getint(Site_INI,"dio_driver:tcp_port",DIO_HOST_PORT);
-	  }
-          if(strcmp(driver_type,"GPS")==0) {
-		port_number=iniparser_getint(Site_INI,"gps_driver:tcp_port",GPS_HOST_PORT);
-	  }
-          if(strcmp(driver_type,"RECV")==0) {
-		port_number=iniparser_getint(Site_INI,"recv_driver:tcp_port",RECV_HOST_PORT);
-	  }
-        }
+        _configure_driver(Site_INI,&dinfo);
 
-	printf("Driver Type:  %s Port: %d \n",driver_type,port_number);
+	printf("Driver Type:  %s Port: %d \n",dinfo.type,dinfo.tcp.port_number);
 	printf("Verbose Level:  %d \n",verbose);
+
+
         diagnostic_INI=dictionary_new(0);
-        iniparser_set(diagnostic_INI,driver_type, NULL,NULL);
+        iniparser_set(diagnostic_INI,dinfo.type, NULL,NULL);
 
 	/* Initialize the internal driver state variables */
 	if (verbose > 1) printf("Zeroing arrays\n");
@@ -226,8 +201,8 @@ int main ( int argc, char **argv){
 	    if (verbose > 1) printf("%d %d\n",r,c);
 	    for (i=0;i<=MAX_SEQS;i++) pulseseqs[r][c][i]=NULL;
             ready_index[r][c]=-1; 
-            seq_buf[r][c]=malloc(4*MAX_TIME_SEQ_LEN);
-            memset(seq_buf[r][c],0,4*MAX_TIME_SEQ_LEN); 
+            seq_buf[r][c]=malloc(4*dinfo.max_seq_length);
+            memset(seq_buf[r][c],0,4*dinfo.max_seq_length); 
             seq_count[r][c]=0;
           } 
         }
@@ -235,13 +210,13 @@ int main ( int argc, char **argv){
 	/* These are only potentially needed for drivers that unpack 
  	*  that unpack the timing sequence. See the provided fake timing driver
  	*/
-        master_buf=malloc(4*MAX_TIME_SEQ_LEN);
+        master_buf=malloc(4*dinfo.max_seq_length);
         transmit_times.length=0;
-        transmit_times.start_usec=malloc(sizeof(unsigned int)*MAX_PULSES);
-        transmit_times.duration_usec=malloc(sizeof(unsigned int)*MAX_PULSES);
+        transmit_times.start_usec=malloc(sizeof(unsigned int)*dinfo.max_pulses);
+        transmit_times.duration_usec=malloc(sizeof(unsigned int)*dinfo.max_pulses);
        
     // OPEN TCP SOCKET AND START ACCEPTING CONNECTIONS 
-	sock=tcpsocket(port_number);
+	sock=tcpsocket(dinfo.tcp.port_number);
 	listen(sock, 5);
 	while (1) {
                 ros_msg_init(&msg);
@@ -404,14 +379,13 @@ int main ( int argc, char **argv){
 			/* If sequence index has changed..repopulate the 
  			* master sequence.  Not needed for all drivers. */
 			/* TODO : Fill the seq_buf here */
-          		if((strcmp(driver_type,"TIMING")==0) ||(strcmp(driver_type,"DDS")==0)) {
-                          if (new_seq_id!=old_seq_id) { 
+                        if (new_seq_id!=old_seq_id) { 
 			    if (verbose > 0) printf("\nDriver: Unpack the pulse sequences \n");	
                             max_seq_count=0;
                             for (i=0;i<numclients;i++) {
                               r=clients[i].radar-1;
                               c=clients[i].channel-1;
-			      seq_count[r][c]=unpack_sequence(r,c,state_time_usec,pulseseqs[index[0]][index[1]][index[2]],seq_buf[r][c]);	
+			      seq_count[r][c]=unpack_sequence(r,c,dinfo,pulseseqs[index[0]][index[1]][index[2]],seq_buf[r][c]);	
                               if (seq_count[r][c]>=max_seq_count) max_seq_count=seq_count[r][c];
                               counter=0;
                               for (j=0;j<seq_count[r][c];j++) {
@@ -423,8 +397,7 @@ int main ( int argc, char **argv){
 			        }
                               } 
 			    }
-                          }
-			}
+                        }
                         if (new_seq_id < 0 ) {
                           old_seq_id=-10;
                         }  else {
@@ -443,7 +416,7 @@ int main ( int argc, char **argv){
  			* the timing card.
  			*/  
 			if (verbose > 1 ) printf("Driver: Send Master Trigger\n");	
-          		if(strcmp(driver_type,"TIMING")==0) r_msg.status=1;
+          		if(strcmp(dinfo.type,"TIMING")==0) r_msg.status=1;
 	  		else r_msg.status=0;
                         break;
 
@@ -455,7 +428,7 @@ int main ( int argc, char **argv){
  			*   on signals from the timing card.
  			*/  
                         if (verbose > 1 ) printf("Driver: Setup for external trigger\n");
-          		if(strcmp(driver_type,"TIMING")==0) r_msg.status=1;
+          		if(strcmp(dinfo.type,"TIMING")==0) r_msg.status=1;
 	  		else r_msg.status=0;
                         break;
 
@@ -497,7 +470,7 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"DIO")==0) {
+          		if(strcmp(dinfo.type,"DIO")==0) {
 				rval=ros_msg_get_var_by_name(&msg,"ifmode",&site_settings.ifmode);
 				rval=ros_msg_get_var_by_name(&msg,"rf_rxfe_settings",&site_settings.rf_settings);
 				rval=ros_msg_get_var_by_name(&msg,"if_rxfe_settings",&site_settings.if_settings);
@@ -515,13 +488,13 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"DIO")==0) {
+          		if(strcmp(dinfo.type,"DIO")==0) {
 				r_msg.status=1;
 				rval=ros_msg_get_var_by_name(&msg,"clrfreqsearch",&clrfreqsearch);
 				rval=ros_msg_get_var_by_name(&msg,"radar",&radar);
 				rval=ros_msg_get_var_by_name(&msg,"channel",&channel);
 			}
-          		else if(strcmp(driver_type,"RECV")==0) {
+          		else if(strcmp(dinfo.type,"RECV")==0) {
 				r_msg.status=1;
 				rval=ros_msg_get_var_by_name(&msg,"clrfreqsearch",&clrfreqsearch);
 				rval=ros_msg_get_var_by_name(&msg,"radar",&radar);
@@ -539,7 +512,7 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"DIO")==0) {
+          		if(strcmp(dinfo.type,"DIO")==0) {
 				r_msg.status=1;
 			}
 	  		else r_msg.status=0;
@@ -554,7 +527,7 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"DIO")==0) {
+          		if(strcmp(dinfo.type,"DIO")==0) {
 				r_msg.status=1;
 			}
 	  		else r_msg.status=0;
@@ -569,7 +542,7 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"RECV")==0) {
+          		if(strcmp(dinfo.type,"RECV")==0) {
 				r_msg.status=1;
   				ros_msg_add_var(&r_msg,&clrfreqsearch,sizeof(struct CLRFreqPRM),"clrfreqsearch","struct CLRFreqRPM");
 				temp32=clrfreqsearch.freq_end_khz-clrfreqsearch.freq_start_khz;
@@ -621,7 +594,7 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"TIMING")==0) r_msg.status=1;
+          		if(strcmp(dinfo.type,"TIMING")==0) r_msg.status=1;
 	  		else r_msg.status=0;
 
 			if(r_msg.status==1) {
@@ -647,7 +620,7 @@ int main ( int argc, char **argv){
  			* msg back with msg.status=0.
  			*/
 			data_status=1;
-          		if(strcmp(driver_type,"RECV")==0) {
+          		if(strcmp(dinfo.type,"RECV")==0) {
 				r_msg.status=1;
 				ros_msg_get_var_by_name(&msg,"radar",&radar);
 				ros_msg_get_var_by_name(&msg,"channel",&channel);
@@ -668,7 +641,7 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"RECV")==0) {
+          		if(strcmp(dinfo.type,"RECV")==0) {
 				r_msg.status=1;
 				ros_msg_get_var_by_name(&msg,"radar",&radar);
 				ros_msg_get_var_by_name(&msg,"channel",&channel);
@@ -707,14 +680,14 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"RECV")==0) {
+          		if(strcmp(dinfo.type,"RECV")==0) {
 			        temp32=70;   //positive 70 microsecond offset relative to t0 
 				r_msg.status=1;
 				ros_msg_get_var_by_name(&msg,"radar",&radar);
 				ros_msg_get_var_by_name(&msg,"channel",&channel);
 				ros_msg_add_var(&r_msg,&data_status,sizeof(int32),"rx_trigger_offset_usec","int32");
 			}
-          		if(strcmp(driver_type,"DDS")==0) {
+          		if(strcmp(dinfo.type,"DDS")==0) {
 			        temp32=-50;   //negative 50 microsecond offset relative to t0 
 				r_msg.status=1;
 				ros_msg_get_var_by_name(&msg,"radar",&radar);
@@ -736,7 +709,7 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"TIMING")==0) {
+          		if(strcmp(dinfo.type,"TIMING")==0) {
 				temp32=0;
 				ros_msg_get_var_by_name(&msg,"rx_trigger_offset_usec",&temp32);
 				temp32=0;
@@ -758,7 +731,7 @@ int main ( int argc, char **argv){
 			/* Inform the ROS that this driver does not handle this command by sending 
  			* msg back with msg.status=0.
  			*/
-          		if(strcmp(driver_type,"GPS")==0) {
+          		if(strcmp(dinfo.type,"GPS")==0) {
 				r_msg.status=1;
 			        if (verbose > 1 ) printf("GET_EVENT_TIME: %d\n",msg.status);	
 				ros_msg_add_var(&r_msg,&gps_event,sizeof(int32),"gps_event","int32");

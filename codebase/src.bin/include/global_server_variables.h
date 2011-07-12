@@ -10,51 +10,8 @@
 #ifndef _GLOBAL_SERVER_H
 #define _GLOBAL_SERVER_H
 
-
-#define SITE_NAME "tst"
-
-#define SITE_DIR "/tmp/site_data/"
-
 #define IF_ENABLED         1 
 #define IF_DISABLED         0 
-
-//#define IF_FREQ            71000 // in KHz
-#define FULL_CLR_FREQ_START	8000  // in KHz	
-#define FULL_CLR_FREQ_END	20000 // in KHz
-//#define MAX_CLR_WAIT	0     // in secs	
-
-#define RECV_COMPLEX_SAMPLE_SIZE 32  //IQ together 
-#define RECV_REAL_OFFSET 0
-#define RECV_IMAG_OFFSET 1
-
-#define Max_Control_THREADS     30
-
-#define TIMING_HOST_PORT 45001
-#define GPS_HOST_PORT 45004
-#define DDS_HOST_PORT 45002
-#define RECV_HOST_PORT 45006
-#define DIO_HOST_PORT 45005
-#ifdef __QNX__
-  #define DIO_HOST_IP "127.0.0.1"
-  #define TIMING_HOST_IP "127.0.0.1"
-  #define DDS_HOST_IP "127.0.0.1"
-  #define RECV_HOST_IP "127.0.0.1"
-  #define GPS_HOST_IP "127.0.0.1"  
-#else
-  #define DIO_HOST_IP "127.0.0.1"
-  #define TIMING_HOST_IP "127.0.0.1"
-  #define DDS_HOST_IP "127.0.0.1"
-  #define RECV_HOST_IP "127.0.0.1"
-  #define GPS_HOST_IP "127.0.0.1"
-#endif
-
-#define MAX_SEQS 4
-#define CLIENT 0
-#define VIEWER 1
-#define WORKER 2
-#define RECV_SAMPLE_HEADER 2 
-#define RECV_CLRFREQ_SAMPLES  2000
-
 
 typedef struct _fft_index{ 
 // Struct to store and order the values of the fft preserving the index in the original array
@@ -126,67 +83,4 @@ struct BlackList {
 };
 
 
-//#define TIME_INTERVAL	100000000
-#define DEFAULT_FREQ 13000
-
-//#define SIDEBAND 100
-//struct FreqTable {
-//  int32 num;
-//  int32 dfrq;
-//  int32 *start;
-//  int32 *end;
-//};
-
-/*
-struct tx_status {
-  int32 LOWPWR[MAX_TRANSMITTERS];
-  int32 AGC[MAX_TRANSMITTERS];
-  int32 status[MAX_TRANSMITTERS];
-};
-*/
-/*
-struct GPSStatus {
-	
-	int32	hardware;
-	int32	antenna;
-	int32	lock;
-	int32	gps_lock;
-	int32	phase_lock;
-	int32	reference_lock;
-	int32	sv[6];
-	float	signal[6];
-	float	lat;
-	float	lon;
-	float	alt;
-	float	mlat;	
-	float	mlon;
-	float	malt;
-	int32	poscnt;
-	int32	gpssecond;
-	int32	gpsnsecond;
-	int32	syssecond;
-	int32	sysnsecond;
-	int32	lastsetsec;
-	int32	lastsetnsec;
-	int32	nextcomparesec;
-	int32	nextcomparensec;
-	float	drift;
-	float	mdrift;
-	int32	tcpupdate;
-	int32	tcpconnected;
-	int32	timecompareupdate;
-	int32	timecompareupdateerror;
-	int32	lasttriggersecond;
-	int32	lasttriggernsecond;
-	int32	lasttcpmsg;
-	int32	intervalmode;
-	int32	scheduledintervalmode;
-	int32	oneshot;
-	float	settimecomparetime;
-	int32	triggermode;
-	int32	ratesynthrate;
-
-
-};
-*/
 #endif
