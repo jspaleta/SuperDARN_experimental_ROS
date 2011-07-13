@@ -6,8 +6,8 @@ LFLAGS  = -L"../../../src.lib/iniparser3.0b"
 common_libs=-lrt -lm -liniparser
 linux_libs=
 qnx_libs=-lsocket
-INCLUDES=-I"../../include/" -I"include/" -I"../../../src.utils/tsg/include" -I"../../../src.lib/iniparser3.0b/src/"  
-SOURCES=main.c _configure_driver.c unpack_sequence.c _process_aux_commands.c _decodestate.c _ini_file_functions.c collect_data.c \
+INCLUDES=-I"../../include/" -I"include/" -I"../../../src.lib/iniparser3.0b/src/"  
+SOURCES=main.c _configure_driver.c pretrigger_driver.c unpack_sequence.c _process_aux_commands.c _decodestate.c _ini_file_functions.c collect_data.c \
 ../../../src.utils/_tcpsocket.c \
 ../../../src.utils/utils.c \
 ../../../src.utils/aux_command.c 

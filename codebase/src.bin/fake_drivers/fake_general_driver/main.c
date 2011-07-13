@@ -57,7 +57,8 @@ int main ( int argc, char **argv){
         struct  DataPRM	    data;
         uint32  *main_data=NULL,*back_data=NULL;
 	/* REGISTER_SEQ related variables */
-        struct  TSGbuf *pulseseqs[MAX_RADARS+1][MAX_CHANNELS+1][MAX_SEQS+1]; //timing sequence table
+        struct  SeqBuf *pulseseqs[MAX_RADARS+1][MAX_CHANNELS+1][MAX_SEQS+1]; //timing sequence table
+        struct  SeqPRM prm; 
         int seq_count[MAX_RADARS+1][MAX_CHANNELS+1];			//unpacked seq length
 	int	max_seq_count;				// maximum unpackage seq length	
 	unsigned int	*seq_buf[MAX_RADARS+1][MAX_CHANNELS+1];		//unpacked sequence table
@@ -289,18 +290,24 @@ int main ( int argc, char **argv){
                         if (pulseseqs[index[0]][index[1]][index[2]]!=NULL) {
                           if (pulseseqs[index[0]][index[1]][index[2]]->rep!=NULL)free(pulseseqs[index[0]][index[1]][index[2]]->rep);
                           if (pulseseqs[index[0]][index[1]][index[2]]->code!=NULL)free(pulseseqs[index[0]][index[1]][index[2]]->code);
+                          if (pulseseqs[index[0]][index[1]][index[2]]->ptab!=NULL)free(pulseseqs[index[0]][index[1]][index[2]]->ptab);
                           free(pulseseqs[index[0]][index[1]][index[2]]);
                         }
+                        pulseseqs[index[0]][index[1]][index[2]]=malloc(sizeof(struct SeqBuf));
+			rval=ros_msg_get_var_by_name(&msg,"prm",&prm);
+			memmove(&pulseseqs[index[0]][index[1]][index[2]]->prm,&prm,sizeof(struct SeqPRM));
+		        if (verbose > 1) printf("Driver: Requested sequence len: %d mmpul %d\n",pulseseqs[index[0]][index[1]][index[2]]->prm.len,prm.mppul);	
 			/* Fill memory pointers */
-                        pulseseqs[index[0]][index[1]][index[2]]=malloc(sizeof(struct TSGbuf));
-			rval=ros_msg_get_var_by_name(&msg,"pulseseq",pulseseqs[index[0]][index[1]][index[2]]);
                         pulseseqs[index[0]][index[1]][index[2]]->rep=
-                            malloc(sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->len);
+                            malloc(sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->prm.len);
                         pulseseqs[index[0]][index[1]][index[2]]->code=
-                            malloc(sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->len);
+                            malloc(sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->prm.len);
+                        pulseseqs[index[0]][index[1]][index[2]]->ptab=
+                            malloc(sizeof(int)*pulseseqs[index[0]][index[1]][index[2]]->prm.mppul);
 		        if (verbose > 1) printf("Driver: Done Filling the memory\n");	
 			rval=ros_msg_get_var_by_name(&msg,"rep",pulseseqs[index[0]][index[1]][index[2]]->rep);
 			rval=ros_msg_get_var_by_name(&msg,"code",pulseseqs[index[0]][index[1]][index[2]]->code);
+			rval=ros_msg_get_var_by_name(&msg,"ptab",pulseseqs[index[0]][index[1]][index[2]]->ptab);
 			/* Inform the ROS that this driver recv all data without error
  			* by sending msg back with msg.status=1.
  			*/
@@ -385,7 +392,10 @@ int main ( int argc, char **argv){
                             for (i=0;i<numclients;i++) {
                               r=clients[i].radar-1;
                               c=clients[i].channel-1;
+
 			      seq_count[r][c]=unpack_sequence(r,c,dinfo,pulseseqs[index[0]][index[1]][index[2]],seq_buf[r][c]);	
+
+			      if (verbose > 0) printf("\nDriver: client: %d  seq_count %d\n",i,seq_count[r][c]);	
                               if (seq_count[r][c]>=max_seq_count) max_seq_count=seq_count[r][c];
                               counter=0;
                               for (j=0;j<seq_count[r][c];j++) {
@@ -404,6 +414,8 @@ int main ( int argc, char **argv){
                           old_seq_id=new_seq_id;
                         }
                         new_seq_id=-1;
+
+			rval=pretrigger_driver(dinfo);	
 
                         if (verbose > 1)  printf("Driver: Ending Pretrigger Setup\n");
                         break; 

@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include "control_program.h"
 #include "global_server_variables.h"
+#include "site_defaults.h"
 #include "dio_handler.h"
 #include "utils.h"
 #include "iniparser.h"

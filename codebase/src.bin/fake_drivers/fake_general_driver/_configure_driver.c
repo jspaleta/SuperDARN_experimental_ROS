@@ -25,6 +25,10 @@ int _configure_driver(dictionary *ini, t_driver *dinfo) {
           if(strcmp(dinfo->type,"DDS")==0) {
                 dinfo->tcp.port_number=iniparser_getint(ini,"dds:tcp_port",DDS_HOST_PORT);
                 dinfo->info.dds.pci_index=iniparser_getint(ini,"dds:pci_index",-1);
+                dinfo->info.dds.state_time_usec=iniparser_getint(ini,"timing:state_time_usec",5);
+                dinfo->max_seq_length=iniparser_getint(ini,"dds:max_seq_length",MAX_SEQ_LENGTH);
+                dinfo->max_pulses=iniparser_getint(ini,"dds:max_pulses",MAX_PULSES);
+                dinfo->max_seqs=iniparser_getint(ini,"dds:max_seq",MAX_SEQS);
           }
           if(strcmp(dinfo->type,"DIO")==0) {
                 dinfo->tcp.port_number=iniparser_getint(ini,"dio:tcp_port",DIO_HOST_PORT);

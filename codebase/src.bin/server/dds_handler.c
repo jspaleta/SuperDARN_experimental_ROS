@@ -4,11 +4,12 @@
 #include "rosmsg.h"
 #include "control_program.h"
 #include "global_server_variables.h"
+#include "site_defaults.h"
 
 extern int verbose;
 extern int ddssock;
 extern pthread_mutex_t dds_comm_lock;
-extern struct TSGbuf *pulseseqs[MAX_RADARS][MAX_CHANNELS][MAX_SEQS];
+extern struct SeqBuf *pulseseqs[MAX_RADARS+1][MAX_CHANNELS+1][MAX_SEQS+1];
 
 void dds_exit(void *arg)
 {
@@ -32,9 +33,10 @@ void *dds_register_seq(struct ControlProgram *control_program)
       if (control_program->state!=NULL) {
         ros_msg_add_var(&s_msg,control_program->parameters,sizeof(struct ControlPRM),"parameters","ControlPRM");
         ros_msg_add_var(&s_msg,index,sizeof(index)*3,"index","int32 * 3");
-        ros_msg_add_var(&s_msg,pulseseqs[index[0]][index[1]][index[2]],sizeof(struct TSGbuf),"pulseseq","struct TDGBuf");
-        ros_msg_add_var(&s_msg,pulseseqs[index[0]][index[1]][index[2]]->rep,sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->len,"rep","array");
-        ros_msg_add_var(&s_msg,pulseseqs[index[0]][index[1]][index[2]]->code,sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->len,"code","array");
+        ros_msg_add_var(&s_msg,&pulseseqs[index[0]][index[1]][index[2]]->prm,sizeof(struct SeqPRM),"prm","struct SeqPRM");
+        ros_msg_add_var(&s_msg,pulseseqs[index[0]][index[1]][index[2]]->rep,sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->prm.len,"rep","array");
+        ros_msg_add_var(&s_msg,pulseseqs[index[0]][index[1]][index[2]]->code,sizeof(unsigned char)*pulseseqs[index[0]][index[1]][index[2]]->prm.len,"code","array");
+        ros_msg_add_var(&s_msg,pulseseqs[index[0]][index[1]][index[2]]->ptab,sizeof(int)*pulseseqs[index[0]][index[1]][index[2]]->prm.mppul,"ptab","int array");
       }
     }
   }

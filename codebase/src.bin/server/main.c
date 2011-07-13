@@ -11,6 +11,7 @@
 #include <string.h>
 #include "rosmsg.h"
 #include "global_server_variables.h"
+#include "site_defaults.h"
 #include "control_program.h"
 #include "client_handler.h"
 #include "timeout_handler.h"
@@ -52,7 +53,7 @@ pthread_cond_t ready_flag;
 pthread_t status_thread=0,timeout_thread=0;
 
 /* State Global Variables */
-struct TSGbuf *pulseseqs[MAX_RADARS+1][MAX_CHANNELS+1][MAX_SEQS+1];
+struct SeqBuf *pulseseqs[MAX_RADARS+1][MAX_CHANNELS+1][MAX_SEQS+1];
 
 dictionary *Site_INI;
 int num_radars=0,num_channels=0;
@@ -190,11 +191,12 @@ int main()
   for(r=0;r<=MAX_RADARS;r++) {
     for(c=0;c<=MAX_CHANNELS;c++) {
       for(i=0;i<=MAX_SEQS;i++) {
-        pulseseqs[r][c][i]=malloc(sizeof(struct TSGbuf));
-        pulseseqs[r][c][i]->len=0;
+        pulseseqs[r][c][i]=malloc(sizeof(struct SeqBuf));
         pulseseqs[r][c][i]->rep=NULL;
         pulseseqs[r][c][i]->code=NULL;
-        pulseseqs[r][c][i]->prm=NULL;
+        pulseseqs[r][c][i]->ptab=NULL;
+        pulseseqs[r][c][i]->prm.len=0;
+        pulseseqs[r][c][i]->prm.mppul=0;
       }
     }
   }

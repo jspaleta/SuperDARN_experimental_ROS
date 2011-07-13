@@ -1,6 +1,5 @@
 #include <pthread.h>
 #include <sys/time.h>
-#include "tsg.h"
 #include "rtypes.h"
 #include "rosmsg.h"
 #include "control_program.h"
@@ -82,5 +81,10 @@ struct BlackList {
      uint64 program;
 };
 
-
+struct SeqBuf {
+  struct SeqPRM prm; 
+  unsigned char *code;
+  unsigned char *rep;
+  int *ptab;
+};
 #endif

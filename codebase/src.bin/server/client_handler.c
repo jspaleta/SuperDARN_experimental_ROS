@@ -9,6 +9,7 @@
 #include "rosmsg.h"
 #include "control_program.h"
 #include "global_server_variables.h"
+#include "site_defaults.h"
 #include "utils.h"
 #include "coordination_handler.h"
 #include "dio_handler.h"
@@ -28,7 +29,9 @@ extern struct Thread_List_Item *controlprogram_threads;
 extern struct TRTimes bad_transmit_times;
 extern struct SiteSettings site_settings;
 extern dictionary *Site_INI;
-extern struct TSGbuf *pulseseqs[MAX_RADARS+1][MAX_CHANNELS+1][MAX_SEQS+1];
+extern struct SeqBuf *pulseseqs[MAX_RADARS+1][MAX_CHANNELS+1][MAX_SEQS+1];
+
+
 int unregister_radar_channel(struct ControlProgram *control_program)
 {
   int i,j,status;
@@ -240,6 +243,7 @@ void controlprogram_exit(struct ControlProgram *control_program)
 void *control_handler(struct ControlProgram *control_program)
 {
    int tid,i,index=-1,r=-1,c=-1,status,rc;
+   struct SeqPRM prm;
    fd_set rfds;
    int retval,socket,socket_err;
    unsigned int length=sizeof(int);
@@ -247,8 +251,6 @@ void *control_handler(struct ControlProgram *control_program)
    struct timeval tv,current_time,last_report;
    struct ROSMsg smsg,rmsg; 
    struct SiteSettings settings;
-//   struct TSGprm *tsgprm;
-   struct SeqPRM tprm;
    pthread_t thread,threads[10];
    int32 data_length;
    char entry_type,entry_name[200];
@@ -508,26 +510,25 @@ void *control_handler(struct ControlProgram *control_program)
             } else {
               pthread_mutex_lock(&controlprogram_list_lock);
               rmsg.status=1;
-	      ros_msg_get_var_by_name(&smsg,"tprm",&tprm);
+	      ros_msg_get_var_by_name(&smsg,"prm",&prm);
 	      ros_msg_get_var_by_name(&smsg,"index",&index);
+              memmove(&pulseseqs[radar][channel][index]->prm,&prm,sizeof(struct SeqPRM));
               control_program->parameters->pulseseq_index[0]=radar;
               control_program->parameters->pulseseq_index[1]=channel;
               control_program->parameters->pulseseq_index[2]=index;
-              pulseseqs[radar][channel][index]->len=tprm.len;
-              pulseseqs[radar][channel][index]->step=tprm.step;
               if(pulseseqs[radar][channel][index]->rep!=NULL) free(pulseseqs[radar][channel][index]->rep); 
                 pulseseqs[radar][channel][index]->rep=
-                  malloc(sizeof(unsigned char)*pulseseqs[radar][channel][index]->len);
+                  malloc(sizeof(unsigned char)*pulseseqs[radar][channel][index]->prm.len);
               if(pulseseqs[radar][channel][index]->code!=NULL) free(pulseseqs[radar][channel][index]->code);
                 pulseseqs[radar][channel][index]->code=
-                  malloc(sizeof(unsigned char)*pulseseqs[radar][channel][index]->len);
-              if(pulseseqs[radar][channel][index]->prm!=NULL) free(pulseseqs[radar][channel][index]->prm);
-                pulseseqs[radar][channel][index]->prm=malloc(sizeof(struct TSGprm));
+                  malloc(sizeof(unsigned char)*pulseseqs[radar][channel][index]->prm.len);
+              if(pulseseqs[radar][channel][index]->ptab!=NULL) free(pulseseqs[radar][channel][index]->ptab);
+                pulseseqs[radar][channel][index]->ptab=
+                  malloc(sizeof(int)*pulseseqs[radar][channel][index]->prm.mppul);
 	      ros_msg_get_var_by_name(&smsg,"rep",pulseseqs[radar][channel][index]->rep);
 	      ros_msg_get_var_by_name(&smsg,"code",pulseseqs[radar][channel][index]->code);
-            //send on to timing socket
+	      ros_msg_get_var_by_name(&smsg,"ptab",pulseseqs[radar][channel][index]->ptab);
               rc = pthread_create(&threads[0], NULL, (void *)&timing_register_seq,(void *) control_program);
-            //send on to dds socket
               rc = pthread_create(&threads[1], NULL, (void *)&dds_register_seq,(void *) control_program);
               pthread_join(threads[0],NULL);
               pthread_join(threads[1],NULL);

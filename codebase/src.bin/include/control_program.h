@@ -1,6 +1,5 @@
 #include <pthread.h>
 #include <sys/time.h>
-#include "tsg.h"
 #include "rtypes.h"
 #include "rosmsg.h"
 #include "site.h"
@@ -20,9 +19,9 @@ struct TRTimes {
 
 struct SeqPRM {
   uint32 len;
-  uint32 step;  //packed timesequence stepsize in microseconds
-  uint32 samples;
-  uint32 smdelay;
+  uint32 step_usec;  //packed timesequence stepsize in microseconds
+  uint32 mpinc_usec;
+  uint32 mppul;
 };
 
 struct tx_status {
