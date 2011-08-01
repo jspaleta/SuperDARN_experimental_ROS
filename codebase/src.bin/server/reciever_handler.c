@@ -407,7 +407,7 @@ void receiver_assign_frequency(struct ControlProgram *arg){
 		thread_list=controlprogram_threads;
      		while (thread_list!=NULL) {
        			controlprogram=thread_list->data;
-			if(controlprogram!=NULL) {                   
+			if(controlprogram!=NULL && arg!=NULL && controlprogram->parameters!=NULL) {                   
 			  if(controlprogram!=arg) {                   
 			    if(controlprogram->state!=NULL) {                   
        				if(controlprogram->state->active!=0) {
